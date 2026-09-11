@@ -1,6 +1,6 @@
 # VERIFY-06 — Verify opening balances, customer credits and collections
 
-Status: **planned**. Build under review: [BUILD-06](BUILD-06.md).
+Status: **passed**. Build under review: [BUILD-06](BUILD-06.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

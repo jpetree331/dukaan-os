@@ -225,10 +225,11 @@
       ],
       "recovery": "Carry migrated balances as disclosed opening checkpoints; retain evidence of exceptions; disable new entry UI rather than deleting ledger entries on rollback.",
       "optional": false,
-      "status": "built-unverified",
-      "codeCommit": "e30588d4b08b2a94f83d110c85e1fad0c81a0092",
+      "status": "passed",
+      "codeCommit": "fd24ef8a3eff289d69c2f0d02bc2ad20b8ce6586",
       "evidence": [
-        "reports/BUILD-06.md"
+        "reports/BUILD-06.md",
+        "reports/VERIFY-06.md"
       ]
     },
     {
