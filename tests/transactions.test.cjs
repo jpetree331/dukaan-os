@@ -17,7 +17,7 @@ test('B01–B03: mixed stock, last batch depletion, and exact void allocations',
 
 test('B04, B21: foreign, deleted, stale price, duplicate and over-stock lines cannot charge', async () => {
   const {A}=await create(); const i=item(A,{stock:1}), c=customer(A);
-  A.posAdd(i.id,1); A.cart.customerId=c.id;
+  await A.posAdd(i.id,1); A.cart.customerId=c.id;
   A.DB().stores.push({id:'branch',name:'Branch'}); A.DB().settings.activeStore='branch';
   (await assert.rejects(async ()=>(await A.actions.checkout({...A.cart,mode:'credit'})),/different store/));
   assert.equal(A.item(i.id),undefined); assert.equal(c.balance,0); assert.equal(i.stock,1);
@@ -30,9 +30,9 @@ test('B04, B21: foreign, deleted, stale price, duplicate and over-stock lines ca
 
 test('B05–B07: displayed redemption equals persisted total; customer changes clear it; void returns points', async () => {
   const {A,node}=await create(); const i=item(A),c=customer(A,{points:20});
-  A.posAdd(i.id,1); A.cart.customerId=c.id; A.cart.redeem=20;
+  await A.posAdd(i.id,1); A.cart.customerId=c.id; A.cart.redeem=20;
   const shown=A.posTotals(); assert.equal(shown.total,80);
-  A.views.billing(node('main')); assert.match(node('#cartFoot').innerHTML,/₹80\.00/);
+  A.views.billing(node('main')); await A.drafts.save(A.cart); assert.match(node('#cartFoot').innerHTML,/₹80\.00/);
   const b=(await A.actions.checkout(A.cart)); assert.equal(b.total,shown.total); assert.equal(c.points,0);
   A.DB().settings.loyaltyValue=2;
   (await A.actions.voidBill(b.id)); assert.equal(c.points,20);

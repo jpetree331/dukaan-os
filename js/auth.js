@@ -136,9 +136,10 @@
       App.assertContext(context);
       if (local) {
         App.validateData(JSON.parse(local));
+        const transferred=App.drafts.reassign(local,'local',accountId);
         localStorage.setItem('dukaanos.localOwner', accountId);
-        await App.storage.write('dukaanos.v2.' + accountId, local);
-        if (await App.storage.read('dukaanos.v2.' + accountId) !== local) throw new Error('Migration could not be verified.');
+        await App.storage.write('dukaanos.v2.' + accountId, transferred);
+        if (await App.storage.read('dukaanos.v2.' + accountId) !== transferred) throw new Error('Migration could not be verified.');
         for (const suffix of ['.before-restore']) {
           const raw = await App.storage.read('dukaanos.v2.local' + suffix);
           if (raw) await App.storage.write('dukaanos.v2.' + accountId + suffix, raw);
@@ -160,7 +161,7 @@
       const mine = s && await App.storage.read('dukaanos.v2.' + s.accountId);
       if (!mine) throw new Error('Account data is unavailable.');
       localStorage.setItem('dukaanos.localOwner', s.accountId);
-      await App.storage.write('dukaanos.v2.local', mine);
+      await App.storage.write('dukaanos.v2.local', App.drafts.reassign(mine,s.accountId,'local'));
       App.assertContext(context); this.requireFresh();
       if (App.migrations && App.migrations.info(s.accountId)) await App.migrations.run({allowPrototype:true,accountId:LOCAL_ID});
       localStorage.setItem(GATE_KEY, 'off');

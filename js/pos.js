@@ -9,6 +9,16 @@
   const cart = { storeId: '', lines: [], discount: 0, mode: 'cash', customerId: '', note: '', redeem: 0 };
   App.cart = cart;
   let filter = { q: '', cat: '' }, lastBill = null;
+  let loadedScope='',draftSave=Promise.resolve(),draftError=null;
+  const scopeKey=()=>JSON.stringify(App.drafts.scope());
+  function loadDraft(){
+    const scope=scopeKey();if(loadedScope===scope)return;
+    loadedScope=scope;const saved=App.drafts.current();
+    Object.assign(cart,{storeId:'',lines:[],discount:0,mode:'cash',customerId:'',note:'',redeem:0,draftId:''},saved?JSON.parse(JSON.stringify(saved.cart)):{});
+    cart.draftId=saved?.id || '';lastBill=null;
+  }
+  App.on('secureclear',()=>{loadedScope='';Object.assign(cart,{storeId:'',lines:[],discount:0,mode:'cash',customerId:'',note:'',redeem:0,draftId:''});lastBill=null;});
+  App.posFlush=()=>draftSave;
 
   const cartQty = () => cart.lines.reduce((s, l) => s + l.qty, 0);
   const subTotal = () => App.round2(cart.lines.reduce((s, l) => s + l.price * l.qty, 0));
@@ -23,6 +33,7 @@
   /* ───────── cart ops ───────── */
   function add(itemId, qty, fromEl) {
     App.requirePermission('bill');
+    loadDraft();
     if (cart.storeId && cart.storeId !== App.S()) clearCart();
     cart.storeId = App.S();
     const it = App.item(itemId);
@@ -39,28 +50,27 @@
     }
     const ex = cart.lines.find((l) => l.itemId === itemId);
     if (ex) ex.qty = App.domain.quantity(ex.qty + qty);
-    else cart.lines.push({ itemId, name: App.itemName(it), emoji: it.emoji || '🛍️', qty, price: it.price });
+    else cart.lines.push({ itemId, name: App.itemName(it), emoji: it.emoji || '🛍️', qty, price: it.price,selectionVersion:App.selectionVersion(it) });
     if (fromEl) App.flyTo(fromEl, '#cartCount', it.emoji || '🛒');
     App.buzz();
-    paintCart(); App.bump('#cartCount');
+    paintCart(); App.bump('#cartCount');return draftSave;
   }
   App.posAdd = add;
 
   function setQty(itemId, q) {
+    App.requirePermission('bill');
     App.domain.quantityUnits(q);
     const l = cart.lines.find((x) => x.itemId === itemId); if (!l) return;
     const it = App.item(itemId);
     const max = it ? App.sellableStock(it) : 999;
     if (q > max) { q = max; App.toast('warn', App.itemName(it), t('pos.onlyLeft', { n: max })); }
     if (q <= 0) {
-      const node = App.$('[data-line="' + itemId + '"]');
-      if (node) { node.classList.add('rm'); setTimeout(() => { cart.lines = cart.lines.filter((x) => x.itemId !== itemId); paintCart(); }, 220); return; }
       cart.lines = cart.lines.filter((x) => x.itemId !== itemId);
     } else l.qty = App.domain.quantity(q);
     paintCart();
   }
-  function clearCart() { lastBill = null; cart.storeId = ''; cart.lines = []; cart.discount = 0; cart.redeem = 0; cart.customerId = ''; cart.mode = 'cash'; cart.note = ''; paintCart(); }
-  App.posClear = clearCart;
+  function clearCart() { lastBill = null; cart.draftId='';cart.storeId = ''; cart.lines = []; cart.discount = 0; cart.redeem = 0; cart.customerId = ''; cart.mode = 'cash'; cart.note = ''; paintCart();return draftSave; }
+  App.posClear = () => {loadedScope='';loadDraft();paintCart(false);};
 
   /* ───────── item grid ───────── */
   function itemCard(it) {
@@ -99,7 +109,7 @@
   }
 
   /* ───────── cart panel ───────── */
-  function paintCart() {
+  function paintCart(persist=true) {
     const box = App.$('#cartLines'); if (!box) return;
     const T = totals();
     const cust = cart.customerId ? App.customer(cart.customerId) : null;
@@ -139,6 +149,14 @@
 
     const mob = App.$('#cartPanel');
     if (mob && cart.lines.length && w.innerWidth <= 860) mob.classList.add('open');
+    if(persist){
+      const context=App.context();
+      draftSave=App.drafts.save(cart).then(saved=>{if(App.contextValid(context)){cart.draftId=saved?.id || '';draftError=null;}}).catch(error=>{
+        draftError=error;
+        App.toast('err','Cart could not be saved',error.message);
+        if(App.contextValid(context)){loadedScope='';loadDraft();paintCart(false);}
+      });
+    }
   }
 
   /* ───────── customer picker ───────── */
@@ -179,6 +197,7 @@
   /* ───────── checkout ───────── */
   async function checkout() {
     if (!cart.lines.length || App.isSaving()) return;
+    await draftSave;if(draftError)throw draftError;
     const T = totals();
     if (cart.mode === 'credit' && !cart.customerId) {
       App.toast('warn', t('pos.needCustomer'));
@@ -186,7 +205,7 @@
       return;
     }
     const bill = (await App.actions.checkout({
-      storeId: cart.storeId, lines: cart.lines, discount: cart.discount,
+      draftId:cart.draftId,storeId: cart.storeId, lines: cart.lines, discount: cart.discount,
       mode: cart.mode, customerId: cart.customerId, note: cart.note, redeem: cart.redeem
     }));
     App.buzz(30);
@@ -210,7 +229,7 @@
   /* ───────── receipt modal ───────── */
   function showReceipt(bill) {
     bill = App.domain.snapshot(bill);
-    const cust = bill.customerId ? App.customer(bill.customerId) : null;
+    const cust = bill.customerPhone!==undefined?{phone:bill.customerPhone}:(bill.customerId ? App.customer(bill.customerId) : null);
     const wrap = App.el('<div><div class="receipt-prev" id="rcp"></div></div>');
     const cv = App.receiptCanvas(bill);
     wrap.querySelector('#rcp').appendChild(cv);
@@ -330,7 +349,7 @@
       buttons: [{ label: t('com.cancel'), cls: 'ghost' },
       {
         label: t('com.add'), cls: 'pri',
-        fn: () => { res.lines.forEach((l) => add(l.item.id, l.qty)); App.toast('ok', t('voice.added', { n: res.lines.length })); }
+        fn: async () => { for(const l of res.lines){await add(l.item.id,l.qty);if(draftError)throw draftError;}App.toast('ok', t('voice.added', { n: res.lines.length })); }
       }]
     });
   }
@@ -398,6 +417,7 @@
 
   /* ───────── render ───────── */
   App.views.billing = function (main) {
+    loadDraft();
     const cats = Array.from(new Set(App.items().map((i) => i.category).filter(Boolean))).sort();
     const favs = App.items().filter((i) => i.fav && App.sellableStock(i) > 0);
 
@@ -430,7 +450,7 @@
       '<div class="cart-foot" id="cartFoot"></div>' +
       '</div></div>';
 
-    paintItems(); paintCart();
+    paintItems(); paintCart(false);
 
     const S = App.$('#posSearch');
     S.addEventListener('input', () => { filter.q = S.value; paintItems(); });
@@ -456,7 +476,7 @@
       const dec = e.target.closest('[data-dec]'), inc = e.target.closest('[data-inc]');
       if (e.target.closest('#pickCust')) return pickCustomer();
       if (e.target.closest('#clearCart')) return clearCart();
-      if (e.target.closest('#charge')) return (await checkout());
+      if (e.target.closest('#charge')) return await checkout().catch(App.reportError);
       if (e.target.closest('#discBtn')) {
         return App.numpadModal(t('pos.discount'), cart.discount || '', (n) => { cart.discount = n; paintCart(); },
           { allowZero: true, sub: t('pos.subtotal') + ': ' + money(subTotal(), true), quick: [5, 10, 20, 50] });

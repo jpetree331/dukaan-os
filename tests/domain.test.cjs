@@ -40,7 +40,7 @@ test('BUILD-01 Q01: four-decimal quantity sale, batched sale, restock and void',
   const batched=(await A.actions.checkout(cart(i,{lines:[{itemId:i.id,price:10000,qty:0.0001}]})));
   assert.equal(A.itemStock(i),0.9999);(await A.actions.voidBill(batched.id));assert.equal(A.itemStock(i),1);
   (await A.actions.restock(i.id,0.0001));assert.equal(i.stock,1.0001);
-  A.posAdd(i.id,0.0001);A.posAdd(i.id,0.0001);assert.equal(A.cart.lines[0].qty,0.0002);
+  await A.posAdd(i.id,0.0001);await A.posAdd(i.id,0.0001);assert.equal(A.cart.lines[0].qty,0.0002);
   (await assert.rejects(async ()=>(await A.actions.checkout(cart(i,{lines:[{itemId:i.id,price:10000,qty:0.00011}]}))),/four decimal/));
 });
 

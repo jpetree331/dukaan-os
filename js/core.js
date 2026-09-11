@@ -342,10 +342,47 @@
     return App.domain.command({id:'cmd_' + w.crypto.randomUUID().replace(/-/g,''),
       accountId:App.accountId, actorId:DB.session.staffId, storeId:S(), kind, at:Date.now(), corrects});
   }
+  // Drafts share the same atomic book commit as the sale that consumes them.
+  const draftCart = cart => ({storeId:cart.storeId || S(),lines:JSON.parse(JSON.stringify(cart.lines || [])),discount:cart.discount || 0,mode:cart.mode || 'cash',customerId:cart.customerId || '',note:cart.note || '',redeem:cart.redeem || 0});
+  const draftScope = () => {
+    let device=localStorage.getItem('dukaanos.draft-device');
+    if(!device){device=uid('device');localStorage.setItem('dukaanos.draft-device',device);}
+    return {accountId:App.accountId,storeId:S(),staffId:DB.session.staffId,deviceId:device};
+  };
+  const sameScope = (a,b) => a&&b&&['accountId','storeId','staffId','deviceId'].every(k=>a[k]===b[k]);
+  App.selectionVersion = it => JSON.stringify([it.price,it.unit || 'unit',DB.settings.gstEnabled,it.gst ?? DB.settings.defaultGst]);
+  App.returnableLines = bill => bill.lines.map((line,index)=>({lineId:line.lineId || String(index),qty:bill.void?0:line.qty}));
+  App.drafts = {
+    scope:draftScope,
+    reassign(raw,from,to){const data=App.validateData(JSON.parse(raw));if(!data.drafts?.length)return raw;for(const draft of data.drafts)if(draft.accountId===from)draft.accountId=to;return JSON.stringify(App.validateData(data));},
+    current(){App.requirePermission('bill');const scope=draftScope();return (DB.drafts || []).find(d=>sameScope(d,scope));},
+    async save(cart){
+      App.requirePermission('bill');const scope=draftScope(),payload=draftCart(cart);
+      if(payload.storeId!==scope.storeId)throw new Error('Draft belongs to another store.');
+      App.checkDataBounds(payload);
+      let prior=(DB.drafts || []).find(d=>sameScope(d,scope));
+      if(prior&&JSON.stringify(prior.cart)===JSON.stringify(payload))return JSON.parse(JSON.stringify(prior));
+      if(!prior&&!payload.lines.length)return null;
+      const record=payload.lines.length?{...scope,id:prior?prior.id:uid('draft'),version:1,revision:(prior?.revision || 0)+1,at:Date.now(),cart:payload}:null;
+      DB.drafts=(DB.drafts || []).filter(d=>!sameScope(d,scope));if(record)DB.drafts.push(record);
+      await save({sync:false,render:false});return record&&JSON.parse(JSON.stringify(record));
+    }
+  };
   App.actions = {
     /* Commit a cart into a bill. Deducts stock, moves credit, awards loyalty. */
     async checkout(cart) {
       App.requirePermission('bill');
+      if (cart.storeId && cart.storeId !== S()) throw new Error('The cart belongs to a different store. Clear it and try again.');
+      let draft;
+      if(cart.draftId){
+        const scope=draftScope(),prior=DB.bills.find(b=>b.draftId===cart.draftId);
+        if(prior){
+          if(!sameScope(prior.draftScope,scope)||JSON.stringify(prior.draftSubmission)!==JSON.stringify(draftCart(cart)))throw new Error('Finalized draft differs from this request.');
+          return App.domain.snapshot(prior);
+        }
+        draft=(DB.drafts || []).find(d=>d.id===cart.draftId&&sameScope(d,scope));
+        if(!draft||JSON.stringify(draft.cart)!==JSON.stringify(draftCart(cart)))throw new Error('Draft changed. Save and review it before checkout.');
+      }
       if (!cart.lines || !cart.lines.length) throw new Error('The cart is empty.');
       if (cart.storeId && cart.storeId !== S()) throw new Error('The cart belongs to a different store. Clear it and try again.');
       if (!['cash', 'upi', 'card', 'credit'].includes(cart.mode || 'cash')) throw new Error('Invalid payment mode.');
@@ -356,6 +393,7 @@
         if (!it) throw new Error('An item was removed or belongs to another store. Update the cart.');
         App.number(l.qty, 'Quantity', 0.0001); App.domain.quantityUnits(l.qty); App.number(l.price, 'Price');
         if (l.price !== it.price) throw new Error(it.name + ' has a new price. Remove it and add it again.');
+        if(l.selectionVersion&&l.selectionVersion!==App.selectionVersion(it))throw new Error(it.name+' has changed price, tax or units. Remove it and add it again.');
         quantities.set(it.id, App.domain.quantity((quantities.get(it.id) || 0) + l.qty));
         if (quantities.get(it.id) > App.sellableStock(it)) throw new Error('Insufficient stock for ' + it.name + '. Update the cart.');
       });
@@ -367,7 +405,7 @@
       const { sub, tax, total } = T, disc = round2(T.disc + T.redeem);
       const lines = cart.lines.map((l, index) => {
         const it = App.item(l.itemId);
-        return { itemId: it.id, name: it.name, emoji: it.emoji || '', qty: l.qty, price: l.price, cost: it.cost,
+        return { lineId:uid('line'),itemId: it.id, name: it.name, emoji: it.emoji || '', unit:it.unit || 'unit', qty: l.qty, price: l.price, cost: it.cost,
           gross: round2(l.price * l.qty), ...T.taxes[index] };
       });
 
@@ -381,6 +419,10 @@
         note: cart.note || '', staffId: DB.session.staffId, at: operation.at, void: false,
         loyalty: 0, redeemed: T.redeem, redeemedPoints: round2(T.redeem / st.loyaltyValue)
       };
+      bill.receiptSettings=Object.fromEntries(['shopName','shopPhone','address','gstin','currency','receiptTheme','upiId'].map(k=>[k,st[k]]));
+      bill.loyaltyPolicy={rate:st.loyaltyRate,value:st.loyaltyValue};
+      bill.customerPhone=cust?.phone || '';
+      if(draft){bill.draftId=draft.id;bill.draftScope=draftScope();bill.draftSubmission=draftCart(cart);DB.drafts=DB.drafts.filter(d=>d.id!==draft.id);}
 
       lines.forEach((l) => {
         l.allocations = takeStock(App.item(l.itemId), l.qty);

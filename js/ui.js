@@ -291,7 +291,8 @@
   };
 
   App.receiptCanvas = function (bill) {
-    const st = App.DB().settings, th = THEMES[st.receiptTheme] || THEMES.saffron;
+    const st = bill.receiptSettings || App.DB().settings, th = THEMES[st.receiptTheme] || THEMES.saffron;
+    const receiptMoney=(n,dec)=>String(st.currency || "₹")+Number(n).toLocaleString("en-IN",{minimumFractionDigits:dec?2:0,maximumFractionDigits:2});
     const dpr = 2, W = 400;
     const lineH = 26, headH = 178, footH = 210 + (st.upiId ? 190 : 0);
     const H = headH + bill.lines.length * lineH + footH;
@@ -337,7 +338,7 @@
       c.textAlign = 'center'; c.fillText(String(l.qty), 244, y);
       c.textAlign = 'right'; c.fillText(String(l.price), 312, y);
       c.fillStyle = '#1a1a1a'; c.font = F(13, 700);
-      c.fillText(App.money(l.gross), W - 18, y);
+      c.fillText(receiptMoney(l.gross), W - 18, y);
       y += lineH;
     });
 
@@ -350,12 +351,12 @@
       c.textAlign = 'right'; c.fillText(v, W - 18, y);
       y += bold ? 28 : 20;
     };
-    row('Subtotal', App.money(bill.sub, true));
-    if (bill.discount > 0) row('Discount', '− ' + App.money(bill.discount, true), false, '#16A34A');
-    if (bill.tax > 0) row('GST', App.money(bill.tax, true));
+    row('Subtotal', receiptMoney(bill.sub, true));
+    if (bill.discount > 0) row('Discount', '− ' + receiptMoney(bill.discount, true), false, '#16A34A');
+    if (bill.tax > 0) row('GST', receiptMoney(bill.tax, true));
     y += 4;
     c.fillStyle = th.b; c.fillRect(10, y - 20, W - 20, 34);
-    row('TOTAL', App.money(bill.total, true), true, th.a);
+    row('TOTAL', receiptMoney(bill.total, true), true, th.a);
     y += 6;
     if (bill.credit) { c.fillStyle = '#DC2626'; c.font = F(12, 700); c.textAlign = 'center'; c.fillText('⚠ UDHAAR — payment pending', W / 2, y); y += 22; }
     if (bill.loyalty > 0) { c.fillStyle = '#16A34A'; c.font = F(11.5, 600); c.textAlign = 'center'; c.fillText('★ ' + bill.loyalty + ' loyalty points earned', W / 2, y); y += 20; }
@@ -377,7 +378,8 @@
   };
 
   App.billText = function (bill) {
-    const st = App.DB().settings;
+    const st = bill.receiptSettings || App.DB().settings;
+    const money=(n,dec)=>String(st.currency || "₹")+Number(n).toLocaleString("en-IN",{minimumFractionDigits:dec?2:0,maximumFractionDigits:2});
     let s = '*' + (st.shopName || 'My Shop') + '*\n';
     s += '🧾 Bill #' + bill.no + ' · ' + App.fmtDT(bill.at) + '\n';
     s += '👤 ' + bill.customerName + '\n\n';

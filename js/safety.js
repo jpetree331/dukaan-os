@@ -82,7 +82,7 @@
     const id = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(x) && !['__proto__', 'constructor', 'prototype'].includes(x);
     const date = (x) => !x || (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && new Date(x).toISOString().slice(0, 10) === x);
     const collections = ['stores', 'staff', 'items', 'customers', 'suppliers', 'bills', 'payments', 'purchases', 'supplierPayments', 'activity', 'shifts'];
-    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', ...collections]);
+    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', ...collections]);
     for (const key of Object.keys(d)) if (!rootKeys.has(key)) fail('unknown field: ' + key);
     for (const key of collections) {
       if (!Array.isArray(d[key])) fail(key + ' must be an array');
@@ -93,6 +93,19 @@
       }
     }
     const exists = (key, x) => d[key].some((r) => r.id === x);
+    if(d.drafts!==undefined){
+      if(!Array.isArray(d.drafts))fail('drafts must be an array');
+      const draftIds=new Set(),scopes=new Set();
+      for(const draft of d.drafts){
+        if(!obj(draft)||!id(draft.id)||draftIds.has(draft.id)||draft.version!==1||!Number.isSafeInteger(draft.revision)||draft.revision<1)fail('invalid draft identity');
+        draftIds.add(draft.id);
+        for(const k of ['accountId','storeId','staffId','deviceId'])if(!id(draft[k]))fail('invalid draft scope');
+        const scope=JSON.stringify([draft.accountId,draft.storeId,draft.staffId,draft.deviceId]);if(scopes.has(scope))fail('duplicate draft scope');scopes.add(scope);
+        const cart=draft.cart;if(!obj(cart)||cart.storeId!==draft.storeId||!Array.isArray(cart.lines)||!cart.lines.length||!['cash','upi','card','credit'].includes(cart.mode))fail('invalid draft cart');
+        for(const k of ['discount','redeem'])App.number(cart[k],k);
+        for(const l of cart.lines){if(!obj(l)||!id(l.itemId))fail('invalid draft item');App.number(l.price,'draft price');App.number(l.qty,'draft quantity',0.0001);App.domain.quantityUnits(l.qty);}
+      }
+    }
     if (!d.stores.length || !exists('stores', d.settings.activeStore)) fail('active store is missing');
     if (!d.staff.some((s) => s.role === 'owner' && s.active !== false) || !d.staff.some((s) => s.id === d.session.staffId && s.active !== false)) fail('owner or active staff is missing');
     for (const s of d.staff) if (!['owner', 'cashier'].includes(s.role)) fail('unknown staff role');
