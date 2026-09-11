@@ -19,12 +19,26 @@
       { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   }
   App.backups = {
+    validatePayload(data) {
+      if (!data || data.storageVersion !== 3) return App.validateData(data);
+      App.checkDataBounds(data);
+      if (Object.keys(data).some(k=>!['storageVersion','book','provenance'].includes(k))) throw new Error('Unknown checkpoint backup field.');
+      const p=data.provenance;
+      if(!p || p.kind!=='snapshot-checkpoint' || !/^[a-f0-9]{64}$/.test(p.sourceHash) || !Number.isSafeInteger(p.capturedAt) || p.capturedAt<0)throw new Error('Invalid checkpoint provenance.');
+      return {storageVersion:3,book:App.validateData(data.book),provenance:{kind:p.kind,sourceHash:p.sourceHash,capturedAt:p.capturedAt}};
+    },
+    businessData(data) { const p=this.validatePayload(data);return p.storageVersion===3?p.book:p; },
+    capture() {
+      App.requirePermission('settings');
+      const book=App.validateData(App.DB()),m=App.migrations&&App.migrations.info(App.accountId);
+      return m?{storageVersion:3,book,provenance:{kind:'snapshot-checkpoint',sourceHash:m.sourceHash,capturedAt:Date.now()}}:book;
+    },
     async encrypt(data, password) {
-      const clean = App.validateData(data);
+      const payload = this.validatePayload(data),clean=payload.storageVersion===3?payload.book:payload;
       // Restores preserve local security settings; do not distribute reusable PINs.
       clean.settings.pin = ''; clean.settings.pinOn = false;
       clean.staff.forEach(s => { s.pin = ''; });
-      const plaintext = new TextEncoder().encode(JSON.stringify(clean));
+      const plaintext = new TextEncoder().encode(JSON.stringify(payload));
       // Leave room for the GCM tag, base64 expansion and JSON envelope so every emitted file is importable.
       if (plaintext.length > Math.floor((App.limits.fileBytes - 1024) * 3 / 4) - 16) throw new Error('Backup exceeds the supported file size.');
       const salt = w.crypto.getRandomValues(new Uint8Array(16)), iv = w.crypto.getRandomValues(new Uint8Array(12));
@@ -41,7 +55,7 @@
       let plain;
       try { plain = await w.crypto.subtle.decrypt({ name: 'AES-GCM', iv, additionalData: aad }, await key(password, salt), ciphertext); }
       catch (e) { throw new Error('Wrong backup password or damaged backup. Nothing was restored.'); }
-      return App.validateData(JSON.parse(new TextDecoder().decode(plain)));
+      return this.validatePayload(JSON.parse(new TextDecoder().decode(plain)));
     }
   };
 })(window);

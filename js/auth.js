@@ -147,6 +147,7 @@
         if (queue) await App.storage.write('dukaanos.syncq.' + accountId, queue);
       }
       App.assertContext(context);
+      if (App.migrations && App.migrations.info('local')) await App.migrations.run({allowPrototype:true,accountId});
       (await App.boot(accountId));
       localStorage.setItem(GATE_KEY, 'on');
       if (local) { (await App.wipeAccountData('local')); localStorage.removeItem('dukaanos.localOwner'); }
@@ -161,6 +162,7 @@
       localStorage.setItem('dukaanos.localOwner', s.accountId);
       await App.storage.write('dukaanos.v2.local', mine);
       App.assertContext(context); this.requireFresh();
+      if (App.migrations && App.migrations.info(s.accountId)) await App.migrations.run({allowPrototype:true,accountId:LOCAL_ID});
       localStorage.setItem(GATE_KEY, 'off');
       localStorage.removeItem(SESSION_KEY);
       verified = null;

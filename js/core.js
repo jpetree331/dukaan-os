@@ -160,7 +160,7 @@
     });
   }
   let pendingWrite = false;
-  App.isSaving = () => pendingWrite;
+  App.isSaving = () => pendingWrite || !!(App.migrations && App.migrations.busy());
   async function persist(requireAccess = false) {
     if (pendingWrite) throw new Error('A save is already in progress. Wait for it to finish.');
     const key = dataKey(), previous = committed.has(key) ? committed.get(key) : null;
@@ -202,7 +202,8 @@
   App.restoreBackup = async (data) => {
     App.requirePermission('settings');
     App.auth.requireFresh();
-    const valid = App.validateData(data);
+    const valid = App.backups.businessData(data);
+    if (data.storageVersion === 3) valid.settings.restoredCheckpoint = {...data.provenance};
     // A business backup never grants access or redirects payments.
     valid.staff = JSON.parse(JSON.stringify(DB.staff));
     valid.session = { staffId: DB.session.staffId };
@@ -225,8 +226,8 @@
 
   /* This release stores data on this device only. No upload is simulated. */
   let queue = [];
-  function loadQueue() {
-    try { queue = JSON.parse(localStorage.getItem(queueKey()) || '[]'); } catch (e) { queue = []; }
+  async function loadQueue() {
+    try { queue = JSON.parse(await App.storage.read(queueKey()) || '[]'); } catch (e) { queue = []; }
   }
   function queueSync() { App.emit('net'); }
   App.sync = { pending: () => queue.length, draining: () => false, drain: () => {}, push: null };
@@ -708,7 +709,7 @@
   App.initAccountData = async function (accountId, shopName) {
     if (pendingWrite) throw new Error('Wait for the current save before changing accounts.');
     App.accountId = accountId;
-    loadQueue();
+    await loadQueue();
     committed.set(dataKey(), await App.storage.read(dataKey()));
     DB = blank();
     if (shopName) DB.settings.shopName = shopName;
@@ -723,6 +724,7 @@
     App.assertWriter();
     if (!/^[A-Za-z0-9_-]{1,100}$/.test(accountId)) throw new Error('Invalid account ID.');
     if (pendingWrite) throw new Error('Wait for the current save before deleting an account.');
+    if (App.migrations) await App.migrations.destroyAccount(accountId);
     for (const key of ['dukaanos.v2.' + accountId + '.before-restore', 'dukaanos.syncq.' + accountId, 'dukaanos.v2.' + accountId]) await App.storage.remove(key);
   };
 
@@ -730,7 +732,7 @@
     App.assertWriter();
     if (pendingWrite) throw new Error('Wait for the current save before opening another account.');
     App.accountId = accountId || App.accountId;
-    loadQueue();
+    await loadQueue();
     const had = (await load());
     if (!had) { DB = blank(); (await persist()); }
     if (!DB.stores.some((s) => s.id === DB.settings.activeStore)) DB.settings.activeStore = DB.stores[0].id;

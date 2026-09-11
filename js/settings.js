@@ -18,7 +18,7 @@
     if (confirm == null) return;
     if (password !== confirm) throw new Error('Backup passwords do not match.');
     App.assertContext(context); App.auth.requireFresh();
-    const encrypted = await App.backups.encrypt(App.DB(), password);
+    const encrypted = await App.backups.encrypt(App.backups.capture(), password);
     App.assertContext(context); App.auth.requireFresh();
     App.download(JSON.stringify(encrypted), 'dukaan-backup-' + App.dayKey(Date.now()) + '.json', 'application/json');
     App.DB().settings.lastBackup = Date.now();
@@ -54,10 +54,11 @@
       data = await App.backups.decrypt(p, password);
     } else {
       if (p && p.data && (p.app !== 'DukaanOS' || p.v !== 2)) throw new Error('Unsupported backup format.');
-      data = App.validateData(p && p.data ? p.data : p);
+      data = App.backups.validatePayload(p && p.data ? p.data : p);
     }
     App.assertContext(context);
-    if (!await App.confirm('Restore business records?', 'Replace this shop’s records with ' + data.items.length + ' items, ' + data.bills.length + ' bills and ' + data.customers.length +
+    const book = App.backups.businessData(data);
+    if (!await App.confirm('Restore business records?', 'Replace this shop’s records with ' + book.items.length + ' items, ' + book.bills.length + ' bills and ' + book.customers.length +
       ' customers? Your current staff, PINs and UPI payment address will be kept. Check the backup date and totals: an old backup rolls the books back.', { danger: true, ok: 'Restore' })) return;
     if (!await App.auth.verifyOwner()) return;
     App.assertContext(context); (await App.restoreBackup(data));
