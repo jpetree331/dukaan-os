@@ -149,10 +149,11 @@
       ],
       "recovery": "Publish the forward-recovery and rollback decision table. After new-version transactions exist, reconcile them into recovery; never simply swap to a stale source snapshot.",
       "optional": false,
-      "status": "built-unverified",
+      "status": "passed",
       "codeCommit": "58ac83d4567bdfc50846828696dbcb03318ac256",
       "evidence": [
-        "reports/BUILD-04.md"
+        "reports/BUILD-04.md",
+        "reports/VERIFY-04.md"
       ]
     },
     {

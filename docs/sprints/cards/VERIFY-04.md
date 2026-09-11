@@ -1,6 +1,6 @@
 # VERIFY-04 — Verify legacy migration and recovery cutover
 
-Status: **planned**. Build under review: [BUILD-04](BUILD-04.md).
+Status: **passed for development; real-data activation pending independent review**. Build under review: [BUILD-04](BUILD-04.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

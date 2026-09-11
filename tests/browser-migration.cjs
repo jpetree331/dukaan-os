@@ -18,8 +18,10 @@ async function main(){
    const context=await browser.newContext(),p=await context.newPage();await p.goto(url);await ready(p);
    const opening=await p.evaluate(async stage=>{
     App.DB().settings.seenSummaryOn=App.dayKey(Date.now());
+    App.DB().settings.gstEnabled=true;
+    App.DB().customers.push({id:'test_customer',storeId:App.S(),name:'Synthetic customer',balance:50,points:10});
     App.DB().items.push({id:'test_item',storeId:App.S(),name:'Synthetic migration item',price:100,cost:60,stock:10,batches:[],gst:5});await App.save();
-    await App.actions.checkout({lines:[{itemId:'test_item',price:100,qty:1}],mode:'cash'});
+    await App.actions.checkout({lines:[{itemId:'test_item',price:100,qty:1}],mode:'credit',customerId:'test_customer'});
     const raw=localStorage.getItem('dukaanos.v2.local');
     localStorage.setItem('dukaanos.syncq.local',JSON.stringify([{id:'synthetic_legacy_queue',op:'legacy_unuploaded'}]));
     try{await App.migrations.run({allowPrototype:true,afterStage:async current=>{if(current===stage)throw new Error('Injected interruption');}});throw new Error('Interruption did not run');}
@@ -30,6 +32,7 @@ async function main(){
    await p.evaluate(async()=>{await App.migrations.run({allowPrototype:true});await App.migrations.run({allowPrototype:true});});
    assert.equal(await p.evaluate(()=>localStorage.getItem('dukaanos.migration-source.local')),opening);
    assert.deepEqual(await p.evaluate(()=>[App.DB().items[0].stock,App.DB().bills.length]),[9,1]);
+   assert.deepEqual(await p.evaluate(()=>[App.DB().customers[0].balance,App.DB().customers[0].points,App.DB().bills[0].total]),[155,11,105]);
    await p.evaluate(async()=>{await App.actions.checkout({lines:[{itemId:'test_item',price:100,qty:1}],mode:'cash'});await App.migrations.run({allowPrototype:true});});
    assert.deepEqual(await p.evaluate(()=>[App.DB().items[0].stock,App.DB().bills.length]),[8,2]);
    assert.equal(await p.evaluate(()=>App.sync.pending()),1);
@@ -85,6 +88,39 @@ async function main(){
     try{await App.migrations.cancelBeforeCutover();throw new Error('Active cutover was cancelled');}catch(e){if(!/Cutover already/.test(e.message))throw e;}
   });
   results.push('changed source requires safe pre-cutover cancellation; active rollback is refused');
+  await fresh.close();
+  for(const fault of ['foreign-account','archive-quota','bad-marker','changed-fence','missing-destination']){
+    const c=await browser.newContext(),p=await c.newPage();await p.goto(url);await ready(p);
+    const evidence=await p.evaluate(async fault=>{
+      await App.save();const original=localStorage.getItem('dukaanos.v2.local');
+      if(fault==='foreign-account'){
+        let error;try{await App.migrations.run({allowPrototype:true,accountId:'someone_else'});}catch(e){error=e.message;}
+        return {error,preserved:original===localStorage.getItem('dukaanos.v2.local'),foreign:localStorage.getItem('dukaanos.repository.someone_else')};
+      }
+      if(fault==='archive-quota'){
+        const set=Storage.prototype.setItem;let error;
+        Storage.prototype.setItem=function(k,v){if(k==='dukaanos.migration-source.local')throw new DOMException('Injected quota','QuotaExceededError');return set.call(this,k,v);};
+        try{await App.migrations.run({allowPrototype:true});}catch(e){error=e.name;}finally{Storage.prototype.setItem=set;}
+        return {error,preserved:original===localStorage.getItem('dukaanos.v2.local'),marker:localStorage.getItem('dukaanos.repository.local'),busy:App.isSaving()};
+      }
+      await App.migrations.run({allowPrototype:true});
+      const archive=localStorage.getItem('dukaanos.migration-source.local');
+      if(fault==='bad-marker')localStorage.setItem('dukaanos.repository.local','{"version":999}');
+      if(fault==='changed-fence')localStorage.setItem('dukaanos.v2.local',original);
+      if(fault==='missing-destination')await App.storage.remove('dukaanos.v2.local');
+      let error;try{await App.storage.read('dukaanos.v2.local');}catch(e){error=e.message;}
+      return {error,preserved:archive===localStorage.getItem('dukaanos.migration-source.local')};
+    },fault);
+    assert.equal(evidence.preserved,true);
+    assert.match(evidence.error,{'foreign-account':/not this account/,'archive-quota':/QuotaExceededError/,'bad-marker':/marker is invalid/,'changed-fence':/fence is missing or changed/,'missing-destination':/Migrated book is missing/}[fault]);
+    if(fault==='foreign-account')assert.equal(evidence.foreign,null);
+    if(fault==='archive-quota'){assert.equal(evidence.marker,null);assert.equal(evidence.busy,false);}
+    if(['bad-marker','changed-fence','missing-destination'].includes(fault)){
+      await p.reload();await p.getByRole('heading',{name:'Counter could not open'}).waitFor();
+      assert.notEqual(await p.evaluate(()=>localStorage.getItem('dukaanos.migration-source.local')),null);
+    }
+    results.push(fault+': rejects without losing the preserved source');await c.close();
+  }
   console.log(JSON.stringify({browser:browser.version(),oldClient:OLD,checks:results.length,results},null,2));
  }finally{if(browser)await browser.close();server.kill();}
 }
