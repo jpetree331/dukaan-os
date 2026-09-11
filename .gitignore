@@ -1,0 +1,20 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/
+
+# Node (only used for the tiny dev server)
+node_modules/
+npm-debug.log*
+
+# Local tooling / secrets
+.env
+.env.*
+.claude/settings.local.json
+
+# Deploy artefacts
+.vercel/
+.netlify/

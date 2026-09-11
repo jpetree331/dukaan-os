@@ -1,0 +1,424 @@
+/* ══════════════════════════════════════════════════════════
+   Dukaan OS — Settings, staff, stores, PIN, backup & restore
+   ══════════════════════════════════════════════════════════ */
+(function (w) {
+  'use strict';
+  const App = w.App, esc = App.esc, money = App.money, t = (k, v) => App.t(k, v);
+
+  const RECEIPT_THEMES = [['saffron', '🟠 Saffron'], ['tulsi', '🟢 Tulsi'], ['indigo', '🔵 Indigo'], ['ink', '⚫ Ink']];
+
+  /* ───────── backup ───────── */
+  function exportAll() {
+    const db = App.DB();
+    const blob = JSON.stringify({ app: 'DukaanOS', v: db.v, exportedAt: Date.now(), data: db }, null, 1);
+    App.download(blob, 'dukaan-backup-' + App.dayKey(Date.now()) + '.json', 'application/json');
+    App.DB().settings.lastBackup = Date.now();
+    App.save({ sync: false, render: false });
+    App.toast('ok', 'Backup saved', 'Keep this file safe — it restores everything');
+  }
+
+  function exportLedgerCSV() {
+    const rows = [['Type', 'Name', 'Phone', 'Pending', 'Points', 'Visits', 'Total spent', 'Due since (days)']];
+    App.customers().forEach((c) => rows.push(['Customer', c.name, c.phone || '', c.balance || 0, Math.floor(c.points || 0),
+      c.visits || 0, c.spend || 0, c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0]));
+    App.suppliers().forEach((s) => rows.push(['Supplier', s.name, s.phone || '', -(s.balance || 0), '', '', '',
+      s.dueSince ? App.daysBetween(s.dueSince, Date.now()) : 0]));
+    App.download(App.toCSV(rows), 'dukaan-ledger-' + App.dayKey(Date.now()) + '.csv', 'text/csv');
+    App.toast('ok', 'Ledger exported');
+  }
+
+  function importBackup(file) {
+    const fr = new FileReader();
+    fr.onload = () => {
+      let p;
+      try { p = JSON.parse(String(fr.result)); } catch (e) { App.toast('err', 'Not a valid backup file'); return; }
+      const data = p && p.data ? p.data : p;
+      if (!data || !data.settings || !Array.isArray(data.items)) { App.toast('err', 'Not a Dukaan OS backup'); return; }
+      App.confirm('Restore this backup?',
+        'It has ' + data.items.length + ' items, ' + (data.bills || []).length + ' bills and ' +
+        (data.customers || []).length + ' customers. Everything currently on this device will be replaced.',
+        { danger: true, ok: 'Restore' }).then((ok) => {
+          if (!ok) return;
+          localStorage.setItem('dukaanos.v2.' + App.accountId, JSON.stringify(data));
+          App.toast('ok', 'Restored', 'Reloading…');
+          setTimeout(() => location.reload(), 700);
+        });
+    };
+    fr.readAsText(file);
+  }
+
+  /* ───────── PIN ───────── */
+  App.setPin = function () {
+    App.prompt(t('set.setPin'), t('set.setPin'), { type: 'tel', placeholder: '••••' }).then((p) => {
+      if (p == null) return;
+      p = String(p).replace(/\D/g, '');
+      if (p.length !== 4) { App.toast('err', 'PIN must be exactly 4 digits'); return; }
+      App.DB().settings.pin = p;
+      App.DB().settings.pinOn = true;
+      App.save({ sync: false });
+      App.toast('ok', 'PIN set', 'You will be asked for it next time');
+    });
+  };
+
+  /* ───────── staff ───────── */
+  function editStaff(id) {
+    const db = App.DB();
+    const s = id ? db.staff.find((x) => x.id === id) : null;
+    const body = App.el('<div>' +
+      '<div class="field"><label>' + t('com.name') + '</label><input class="inp" id="st_n" value="' + esc(s ? s.name : '') + '" placeholder="Ravi" autofocus></div>' +
+      '<div class="field"><label>' + t('set.role') + '</label><select class="inp" id="st_r">' +
+      '<option value="cashier">' + t('set.cashier') + ' — can bill & take payments</option>' +
+      '<option value="owner">' + t('set.owner') + ' — full access</option></select></div>' +
+      '<div class="field"><label>PIN (4 digits, ' + t('com.optional') + ')</label><input class="inp num" id="st_p" type="tel" maxlength="4" value="' + esc(s ? s.pin : '') + '"></div>' +
+      '<div class="alert info"><span class="ai">🔒</span><span>Cashiers can bill, restock and take payments. They cannot see full analytics, delete bills, or change settings.</span></div></div>');
+    if (s) App.$('#st_r', body).value = s.role;
+    App.modal({
+      title: s ? '✏️ ' + esc(s.name) : '➕ ' + t('set.addStaff'), body,
+      buttons: [
+        s && s.id !== 'sf_owner' ? {
+          label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => {
+            App.confirm(t('com.delete') + '?', s.name + ' will lose access.', { danger: true }).then((ok) => {
+              if (!ok) return;
+              db.staff = db.staff.filter((x) => x.id !== s.id);
+              if (db.session.staffId === s.id) db.session.staffId = db.staff[0].id;
+              App.save({ sync: false }); api.close();
+            });
+          }
+        } : null,
+        { label: t('com.cancel'), cls: 'ghost' },
+        {
+          label: t('com.save'), cls: 'pri', fn: () => {
+            const n = App.$('#st_n', body).value.trim();
+            if (!n) { App.toast('err', 'Name is required'); return false; }
+            const rec = s || { id: App.uid('sf'), active: true };
+            rec.name = n; rec.role = App.$('#st_r', body).value;
+            rec.pin = App.$('#st_p', body).value.replace(/\D/g, '').slice(0, 4);
+            if (!s) db.staff.push(rec);
+            App.save({ sync: false });
+            App.toast('ok', t('set.saved'), rec.name);
+          }
+        }]
+    });
+  }
+
+  App.switchStaff = function () {
+    const db = App.DB();
+    const body = App.el('<div>' + db.staff.map((s, i) =>
+      '<button class="list-row" data-sw="' + s.id + '" style="width:100%;text-align:left">' + App.avatarFor(s.name, i) +
+      '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' · 🔒' : '') + '</small></span>' +
+      (db.session.staffId === s.id ? '<span class="chip ok">✓</span>' : '') + '</button>').join('') + '</div>');
+    const m = App.modal({ title: '👥 ' + t('set.switchStaff'), body, foot: false });
+    body.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-sw]'); if (!b) return;
+      const s = db.staff.find((x) => x.id === b.dataset.sw);
+      const go = () => {
+        db.session.staffId = s.id;
+        App.log('sys', 'Shift start: ' + s.name);
+        App.save({ sync: false });
+        App.toast('ok', t('lock.welcome'), s.name);
+        m.close(); App.render();
+      };
+      if (s.pin) {
+        App.prompt('PIN for ' + s.name, 'Enter 4-digit PIN', { type: 'tel' }).then((p) => {
+          if (p == null) return;
+          if (String(p).replace(/\D/g, '') === s.pin) go();
+          else App.toast('err', t('lock.wrong'));
+        });
+      } else go();
+    });
+  };
+
+  /* ───────── stores ───────── */
+  App.storePicker = function () {
+    const db = App.DB();
+    const body = App.el('<div>' + db.stores.map((s) => {
+      const bills = db.bills.filter((b) => b.storeId === s.id && !b.void);
+      const today = bills.filter((b) => App.isToday(b.at)).reduce((x, b) => x + b.total, 0);
+      return '<button class="list-row" data-st="' + s.id + '" style="width:100%;text-align:left">' +
+        '<span class="rank" style="background:var(--surface-3)">🏪</span>' +
+        '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + bills.length + ' bills · ' + money(today) + ' today</small></span>' +
+        (db.settings.activeStore === s.id ? '<span class="chip ok">✓</span>' : '') + '</button>';
+    }).join('') +
+      '<button class="btn block sm" id="addStore" style="margin-top:12px">➕ ' + t('set.addStore') + '</button>' +
+      (db.stores.length > 1 ? '<div class="alert info" style="margin-top:12px"><span class="ai">🏢</span><span>Combined across all stores: <b>' +
+        money(db.bills.filter((b) => !b.void && App.isToday(b.at)).reduce((x, b) => x + b.total, 0)) + '</b> today</span></div>' : '') + '</div>');
+    const m = App.modal({ title: '🏪 ' + t('set.stores'), body, foot: false });
+    body.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-st]');
+      if (b) { db.settings.activeStore = b.dataset.st; App.save({ sync: false }); m.close(); App.render(); App.toast('ok', 'Switched store'); return; }
+      if (e.target.closest('#addStore')) {
+        App.prompt(t('set.addStore'), t('com.name'), { placeholder: 'Branch 2' }).then((n) => {
+          if (!n || !n.trim()) return;
+          const st = { id: App.uid('st'), name: n.trim(), address: '' };
+          db.stores.push(st); db.settings.activeStore = st.id;
+          App.save({ sync: false }); m.close(); App.render();
+          App.toast('ok', 'Store added', n + ' — start by adding items');
+        });
+      }
+    });
+  };
+
+  /* ───────── view ───────── */
+  App.views.settings = function (main) {
+    const db = App.DB(), st = db.settings;
+    const owner = App.isOwner();
+    const account = App.auth.currentAccount();
+    const gateOn = App.auth.gateOn();
+    const isBlank = App.isBlankAccount();
+
+    main.innerHTML =
+      '<div class="page-head"><div><h1>⚙️ ' + t('set.title') + '</h1>' +
+      '<div class="sub">' + esc(st.shopName) + ' · ' + esc((App.me() || {}).name) + '</div></div></div>' +
+
+      '<div class="grid g-2">' +
+
+      /* shop */
+      '<div class="card"><div class="sec-title" style="margin-top:0">🏪 ' + t('set.shop') + '</div>' +
+      '<div class="field"><label>' + t('set.shopName') + '</label><input class="inp" data-s="shopName" value="' + esc(st.shopName) + '"></div>' +
+      '<div class="row"><div class="field"><label>' + t('com.phone') + '</label><input class="inp num" data-s="shopPhone" value="' + esc(st.shopPhone) + '"></div>' +
+      '<div class="field"><label>' + t('set.upi') + '</label><input class="inp" data-s="upiId" value="' + esc(st.upiId) + '" placeholder="shop@upi"></div></div>' +
+      '<div class="field"><label>' + t('set.address') + '</label><input class="inp" data-s="address" value="' + esc(st.address) + '"></div>' +
+      '<div class="field"><label>' + t('set.gstin') + '</label><input class="inp num" data-s="gstin" value="' + esc(st.gstin) + '" placeholder="22AAAAA0000A1Z5"></div>' +
+      (st.upiId ? '<div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:14px">' +
+        w.QR.svg(w.QR.upiUri(st.upiId, st.shopName, 0, ''), { size: 150, border: 2 }) +
+        '<p class="muted" style="font-size:12px;margin-top:6px">Your shop UPI QR — print and stick it at the counter</p>' +
+        '<button class="btn xs" id="dlQr" style="margin-top:6px">⬇ Download QR</button></div>'
+        : '<div class="alert info"><span class="ai">📱</span><span>Add your UPI ID to print a payment QR on every bill.</span></div>') +
+      '</div>' +
+
+      /* preferences */
+      '<div class="card"><div class="sec-title" style="margin-top:0">🎛️ Preferences</div>' +
+      '<div class="field"><label>' + t('set.lang') + '</label><div class="chip-row">' +
+      '<button class="chip tap ' + (App.lang() === 'en' ? 'sel' : '') + '" data-lang="en">🇬🇧 English</button>' +
+      '<button class="chip tap ' + (App.lang() === 'hi' ? 'sel' : '') + '" data-lang="hi">🇮🇳 हिन्दी</button></div></div>' +
+      '<label class="switch"><input type="checkbox" data-t="theme" ' + (st.theme === 'dark' ? 'checked' : '') + '><span class="sw"></span>' +
+      '<span><span class="lbl">🌙 ' + t('set.theme') + '</span></span></label>' +
+      '<label class="switch"><input type="checkbox" data-t="gstEnabled" ' + (st.gstEnabled ? 'checked' : '') + '><span class="sw"></span>' +
+      '<span><span class="lbl">🧾 ' + t('set.gstOn') + '</span><br><span class="hint">Adds GST to every bill and unlocks the tax report</span></span></label>' +
+      '<div class="row"><div class="field"><label>' + t('set.lowStock') + '</label><input class="inp num" data-s="lowStock" type="number" value="' + st.lowStock + '"></div>' +
+      '<div class="field"><label>' + t('set.dailyTarget') + ' ₹</label><input class="inp num" data-s="dailyTarget" type="number" value="' + st.dailyTarget + '"></div></div>' +
+      '<div class="row"><div class="field"><label>Default GST %</label><select class="inp" data-s="defaultGst">' +
+      [0, 5, 12, 18, 28].map((g) => '<option value="' + g + '" ' + (+st.defaultGst === g ? 'selected' : '') + '>' + g + '%</option>').join('') + '</select></div>' +
+      '<div class="field"><label>' + t('set.loyaltyRate') + '</label><input class="inp num" data-s="loyaltyRate" type="number" value="' + st.loyaltyRate + '"></div></div>' +
+      '<div class="field"><label>' + t('set.receipt') + '</label><div class="chip-row">' +
+      RECEIPT_THEMES.map((r) => '<button class="chip tap ' + (st.receiptTheme === r[0] ? 'sel' : '') + '" data-rt="' + r[0] + '">' + r[1] + '</button>').join('') + '</div></div>' +
+      '</div>' +
+
+      /* staff + stores */
+      '<div class="card"><div class="sec-title" style="margin-top:0">👥 ' + t('set.staff') + '</div>' +
+      db.staff.map((s, i) => '<div class="list-row">' + App.avatarFor(s.name, i) +
+        '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' · 🔒 PIN set' : '') + '</small></span>' +
+        (db.session.staffId === s.id ? '<span class="chip ok">Active</span>' : '') +
+        (owner ? '<button class="btn xs ghost" data-staff="' + s.id + '">✏️</button>' : '') + '</div>').join('') +
+      (owner ? '<button class="btn sm block" id="addStaff" style="margin-top:12px">➕ ' + t('set.addStaff') + '</button>' : '') +
+      '<button class="btn sm block ghost" id="swStaff" style="margin-top:8px">🔄 ' + t('set.switchStaff') + '</button>' +
+
+      '<div class="sec-title">🏪 ' + t('set.stores') + ' (' + db.stores.length + ')</div>' +
+      db.stores.map((s) => '<div class="list-row"><span class="rank">🏪</span><span style="flex:1"><b>' + esc(s.name) + '</b></span>' +
+        (st.activeStore === s.id ? '<span class="chip ok">Active</span>' : '') + '</div>').join('') +
+      '<button class="btn sm block" id="mgStores" style="margin-top:12px">🏢 Manage stores</button>' +
+
+      '<div class="sec-title">🔒 ' + t('set.pin') + '</div>' +
+      '<label class="switch"><input type="checkbox" data-t="pinOn" ' + (st.pinOn ? 'checked' : '') + '><span class="sw"></span>' +
+      '<span><span class="lbl">' + t('set.pin') + '</span><br><span class="hint">' + t('set.pinHint') + '</span></span></label>' +
+      '<button class="btn sm block" id="setPin">🔑 ' + (st.pin ? 'Change PIN' : t('set.setPin')) + '</button>' +
+      '</div>' +
+
+      /* account & security */
+      '<div class="card"><div class="sec-title" style="margin-top:0">🔐 Account &amp; security</div>' +
+      (gateOn && account ?
+        '<div class="kv"><span>Signed in as</span><b>@' + esc(account.username) + '</b></div>' +
+        '<div class="kv"><span>Account created</span><b>' + App.fmtD(account.createdAt) + '</b></div>' +
+        '<div class="btn-row" style="margin-top:12px">' +
+        '<button class="btn" id="changePass">🔑 Change password</button>' +
+        '<button class="btn" id="doLogout">🚪 Log out</button></div>' +
+        '<button class="btn sm block ghost" id="gateOff" style="margin-top:12px">🔓 Turn off login</button>' +
+        '<p class="muted" style="font-size:11.5px;margin-top:6px">The shop will open without asking for a password. Your bills and stock stay exactly as they are.</p>' +
+        (owner ? '<button class="btn danger block" id="delAccount" style="margin-top:16px">🗑️ Delete my account</button>' +
+          '<p class="muted" style="font-size:11.5px;margin-top:6px">Permanently removes your login and every bill, item and customer. Cannot be undone.</p>' : '')
+        :
+        '<div class="alert info"><span class="ai">🔓</span><span>The app opens straight to your counter — no login needed.</span></div>' +
+        '<button class="btn pri block" id="gateOn" style="margin-top:12px">🔐 Turn on login</button>' +
+        '<p class="muted" style="font-size:11.5px;margin-top:6px">Adds a username &amp; password before the shop opens, so nobody else can see your sales or udhaar. Everything you already have is carried over.</p>'
+      ) +
+      '</div>' +
+
+      /* backup */
+      '<div class="card"><div class="sec-title" style="margin-top:0">💾 ' + t('set.backup') + '</div>' +
+      '<div class="alert ' + (st.lastBackup && Date.now() - st.lastBackup < 7 * App.DAY ? 'ok' : 'warn') + '"><span class="ai">' +
+      (st.lastBackup ? '✅' : '⚠️') + '</span><span>' +
+      (st.lastBackup ? 'Last backup ' + App.timeAgo(st.lastBackup) : 'You have never taken a backup. Do it now — it takes one tap.') + '</span></div>' +
+      '<div class="btn-row" style="margin-top:12px">' +
+      '<button class="btn pri" id="expAll">💾 ' + t('set.exportAll') + '</button>' +
+      '<button class="btn" id="expLed">📤 Ledger CSV</button></div>' +
+      '<div class="field" style="margin-top:14px"><label>' + t('set.importData') + '</label>' +
+      '<input class="inp" type="file" id="impFile" accept=".json,application/json"></div>' +
+      '<div class="alert info"><span class="ai">📶</span><span>' + t('sync.offlineHint') + '</span></div>' +
+      '<div class="kv"><span>Bills stored</span><b class="num">' + db.bills.length + '</b></div>' +
+      '<div class="kv"><span>Items</span><b class="num">' + db.items.filter((i) => !i.deleted).length + '</b></div>' +
+      '<div class="kv"><span>Customers</span><b class="num">' + db.customers.filter((c) => !c.deleted).length + '</b></div>' +
+      '<div class="kv"><span>Waiting to sync</span><b class="num">' + App.sync.pending() + '</b></div>' +
+      (isBlank ? '<button class="btn sm block" id="loadSample" style="margin-top:14px">🧪 Load sample data</button>' +
+        '<p class="muted" style="font-size:11.5px;margin-top:6px">Optional demo shop to explore with. Only offered while your shop is still empty — nothing is ever added on its own.</p>' : '') +
+      (owner ? '<button class="btn danger block" id="resetAll" style="margin-top:16px">🗑️ ' + t('set.reset') + '</button>' : '') +
+      '</div></div>' +
+
+      '<p class="muted" style="text-align:center;font-size:12px;margin-top:26px">Dukaan OS · built for the counter, not the boardroom · v2.0</p>';
+
+    /* text/number/select fields write straight back to settings */
+    App.$$('[data-s]', main).forEach((inp) => {
+      inp.addEventListener('change', () => {
+        const k = inp.dataset.s;
+        let v = inp.value;
+        if (inp.type === 'number' || k === 'lowStock' || k === 'dailyTarget' || k === 'loyaltyRate' || k === 'defaultGst') v = parseFloat(v) || 0;
+        st[k] = v;
+        App.save({ sync: false, render: false });
+        App.toast('ok', t('set.saved'));
+        if (k === 'upiId' || k === 'shopName') App.render();
+      });
+    });
+    App.$$('[data-t]', main).forEach((inp) => {
+      inp.addEventListener('change', () => {
+        const k = inp.dataset.t;
+        if (k === 'theme') { st.theme = inp.checked ? 'dark' : 'light'; App.applyTheme(); }
+        else st[k] = inp.checked;
+        if (k === 'pinOn' && inp.checked && !st.pin) { App.save({ sync: false, render: false }); return App.setPin(); }
+        App.save({ sync: false, render: false });
+      });
+    });
+
+    main.addEventListener('click', (e) => {
+      const l = e.target.closest('[data-lang]'), rt = e.target.closest('[data-rt]'), sf = e.target.closest('[data-staff]');
+      if (l) { App.setLang(l.dataset.lang); App.render(); App.applyI18n(); return; }
+      if (rt) { st.receiptTheme = rt.dataset.rt; App.save({ sync: false }); return; }
+      if (sf) return editStaff(sf.dataset.staff);
+      if (e.target.closest('#addStaff')) return editStaff(null);
+      if (e.target.closest('#swStaff')) return App.switchStaff();
+      if (e.target.closest('#mgStores')) return App.storePicker();
+      if (e.target.closest('#setPin')) return App.setPin();
+      if (e.target.closest('#expAll')) return exportAll();
+      if (e.target.closest('#expLed')) return exportLedgerCSV();
+      if (e.target.closest('#dlQr')) {
+        const cv = document.createElement('canvas'); cv.width = 600; cv.height = 700;
+        const c = cv.getContext('2d');
+        c.fillStyle = '#fff'; c.fillRect(0, 0, 600, 700);
+        c.fillStyle = '#F97316'; c.fillRect(0, 0, 600, 12);
+        c.fillStyle = '#111'; c.textAlign = 'center'; c.font = '800 34px "Segoe UI",sans-serif';
+        c.fillText(String(st.shopName).slice(0, 24), 300, 74);
+        c.font = '500 19px "Segoe UI",sans-serif'; c.fillStyle = '#666';
+        c.fillText('Scan & pay with any UPI app', 300, 108);
+        w.QR.toCanvas(c, w.QR.upiUri(st.upiId, st.shopName, 0, ''), 100, 140, 400, '#111', '#fff');
+        c.fillStyle = '#111'; c.font = '700 24px "Segoe UI",sans-serif';
+        c.fillText(st.upiId, 300, 596);
+        c.fillStyle = '#999'; c.font = '500 15px "Segoe UI",sans-serif';
+        c.fillText('धन्यवाद 🙏  ·  Dukaan OS', 300, 640);
+        App.downloadCanvas(cv, 'upi-qr.png');
+        return;
+      }
+      if (e.target.closest('#resetAll')) {
+        App.confirm(t('set.reset'), t('set.resetWarn'), { danger: true, ok: t('set.reset') }).then((ok) => {
+          if (!ok) return;
+          App.prompt('Type ERASE to confirm', 'This cannot be undone').then((v) => {
+            if (String(v || '').trim().toUpperCase() === 'ERASE') App.resetAll();
+            else App.toast('warn', 'Cancelled — nothing was deleted');
+          });
+        });
+      }
+      if (e.target.closest('#doLogout')) return App.logout && App.logout();
+      if (e.target.closest('#gateOn')) {
+        const body = App.el('<div>' +
+          '<p class="muted" style="font-size:13px;line-height:1.6;margin-bottom:14px">Create the owner login for <b>' + esc(st.shopName) + '</b>. Your ' +
+          db.bills.length + ' bills and ' + db.items.filter((i) => !i.deleted).length + ' items come with you.</p>' +
+          '<div class="field"><label>Username</label><input class="inp" id="g_user" placeholder="raj123" autocapitalize="off" spellcheck="false" autofocus></div>' +
+          '<div class="field"><label>Password</label><input class="inp" id="g_pass" type="password" placeholder="at least 6 characters"></div>' +
+          '<div class="field"><label>Confirm password</label><input class="inp" id="g_pass2" type="password"></div>' +
+          '<div class="alert warn"><span class="ai">⚠️</span><span>There is no "forgot password" — this works offline, so nothing can reset it for you. Write it down somewhere safe.</span></div>' +
+          '<p class="auth-err" id="g_err"></p></div>');
+        App.modal({
+          title: '🔐 Turn on login', body,
+          buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
+            label: 'Create login', cls: 'pri', keepOpen: true, fn: async (api) => {
+              const errEl = App.$('#g_err', body);
+              errEl.textContent = '';
+              try {
+                const acc = await App.auth.signUp({
+                  username: App.$('#g_user', body).value, password: App.$('#g_pass', body).value,
+                  confirm: App.$('#g_pass2', body).value, shopName: st.shopName
+                });
+                App.auth.enableGate(acc.id);
+                api.close();
+                App.toast('ok', 'Login turned on', 'You will sign in as @' + acc.username + ' from now on.');
+                setTimeout(() => location.reload(), 800);
+              } catch (err) { errEl.textContent = err.message || 'Something went wrong'; }
+            }
+          }]
+        });
+        return;
+      }
+      if (e.target.closest('#gateOff')) {
+        App.confirm('Turn off login?', 'The shop will open without asking for a password. Your bills, stock and udhaar all stay exactly as they are.', { ok: 'Turn off login' })
+          .then((ok) => {
+            if (!ok) return;
+            App.persistNow();
+            App.auth.disableGate();
+            App.toast('ok', 'Login turned off');
+            setTimeout(() => location.reload(), 600);
+          });
+        return;
+      }
+      if (e.target.closest('#loadSample')) {
+        App.confirm('Load sample data?', 'Adds 5 weeks of realistic demo sales, items and customers so you can explore the app. Only available while your shop is empty.', { ok: 'Load sample data' })
+          .then((ok) => { if (ok) { App.seed(); App.toast('ok', 'Sample data loaded', 'Explore freely — Erase everything to start clean later.'); App.render(); } });
+      }
+      if (e.target.closest('#changePass')) {
+        const acc = App.auth.currentAccount();
+        if (!acc) return;
+        const body = App.el('<div>' +
+          '<div class="field"><label>Current password</label><input class="inp" id="cp_old" type="password" autofocus></div>' +
+          '<div class="field"><label>New password</label><input class="inp" id="cp_new" type="password"></div>' +
+          '<div class="field"><label>Confirm new password</label><input class="inp" id="cp_new2" type="password"></div>' +
+          '<p class="auth-err" id="cp_err"></p></div>');
+        App.modal({
+          title: '🔑 Change password', body,
+          buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
+            label: t('com.save'), cls: 'pri', keepOpen: true, fn: async (api) => {
+              const errEl = App.$('#cp_err', body);
+              errEl.textContent = '';
+              const n1 = App.$('#cp_new', body).value, n2 = App.$('#cp_new2', body).value;
+              if (n1 !== n2) { errEl.textContent = 'New passwords do not match'; return; }
+              try {
+                await App.auth.changePassword(acc.id, App.$('#cp_old', body).value, n1);
+                App.toast('ok', 'Password changed');
+                api.close();
+              } catch (err) { errEl.textContent = err.message || 'Something went wrong'; }
+            }
+          }]
+        });
+      }
+      if (e.target.closest('#delAccount')) {
+        const acc = App.auth.currentAccount();
+        if (!acc) return;
+        const body = App.el('<div>' +
+          '<div class="alert bad"><span class="ai">⚠️</span><span>This deletes your login and every bill, item, customer and supplier for <b>' + esc(acc.shopName) + '</b>. There is no undo.</span></div>' +
+          '<div class="field" style="margin-top:12px"><label>Enter your password to confirm</label><input class="inp" id="da_pw" type="password" autofocus></div>' +
+          '<p class="auth-err" id="da_err"></p></div>');
+        App.modal({
+          title: '🗑️ Delete my account', body,
+          buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
+            label: 'Delete permanently', cls: 'danger', keepOpen: true, fn: async (api) => {
+              const errEl = App.$('#da_err', body);
+              errEl.textContent = '';
+              try {
+                await App.auth.deleteAccount(acc.id, App.$('#da_pw', body).value);
+                api.close();
+                App.toast('ok', 'Account deleted');
+                setTimeout(() => location.reload(), 500);
+              } catch (err) { errEl.textContent = err.message || 'Something went wrong'; }
+            }
+          }]
+        });
+      }
+    });
+    App.$('#impFile', main).addEventListener('change', (e) => { if (e.target.files[0]) importBackup(e.target.files[0]); });
+  };
+})(window);

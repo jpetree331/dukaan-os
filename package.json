@@ -1,0 +1,12 @@
+{
+  "name": "dukaan-os",
+  "version": "2.0.0",
+  "description": "Smart billing, inventory and udhaar (credit) ledger for local Indian shopkeepers. Offline-first PWA with Hindi/English voice billing.",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["pos", "billing", "inventory", "kirana", "udhaar", "ledger", "pwa", "offline-first", "hindi", "voice"],
+  "license": "MIT"
+}
