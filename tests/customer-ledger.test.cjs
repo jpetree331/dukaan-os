@@ -31,3 +31,24 @@ test('BUILD-06: failed customer entries are atomic; cashier correction and cross
  A.DB().session.staffId='sf_owner';A.DB().stores.push({id:'branch',name:'Branch'});A.DB().settings.activeStore='branch';await A.save();
  await assert.rejects(()=>A.actions.takePayment(c.id,10,'cash'),/not found/);
 });
+test('VERIFY-06: invoice limit and operation reuse hold even when the customer owes more elsewhere',async()=>{
+ const {A}=await create(),c=customer(A,{balance:1000}),other=customer(A,{balance:100}),i=item(A);await A.save();
+ const b=await A.actions.checkout(cart(i,{customerId:c.id,mode:'credit'}));await A.actions.takePayment(c.id,80,'upi','Linked',{operationId:'linked_once',billId:b.id});
+ const before=JSON.stringify(A.DB());await assert.rejects(()=>A.actions.takePayment(c.id,30,'cash','',{billId:b.id}),/linked bill remainder/);
+ await assert.rejects(()=>A.actions.takePayment(other.id,80,'upi','Linked',{operationId:'linked_once',billId:b.id}),/already used/);
+ assert.equal(JSON.stringify(A.DB()),before);assert.equal(c.balance,1020);
+});
+test('VERIFY-06: draft retry adds one debt entry; encrypted restore retains ledger and rejects missing version',async()=>{
+ const {A}=await create(),c=customer(A),i=item(A);await A.save();await A.posAdd(i.id,1);
+ const d=await A.drafts.save({...A.cart,customerId:c.id,mode:'credit'}),request={...d.cart,draftId:d.id};
+ await A.actions.checkout(request);await A.actions.checkout(request);assert.equal(c.balance,100);assert.equal(c.ledger.length,2);
+ await A.actions.customerCredit(c.id,120,'cash','Advance',{operationId:'recovery_advance'});await A.actions.correctCustomerBalance(c.id,5,'Recovery correction',{operationId:'recovery_correction'});
+ const plain=await A.backups.decrypt(await A.backups.encrypt(A.backups.capture(),'Synthetic-ledger-backup'),'Synthetic-ledger-backup');
+ const {A:B}=await create();await B.restoreBackup(plain);assert.equal(B.customerStatement(c.id).balance,-15);assert.equal(B.customer(c.id).ledger.length,4);
+ delete plain.customerLedgerVersion;assert.throws(()=>B.validateData(plain),/version marker missing/);
+});
+test('VERIFY-06: changing both ledger delta and projected balance cannot hide a mismatched bill/payment',async()=>{
+ const {A}=await create(),c=customer(A),i=item(A);await A.save();await A.actions.checkout(cart(i,{customerId:c.id,mode:'credit'}));await A.actions.takePayment(c.id,20,'cash');
+ let bad=JSON.parse(JSON.stringify(A.DB()));bad.customers[0].ledger[1].delta=101;bad.customers[0].balance=81;assert.throws(()=>A.validateData(bad),/differs from linked bill/);
+ bad=JSON.parse(JSON.stringify(A.DB()));bad.customers[0].ledger[2].delta=-21;bad.customers[0].balance=79;assert.throws(()=>A.validateData(bad),/differs from linked payment/);
+});

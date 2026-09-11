@@ -1,4 +1,5 @@
-const assert=require('node:assert/strict'),{spawn}=require('node:child_process'),path=require('node:path'),{chromium}=require('playwright');
+const assert=require('node:assert/strict'),{spawn,execFileSync}=require('node:child_process'),path=require('node:path'),{chromium}=require('playwright');
+const ROOT=path.resolve(__dirname,'..'),OLD='1e43d8fa2f850e97547c92a4dc05cff31243aae5';
 async function ready(p){await p.waitForFunction(()=>window.App&&!document.querySelector('#shell').hidden&&!App.isSaving()&&!document.querySelector(".modal.out"));}
 async function main(){
  const server=spawn(process.execPath,['server.js'],{cwd:path.resolve(__dirname,'..'),env:{...process.env,PORT:'0'},stdio:['ignore','pipe','pipe']});let browser;
@@ -22,6 +23,17 @@ async function main(){
    await p.evaluate(()=>App.customerDetail('ledger_customer'));const download=p.waitForEvent('download');await p.locator('#dStatementCsv').click();const dl=await download;const stream=await dl.createReadStream();let csv='';for await(const part of stream)csv+=part;
    assert.equal(csv.trim().split(/\r?\n/).length,6);assert.match(csv,/opening/);assert.match(csv,/-45/);assert.match(csv,/Documented correction/);
    results.push(repository+': balance CSV includes opening, sale, collection, advance, correction and reconciled balance');
+   if(repository==='indexeddb'){
+     assert.equal(await p.evaluate(async()=>{const m=App.migrations.info(App.accountId),repo=await App.repositories.openIndexedDB({name:m.database,allowPrototype:true}),key='dukaanos.v2.'+App.accountId;try{return JSON.stringify(JSON.parse(await repo.rebuild(key)))===JSON.stringify(JSON.parse(await repo.read(key)));}finally{repo.close();}}),true);
+     results.push('indexeddb: customer ledger projection equals replay after the whole UI journey');
+   }else{
+     const before=await p.evaluate(()=>localStorage.getItem('dukaanos.v2.local'));await p.close();const old=await context.newPage();
+     const read=file=>execFileSync('git',['-c','safe.directory='+ROOT.replace(/\\/g,'/'),'show',OLD+':'+file],{cwd:ROOT,encoding:'utf8'}),index=read('index.html'),assets=new Map([['index.html',index],['css/app.css',read('css/app.css')]]);
+     for(const match of index.matchAll(/<script src="([^"]+)"/g))assets.set(match[1],read(match[1]));
+     await old.route('**/*',route=>{const f=new URL(route.request().url()).pathname.slice(1)||'index.html';return assets.has(f)?route.fulfill({status:200,contentType:f.endsWith('.js')?'text/javascript':f.endsWith('.css')?'text/css':'text/html',body:assets.get(f)}):route.continue();});
+     await old.goto(url);await old.getByRole('heading',{name:'Counter could not open'}).waitFor();assert.equal(await old.evaluate(()=>localStorage.getItem('dukaanos.v2.local')),before);
+     results.push('legacy: actual BUILD-05 client rejects the ledger version marker without changing the book');
+   }
    assert.deepEqual(errors,[]);await context.close();
   }
   console.log(JSON.stringify({browser:browser.version(),checks:results.length,results},null,2));

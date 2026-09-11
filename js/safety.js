@@ -159,6 +159,15 @@
         balance+=Math.round(e.delta*100);
         if(e.billId&&!d.bills.some(b=>b.id===e.billId&&b.customerId===c.id&&b.storeId===c.storeId))fail('ledger bill belongs to another customer/store');
         if(e.paymentId&&!d.payments.some(p=>p.id===e.paymentId&&p.customerId===c.id&&p.storeId===c.storeId))fail('ledger payment belongs to another customer/store');
+        if(['sale','void'].includes(e.kind)){
+          const bill=d.bills.find(b=>b.id===e.billId);
+          if(!bill||!bill.credit||(e.kind==='void'&&!bill.void)||Math.abs(e.delta-(e.kind==='sale'?bill.total:-bill.total))>0.00001)fail('ledger entry differs from linked bill');
+        }
+        if(['collection','advance'].includes(e.kind)){
+          const payment=d.payments.find(p=>p.id===e.paymentId);
+          if(!payment||payment.kind!==e.kind||payment.mode!==e.mode||Math.abs(e.delta+payment.amount)>0.00001)fail('ledger entry differs from linked payment');
+        }
+        if(e.kind==='correction'&&(!e.delta||typeof e.note!=='string'||e.note.trim().length<3))fail('invalid customer correction');
       }
       if(Math.abs(balance/100-c.balance)>0.00001)fail('customer balance differs from ledger projection');
     }
