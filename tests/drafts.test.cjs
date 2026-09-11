@@ -31,3 +31,10 @@ test('BUILD-05: failed sale retains draft and failed draft edit retains previous
  await assert.rejects(()=>A.drafts.save({...d.cart,discount:5}),/Injected/);assert.equal(A.drafts.current().revision,d.revision);
  A.storage.commit=commit;await A.actions.checkout({...d.cart,draftId:d.id});assert.equal(A.DB().bills.length,1);
 });
+
+test('VERIFY-05: locking a delayed draft commit preserves durable data and hides transient cart',async()=>{
+ const {A}=await create(),i=item(A);await A.save();await A.posAdd(i.id,1);const before=JSON.stringify(A.DB()),base=A.storage.commit;
+ let release;const gate=new Promise(r=>{release=r;});A.storage.commit=async args=>{await gate;return base(args);};
+ const pending=A.posAdd(i.id,1);assert.equal(A.isSaving(),true);A.setLocked(true);release();await pending;
+ assert.equal(JSON.stringify(A.DB()),before);assert.equal(A.cart.lines.length,0);A.setLocked(false);A.posClear();assert.equal(A.cart.lines[0].qty,1);
+});

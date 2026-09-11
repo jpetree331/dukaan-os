@@ -1,6 +1,6 @@
 # VERIFY-05 — Verify resumable drafts and immutable sale records
 
-Status: **planned**. Build under review: [BUILD-05](BUILD-05.md).
+Status: **passed**. Build under review: [BUILD-05](BUILD-05.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

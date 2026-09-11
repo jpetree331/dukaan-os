@@ -12,10 +12,10 @@ The default gate is shown below. If tracks are reordered, update the actual gate
 | SEAM-01-04 | [BUILD-01](cards/BUILD-01.md) | [BUILD-04](cards/BUILD-04.md) | [VERIFY-04](cards/VERIFY-04.md) | BASE, MONEY, STOCK, AUTH, SCHEMA | passed |
 | SEAM-02-04 | [BUILD-02](cards/BUILD-02.md) | [BUILD-04](cards/BUILD-04.md) | [VERIFY-04](cards/VERIFY-04.md) | BASE, MONEY, STOCK, AUTH, STORE | passed |
 | SEAM-03-04 | [BUILD-03](cards/BUILD-03.md) | [BUILD-04](cards/BUILD-04.md) | [VERIFY-04](cards/VERIFY-04.md) | BASE, MONEY, STOCK, SCHEMA, STORE, AUTH | passed |
-| SEAM-01-05 | [BUILD-01](cards/BUILD-01.md) | [BUILD-05](cards/BUILD-05.md) | [VERIFY-05](cards/VERIFY-05.md) | BASE, MONEY, STOCK, AUTH | planned |
-| SEAM-02-05 | [BUILD-02](cards/BUILD-02.md) | [BUILD-05](cards/BUILD-05.md) | [VERIFY-05](cards/VERIFY-05.md) | BASE, MONEY, STOCK, AUTH, STORE, UI | planned |
-| SEAM-03-05 | [BUILD-03](cards/BUILD-03.md) | [BUILD-05](cards/BUILD-05.md) | [VERIFY-05](cards/VERIFY-05.md) | BASE, MONEY, STOCK, STORE, AUTH | planned |
-| SEAM-04-05 | [BUILD-04](cards/BUILD-04.md) | [BUILD-05](cards/BUILD-05.md) | [VERIFY-05](cards/VERIFY-05.md) | BASE, MONEY, STOCK, STORE, AUTH | planned |
+| SEAM-01-05 | [BUILD-01](cards/BUILD-01.md) | [BUILD-05](cards/BUILD-05.md) | [VERIFY-05](cards/VERIFY-05.md) | BASE, MONEY, STOCK, AUTH | passed |
+| SEAM-02-05 | [BUILD-02](cards/BUILD-02.md) | [BUILD-05](cards/BUILD-05.md) | [VERIFY-05](cards/VERIFY-05.md) | BASE, MONEY, STOCK, AUTH, STORE, UI | passed |
+| SEAM-03-05 | [BUILD-03](cards/BUILD-03.md) | [BUILD-05](cards/BUILD-05.md) | [VERIFY-05](cards/VERIFY-05.md) | BASE, MONEY, STOCK, STORE, AUTH | passed |
+| SEAM-04-05 | [BUILD-04](cards/BUILD-04.md) | [BUILD-05](cards/BUILD-05.md) | [VERIFY-05](cards/VERIFY-05.md) | BASE, MONEY, STOCK, STORE, AUTH | passed |
 | SEAM-01-06 | [BUILD-01](cards/BUILD-01.md) | [BUILD-06](cards/BUILD-06.md) | [VERIFY-06](cards/VERIFY-06.md) | BASE, MONEY, AUTH | planned |
 | SEAM-02-06 | [BUILD-02](cards/BUILD-02.md) | [BUILD-06](cards/BUILD-06.md) | [VERIFY-06](cards/VERIFY-06.md) | BASE, MONEY, AUTH, STORE | planned |
 | SEAM-03-06 | [BUILD-03](cards/BUILD-03.md) | [BUILD-06](cards/BUILD-06.md) | [VERIFY-06](cards/VERIFY-06.md) | BASE, MONEY, STORE, AUTH | planned |

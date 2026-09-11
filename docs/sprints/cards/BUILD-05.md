@@ -1,6 +1,6 @@
 # BUILD-05 — Resumable drafts and immutable sale records
 
-Status: **built-unverified**. Track: Local workflows.
+Status: **passed**. Track: Local workflows.
 Sizing target: 1–2 focused engineering days; split this card before exceeding 3. This is a slice budget, not a promised date.
 
 ## Why

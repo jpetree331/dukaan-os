@@ -24,6 +24,24 @@ async function main(){
    await p.evaluate(async()=>{Object.assign(App.DB().settings,{shopName:'Later Shop',shopPhone:'1234567890',address:'Changed address',currency:'$',receiptTheme:'ink'});await App.save();});
    const reprint=await p.evaluate(()=>({text:App.billText(App.DB().bills[0]),image:App.receiptCanvas(App.DB().bills[0]).toDataURL()}));assert.deepEqual(reprint,original);
    results.push(repository+': reprinted receipt pixels and text remain identical after shop changes');
+   await p.locator('[data-add="draft_item"]').first().click();await p.evaluate(()=>App.posFlush());
+   const retained=await p.evaluate(async()=>{
+     const id=App.drafts.current().id;
+     App.DB().staff.push({id:'draft_cashier',name:'Draft cashier',role:'cashier',active:true,pin:''});
+     App.DB().stores.push({id:'draft_branch',name:'Draft branch'});await App.save();
+     App.invalidateContext();App.DB().session.staffId='draft_cashier';await App.save();App.go('billing');
+     if(App.cart.lines.length||App.drafts.current())throw new Error('Another staff inherited a draft');
+     App.invalidateContext();App.DB().session.staffId='sf_owner';App.DB().settings.activeStore='draft_branch';await App.save();App.go('billing');
+     if(App.cart.lines.length||App.drafts.current())throw new Error('Another store inherited a draft');
+     App.invalidateContext();App.DB().settings.activeStore='st_main';await App.save();App.go('billing');
+     if(App.cart.draftId!==id)throw new Error('Returning to owner/store lost the draft');
+     await App.migrations.run({allowPrototype:true});
+     const account=await App.auth.signUp({username:'draft_owner',password:'Synthetic-draft-owner',confirm:'Synthetic-draft-owner',shopName:'Draft shop'});
+     await App.auth.enableGate(account.id);if(App.drafts.current()?.id!==id)throw new Error('Login transfer lost draft ownership');
+     await App.auth.disableGate();if(App.drafts.current()?.id!==id)throw new Error('Login disable lost draft ownership');return id;
+   });
+   await p.reload();await ready(p);assert.equal(await p.evaluate(()=>App.cart.draftId),retained);
+   results.push(repository+': staff/store isolation, migration and login transitions retain the correct draft');
    assert.notEqual(request.draftId,freshRequest.draftId);assert.deepEqual(errors,[]);await context.close();
   }
   console.log(JSON.stringify({browser:browser.version(),checks:results.length,results},null,2));

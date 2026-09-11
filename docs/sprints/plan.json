@@ -188,10 +188,11 @@
       ],
       "recovery": "Keep draft and finalized transaction identities distinct; recovery never finalizes a draft automatically.",
       "optional": false,
-      "status": "built-unverified",
+      "status": "passed",
       "codeCommit": "1e43d8fa2f850e97547c92a4dc05cff31243aae5",
       "evidence": [
-        "reports/BUILD-05.md"
+        "reports/BUILD-05.md",
+        "reports/VERIFY-05.md"
       ]
     },
     {
