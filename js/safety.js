@@ -147,7 +147,7 @@
       if (typeof x.name !== 'string' || !x.name.trim()) fail('missing name');
       numeric(x, ['balance', 'spend', 'visits', 'points'], ['balance', 'points']);
     }
-    const ledgerIds=new Set();
+    const ledgerIds=new Set(),linkedMovements=new Set();
     if(d.customerLedgerVersion!==undefined&&d.customerLedgerVersion!==1)fail('unsupported customer ledger version');
     for(const c of d.customers)if(c.ledger!==undefined){
       if(d.customerLedgerVersion!==1)fail('customer ledger version marker missing');
@@ -156,6 +156,8 @@
       for(const [index,e] of c.ledger.entries()){
         if(!obj(e)||!id(e.id)||ledgerIds.has(e.id)||e.storeId!==c.storeId||!['opening','sale','void','collection','advance','correction','return','refund'].includes(e.kind)||(index>0&&e.kind==='opening'))fail('invalid customer ledger entry');
         ledgerIds.add(e.id);App.number(e.delta,'ledger delta',-1e9);App.number(e.at,'ledger date',0,8640000000000000);
+        const link=['sale','void'].includes(e.kind)?e.billId:['collection','advance'].includes(e.kind)?e.paymentId:e.kind==='return'?e.returnId:e.kind==='refund'?e.refundId:null;
+        if(link){const key=e.kind+'/'+link;if(linkedMovements.has(key))fail('duplicate linked customer movement');linkedMovements.add(key);}
         if(Math.abs(e.delta*100-Math.round(e.delta*100))>0.00001)fail('ledger amount has sub-paise precision');
         balance+=Math.round(e.delta*100);
         if(e.billId&&!d.bills.some(b=>b.id===e.billId&&b.customerId===c.id&&b.storeId===c.storeId))fail('ledger bill belongs to another customer/store');
@@ -245,6 +247,10 @@
       if(JSON.stringify(r.lines)!==JSON.stringify(expected.lines))fail('return line allocation differs');
       App.number(r.refundable,'refundable amount',0,r.amount);
       if(r.ledgerApplied&&!d.customers.find(c=>c.id===r.customerId)?.ledger?.some(e=>e.kind==='return'&&e.returnId===r.id))fail('return customer movement missing');
+      const ledger=d.customers.find(c=>c.id===r.customerId)?.ledger || [],position=ledger.findIndex(e=>e.kind==='return'&&e.returnId===r.id);
+      const balanceBefore=r.ledgerApplied?ledger.slice(0,position).reduce((n,e)=>n+Math.round(e.delta*100),0)/100:0;
+      const expectedRefundable=App.round2(r.amount-(r.ledgerApplied?Math.min(r.amount,Math.max(0,balanceBefore)):0));
+      if(Math.abs(r.refundable-expectedRefundable)>0.00001)fail('return refundable amount differs from debt cancellation');
       checkedReturns.push(r);
     }
     for(const f of d.refunds || []){

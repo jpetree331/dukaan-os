@@ -25,7 +25,7 @@
     return units;
   }
   // Arithmetic normalizes representational noise, not new user inputs.
-  const quantity = n => Math.round(n*QUANTITY_SCALE)/QUANTITY_SCALE;
+  const quantity = n => {const value=Math.round(n*QUANTITY_SCALE)/QUANTITY_SCALE;return Object.is(value,-0)?0:value;};
   function sum(values) {
     const n=values.reduce((a,b)=>a+b,0);
     if(!Number.isSafeInteger(n)) throw new Error('Money exceeds safe precision.');

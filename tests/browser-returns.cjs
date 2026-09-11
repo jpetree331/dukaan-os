@@ -18,7 +18,13 @@ async function main(){
    assert.deepEqual(await p.evaluate(()=>[App.stats.cashExpected().net,App.stats.today().sales,App.gstBreakdown(App.liveBills(),App.returns())[5].tax,App.returnRefundDue(App.returns()[0])]),[94.5,94.5,4.5,0]);
    results.push(repository+': partial-return and cash-refund UI preserve original tax, quarantine stock, note download and remaining cash after restart');
    await p.evaluate(()=>App.go('reports'));await p.getByText('Cash refunds paid',{exact:true}).waitFor();
-   assert.equal(await p.evaluate(()=>Array.from(document.querySelectorAll('rect.c-bar')).every(r=>Number(r.getAttribute('height'))>=0)),true);assert.deepEqual(errors,[]);await context.close();
+   assert.equal(await p.evaluate(()=>Array.from(document.querySelectorAll('rect.c-bar')).every(r=>Number(r.getAttribute('height'))>=0)),true);
+   await p.evaluate(async()=>{await App.migrations.run({allowPrototype:true});const m=App.migrations.info(App.accountId),repo=await App.repositories.openIndexedDB({name:m.database,allowPrototype:true}),key='dukaanos.v2.'+App.accountId;try{if(JSON.stringify(JSON.parse(await repo.rebuild(key)))!==JSON.stringify(JSON.parse(await repo.read(key))))throw new Error('Return replay differs');}finally{repo.close();}});
+   await p.reload();await ready(p);assert.equal(await p.evaluate(()=>App.stats.cashExpected().net),94.5);results.push(repository+': return/refund records survive migration, replay and reopen');
+   const encrypted=await p.evaluate(()=>App.backups.encrypt(App.backups.capture(),'Synthetic-return-backup'));
+   const fresh=await browser.newContext(),q=await fresh.newPage();await q.goto(url);await ready(q);await q.evaluate(async backup=>{await App.restoreBackup(await App.backups.decrypt(backup,'Synthetic-return-backup'));},encrypted);await q.reload();await ready(q);
+   assert.deepEqual(await q.evaluate(()=>[App.returns().length,App.refunds().length,App.stats.cashExpected().net,App.sellableStock(App.item('return_item'))]),[1,1,94.5,8]);await fresh.close();results.push(repository+': encrypted restore into a fresh profile retains compensations, cash and quarantine');
+   assert.deepEqual(errors,[]);await context.close();
   }
   console.log(JSON.stringify({browser:browser.version(),checks:results.length,results},null,2));
  }finally{if(browser)await browser.close();server.kill();}

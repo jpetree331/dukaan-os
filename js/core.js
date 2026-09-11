@@ -16,7 +16,7 @@
   /* ───────── helpers ───────── */
   const uid = (p) => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const round2 = (n) => Math.round((+n + Number.EPSILON) * 100) / 100;
+  const round2 = (n) => {const value=Math.round((+n + Number.EPSILON) * 100) / 100;return Object.is(value,-0)?0:value;};
 
   const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
   const inr2 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
