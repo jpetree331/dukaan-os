@@ -337,7 +337,7 @@
     App.requirePermission('purchase');
     const sups = App.suppliers();
     if (!sups.length) { App.toast('warn', t('sup.noSup'), t('sup.add')); return App.editSupplier(null, () => App.render()); }
-    const lines = [];
+    const lines = [], operationId=App.uid('purchase');
     const body = App.el('<div>' +
       '<div class="field"><label>' + t('nav.suppliers') + '</label><select class="inp" id="p_s">' +
       sups.map((s) => '<option value="' + s.id + '" ' + (s.id === supplierId ? 'selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</select></div>' +
@@ -377,7 +377,7 @@
         label: t('com.save'), cls: 'pri', fn: async () => {
           if (!lines.length) { App.toast('err', 'Add at least one item'); return false; }
           const sid = App.$('#p_s', body).value;
-          const po = (await App.actions.recordPurchase(sid, lines, Number(App.$('#p_paid', body).value), '', App.$('#p_mode', body).value));
+          const po = (await App.actions.recordPurchase(sid, lines, Number(App.$('#p_paid', body).value), '', App.$('#p_mode', body).value,{operationId}));
           App.toast('ok', t('sup.stockIn'), lines.length + ' items · ' + money(po.total, true));
           App.confetti({ count: 40, colors: ['#16A34A', '#4ADE80', '#F5A524'] });
         }
@@ -437,34 +437,31 @@
           '<span class="due"><b style="color:' + (s.balance > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(s.balance || 0) + '</b><small>' + t('sup.owed') + '</small></span>' +
           (s.balance > 0 ? '<button class="btn xs ok" data-spay="' + s.id + '">💸</button>' : '') +
           '<button class="btn xs" data-spo="' + s.id + '">📦</button>' +
+          '<button class="btn xs" data-saccount="' + s.id + '">Account</button>' +
           '<button class="btn xs ghost" data-sed="' + s.id + '">✏️</button>' +
           '</div></div>';
       }).join('') : '<div class="card">' + App.emptyState('🚚', t('sup.noSup'), 'Add the distributors you buy stock from') + '</div>') +
 
       '<div class="sec-title">📦 ' + t('sup.history') + '</div>' +
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
-      '<th>#</th><th>' + t('com.date') + '</th><th>' + t('nav.suppliers') + '</th><th>Items</th><th class="r">' + t('com.total') + '</th><th class="r">' + t('com.paid') + '</th></tr></thead><tbody>' +
+      '<th>#</th><th>' + t('com.date') + '</th><th>' + t('nav.suppliers') + '</th><th>Items</th><th class="r">' + t('com.total') + '</th><th class="r">Linked paid</th></tr></thead><tbody>' +
       (pos.length ? pos.map((p) => '<tr><td class="num">' + p.no + '</td><td class="muted" style="font-size:12.5px">' + App.fmtDT(p.at) + '</td>' +
         '<td><b>' + esc(p.supplierName) + '</b></td>' +
-        '<td class="muted" style="font-size:12.5px">' + esc(p.lines.map((l) => { const it = App.item(l.itemId); return (it ? it.name : '?') + '×' + l.qty; }).join(', ').slice(0, 52)) + '</td>' +
+        '<td class="muted" style="font-size:12.5px">' + esc(p.lines.map((l) => { const it = App.item(l.itemId); return (l.name || (it ? it.name : '?')) + '×' + l.qty; }).join(', ').slice(0, 52)) + (p.cancelled ? ' · Cancelled' : '') + '</td>' +
         '<td class="r num"><b>' + money(p.total) + '</b></td>' +
-        '<td class="r num" style="color:' + (p.paid >= p.total ? 'var(--ok)' : 'var(--warn)') + '">' + money(p.paid) + '</td></tr>').join('')
+        '<td class="r num" style="color:' + (App.purchasePaid(p) >= p.total ? 'var(--ok)' : 'var(--warn)') + '">' + money(App.purchasePaid(p)) + '</td></tr>').join('')
         : '<tr><td colspan="6">' + App.emptyState('📦', 'No purchases recorded', 'Log what you buy so stock updates itself') + '</td></tr>') +
       '</tbody></table></div></div>';
 
     main.addEventListener('click', (e) => {
+      const account=e.target.closest('[data-saccount]');if(account)return App.supplierDetail(account.dataset.saccount);
       const sp = e.target.closest('[data-spay]'), po = e.target.closest('[data-spo]'), ed = e.target.closest('[data-sed]');
       if (e.target.closest('#addSup')) return App.editSupplier(null, () => App.render());
       if (e.target.closest('#newPO')) return App.purchaseModal();
       if (po) return App.purchaseModal(po.dataset.spo);
       if (ed) return App.editSupplier(ed.dataset.sed, () => App.render());
       if (sp) {
-        const s = App.supplier(sp.dataset.spay);
-        return App.numpadModal('💸 ' + t('sup.paySupplier'), String(App.round2(s.balance)), async (amt) => {
-          (await App.actions.paySupplier(s.id, amt, 'cash'));
-          App.toast('ok', t('com.done'), 'Paid ' + money(amt, true) + ' to ' + s.name);
-          App.render();
-        }, { sub: s.name + ' · ' + t('sup.owed') + ' ' + money(s.balance, true), quick: [500, 1000, 2000, App.round2(s.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });
+        return App.supplierPaymentDialog(sp.dataset.spay);
       }
     });
   };

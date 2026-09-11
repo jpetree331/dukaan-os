@@ -82,7 +82,7 @@
     const id = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(x) && !['__proto__', 'constructor', 'prototype'].includes(x);
     const date = (x) => !x || (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && new Date(x).toISOString().slice(0, 10) === x);
     const collections = ['stores', 'staff', 'items', 'customers', 'suppliers', 'bills', 'payments', 'purchases', 'supplierPayments', 'activity', 'shifts'];
-    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', 'returns', 'refunds', ...collections]);
+    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', 'returns', 'refunds', 'supplierLedgerVersion','supplierReturns','supplierRefunds', ...collections]);
     for (const key of Object.keys(d)) if (!rootKeys.has(key)) fail('unknown field: ' + key);
     for (const key of collections) {
       if (!Array.isArray(d[key])) fail(key + ' must be an array');
@@ -225,15 +225,36 @@
       }
       const subtotal = App.round2(b.lines.reduce((n, l) => n + (key === 'bills' ? l.gross : l.qty * l.cost), 0));
       if (Math.abs(subtotal - (key === 'bills' ? b.sub : b.total)) > 0.011) fail('line totals do not agree');
+      if(key==='purchases'&&b.calculationVersion==='purchase-allocation-v1'){
+        const values=App.purchaseLineValues(b.lines),lineIds=new Set();
+        b.lines.forEach((l,i)=>{if(!id(l.lineId)||!id(l.batchId)||lineIds.has(l.lineId)||l.value!==values[i])fail('invalid purchase line identity/value');lineIds.add(l.lineId);});
+      }
     }
     for (const key of ['payments', 'supplierPayments']) for (const p of d[key]) {
       App.number(p.amount, 'payment', 0.01); App.number(p.at, 'payment date', 0, 8640000000000000);
       if (!['cash', 'upi', 'card'].includes(p.mode)) fail('invalid payment mode');
       ref(p, key === 'payments' ? 'customerId' : 'supplierId', key === 'payments' ? 'customers' : 'suppliers');
       if(key==='payments'&&p.billId&&!d.bills.some(b=>b.id===p.billId&&b.customerId===p.customerId&&b.storeId===p.storeId&&b.credit))fail('invalid collection bill link');
+      if(key==='supplierPayments'&&p.purchaseId){const po=d.purchases.find(b=>b.id===p.purchaseId&&b.supplierId===p.supplierId&&b.storeId===p.storeId);if(!po||po.paid+d.supplierPayments.filter(x=>x.purchaseId===po.id).reduce((n,x)=>n+x.amount,0)>po.total+0.00001)fail('invalid supplier payment link or total');}
+    }
+    if(d.supplierLedgerVersion!==undefined&&d.supplierLedgerVersion!==1)fail('invalid supplier ledger version');
+    const supplierEntryIds=new Set(),supplierLinks=new Set();
+    for(const s of d.suppliers)if(s.ledger!==undefined){
+      if(d.supplierLedgerVersion!==1||!Array.isArray(s.ledger)||!s.ledger.length||s.ledger[0].kind!=='opening')fail('supplier ledger opening/version missing');let total=0;
+      for(const [index,e] of s.ledger.entries()){
+        if(!obj(e)||!id(e.id)||supplierEntryIds.has(e.id)||e.storeId!==s.storeId||!['opening','purchase','initial_payment','payment','return','refund','correction'].includes(e.kind)||(index&&e.kind==='opening'))fail('invalid supplier movement');supplierEntryIds.add(e.id);
+        App.number(e.delta,'supplier delta',-1e9);App.number(e.at,'supplier movement date',0,8640000000000000);if(Math.abs(e.delta*100-Math.round(e.delta*100))>0.00001)fail('supplier movement has sub-paise amount');total+=Math.round(e.delta*100);
+        const link=e.purchaseId || e.paymentId || e.returnId || e.refundId;if(link){const key=e.kind+'/'+link;if(supplierLinks.has(key))fail('duplicate supplier source movement');supplierLinks.add(key);}
+        if(['purchase','initial_payment'].includes(e.kind)){const po=d.purchases.find(p=>p.id===e.purchaseId&&p.supplierId===s.id&&p.storeId===s.storeId);if(!po||e.delta!==(e.kind==='purchase'?po.total:-po.paid)||(e.kind==='initial_payment'&&e.mode!==po.mode))fail('supplier purchase movement differs');}
+        if(e.kind==='payment'){const p=d.supplierPayments.find(p=>p.id===e.paymentId&&p.supplierId===s.id&&p.storeId===s.storeId);if(!p||e.delta!==-p.amount||e.mode!==p.mode)fail('supplier payment movement differs');}
+        if(e.kind==='return'){const r=(d.supplierReturns || []).find(r=>r.id===e.returnId&&r.supplierId===s.id&&r.storeId===s.storeId);if(!r||e.delta!==-r.amount)fail('supplier return movement differs');}
+        if(e.kind==='refund'){const r=(d.supplierRefunds || []).find(r=>r.id===e.refundId&&r.supplierId===s.id&&r.storeId===s.storeId);if(!r||e.delta!==r.amount||e.mode!==r.mode)fail('supplier refund movement differs');}
+        if(e.kind==='correction'&&(!e.delta||typeof e.note!=='string'||e.note.trim().length<3))fail('supplier correction needs a reason');
+      }
+      if(Math.abs(total/100-s.balance)>0.00001)fail('supplier balance differs from ledger');
     }
     const checkedReturns=[];
-    for(const key of ['returns','refunds'])if(d[key]!==undefined){
+    for(const key of ['returns','refunds','supplierReturns','supplierRefunds'])if(d[key]!==undefined){
       if(!Array.isArray(d[key]))fail(key+' must be an array');const ids=new Set();
       for(const r of d[key]){if(!obj(r)||!id(r.id)||ids.has(r.id)||!exists('stores',r.storeId))fail('invalid '+key+' identity');ids.add(r.id);App.number(r.at,'return/refund date',0,8640000000000000);App.number(r.amount,'return/refund amount');}
     }
@@ -258,6 +279,28 @@
       if(!r||!['cash','upi'].includes(f.mode)||typeof f.reference!=='string'||f.reference.trim().length<3||f.amount<=0)fail('invalid refund');
       const total=d.refunds.filter(x=>x.returnId===r.id).reduce((n,x)=>n+x.amount,0);if(total>r.refundable+0.00001)fail('refunds exceed liability');
       if(r.ledgerApplied&&!d.customers.find(c=>c.id===r.customerId)?.ledger?.some(e=>e.kind==='refund'&&e.refundId===f.id))fail('refund customer movement missing');
+    }
+    const priorSupplierReturns=[];
+    for(const r of d.supplierReturns || []){
+      const po=d.purchases.find(p=>p.id===r.purchaseId&&p.supplierId===r.supplierId&&p.storeId===r.storeId),s=d.suppliers.find(s=>s.id===r.supplierId);
+      if(!po||po.calculationVersion!=='purchase-allocation-v1'||!Array.isArray(r.lines)||!r.lines.length||typeof r.reason!=='string'||r.reason.trim().length<3||typeof r.cancel!=='boolean')fail('invalid supplier return');
+      let amount=0;const lineIds=new Set();
+      for(const l of r.lines){
+        const original=po.lines.find(x=>x.lineId===l.lineId),previous=priorSupplierReturns.filter(x=>x.purchaseId===po.id).flatMap(x=>x.lines).filter(x=>x.lineId===l.lineId).reduce((n,x)=>n+App.domain.quantityUnits(x.qty),0);
+        if(!original||lineIds.has(l.lineId)||l.itemId!==original.itemId||l.cost!==original.cost||!Array.isArray(l.allocations))fail('supplier return line differs');lineIds.add(l.lineId);App.number(l.qty,'supplier return quantity',0.0001);const qty=App.domain.quantityUnits(l.qty);
+        if(previous+qty>App.domain.quantityUnits(original.qty)||l.amount!==App.supplierReturnValue(original,previous,qty))fail('supplier return exceeds source value/quantity');amount+=l.amount;
+        let allocated=0;const lots=new Set();for(const a of l.allocations){if(!id(a.id)||lots.has(a.id)||a.purchaseId!==po.id||a.purchaseLineId!==l.lineId||a.cost!==l.cost)fail('supplier return allocation differs');lots.add(a.id);App.number(a.qty,'supplier allocation',0.0001);allocated+=App.domain.quantityUnits(a.qty);}if(allocated!==qty)fail('supplier allocation quantity differs');
+      }
+      if(r.amount!==App.round2(amount))fail('supplier return total differs');
+      if(r.cancel&&(!po.cancelled||po.cancellationId!==r.id||priorSupplierReturns.some(x=>x.purchaseId===po.id)||r.lines.length!==po.lines.length||po.lines.some(l=>!r.lines.some(x=>x.lineId===l.lineId&&x.qty===l.qty))))fail('invalid purchase cancellation');
+      const position=s?.ledger?.findIndex(e=>e.kind==='return'&&e.returnId===r.id) ?? -1;if(position<0)fail('supplier return movement missing');const before=s.ledger.slice(0,position).reduce((n,e)=>n+Math.round(e.delta*100),0)/100;
+      if(r.refundable!==App.round2(r.amount-Math.min(r.amount,Math.max(0,before))))fail('supplier refundable credit differs');priorSupplierReturns.push(r);
+    }
+    for(const f of d.supplierRefunds || []){
+      const r=(d.supplierReturns || []).find(r=>r.id===f.returnId&&r.supplierId===f.supplierId&&r.storeId===f.storeId);
+      if(!r||!['cash','upi'].includes(f.mode)||typeof f.reference!=='string'||f.reference.trim().length<3||f.amount<=0)fail('invalid supplier refund');
+      if(d.supplierRefunds.filter(x=>x.returnId===r.id).reduce((n,x)=>n+x.amount,0)>r.refundable+0.00001)fail('supplier refunds exceed credit');
+      if(!d.suppliers.find(s=>s.id===r.supplierId)?.ledger?.some(e=>e.kind==='refund'&&e.refundId===f.id))fail('supplier refund movement missing');
     }
     // Reject objects where display code expects a primitive, including prototype-bearing input.
     const walk = (x) => {

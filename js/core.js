@@ -338,8 +338,8 @@
       points:cust ? cust.points || 0 : 0, loyaltyValue:st.loyaltyValue
     });
   };
-  function command(kind, corrects = null) {
-    return App.domain.command({id:'cmd_' + w.crypto.randomUUID().replace(/-/g,''),
+  function command(kind, corrects = null, id='cmd_' + w.crypto.randomUUID().replace(/-/g,'')) {
+    return App.domain.command({id,
       accountId:App.accountId, actorId:DB.session.staffId, storeId:S(), kind, at:Date.now(), corrects});
   }
   // Drafts share the same atomic book commit as the sale that consumes them.
@@ -379,6 +379,21 @@
     if(c.balance<=0)c.dueSince=null;else if(!c.dueSince)c.dueSince=entry.at;
   }
   App.postCustomerMovement=(c,entry)=>{App.requirePermission('void_bill');customerEntry(c,entry);};
+  function supplierEntry(s,entry){
+    if(!s.ledger){DB.supplierLedgerVersion=1;s.ledger=[{id:uid('supplier_opening'),kind:'opening',delta:round2(s.balance || 0),at:Date.now(),storeId:s.storeId,staffId:DB.session.staffId,note:'Legacy supplier balance checkpoint'}];}
+    s.ledger.push(entry);s.balance=s.ledger.reduce((n,e)=>n+Math.round(e.delta*100),0)/100;
+    if(s.balance<=0)s.dueSince=null;else if(!s.dueSince)s.dueSince=entry.at;
+  }
+  App.postSupplierMovement=(s,entry)=>{App.requirePermission('purchase');supplierEntry(s,entry);};
+  App.supplierStatement=id=>{const s=App.supplier(id);if(!s)throw new Error('Supplier not found.');let balance=0;const entries=(s.ledger || [{id:'legacy_supplier_checkpoint',kind:'opening',delta:s.balance || 0,at:s.at || Date.now(),note:'Unconverted supplier balance checkpoint'}]).map(e=>{balance=round2(balance+e.delta);return {...e,balance};});return {supplierId:id,balance,entries};};
+  App.purchasePaid=po=>round2(po.paid+DB.supplierPayments.filter(p=>p.purchaseId===po.id&&p.storeId===po.storeId).reduce((n,p)=>n+p.amount,0));
+  App.purchaseLineValues=lines=>{
+    const total=round2(lines.reduce((n,l)=>n+l.qty*l.cost,0));App.number(total,'Purchase total');
+    const cents=lines.map(l=>Math.round(round2(l.qty*l.cost)*100));let residue=Math.round(total*100)-cents.reduce((n,v)=>n+v,0);
+    if(residue>0)cents[cents.length-1]+=residue;
+    else for(let i=cents.length-1;i>=0&&residue<0;i--){const take=Math.min(cents[i],-residue);cents[i]-=take;residue+=take;}
+    return cents.map(n=>n/100);
+  };
   App.customerStatement = id => {
     const c=App.customer(id);if(!c)throw new Error('Customer not found.');
     let balance=0;
@@ -545,32 +560,40 @@
       const entry={id:operation.id,kind:'correction',delta,at:operation.at,storeId:S(),staffId:DB.session.staffId,note,request};customerEntry(c,entry);await save({op:'customer_correction'});return entry;
     },
 
-    async recordPurchase(supplierId, lines, paidNow, note, mode = 'cash') {
+    async recordPurchase(supplierId, lines, paidNow, note, mode = 'cash', options={}) {
       App.requirePermission('purchase');
+      const request={supplierId,lines:JSON.parse(JSON.stringify(lines)),paidNow:paidNow ?? 0,note:note || '',mode};App.checkDataBounds(request);
+      const prior=options.operationId&&DB.purchases.find(p=>p.command?.id===options.operationId);
+      if(prior){if(prior.storeId!==S()||JSON.stringify(prior.request)!==JSON.stringify(request))throw new Error('Purchase operation ID was reused with different contents.');return prior;}
       if (!['cash', 'upi', 'card'].includes(mode)) throw new Error('Invalid payment mode.');
       if (!lines.length) throw new Error('Add purchase items first.');
       lines.forEach((l) => {
         if (!App.item(l.itemId)) throw new Error('Purchase item not found in this store.');
         App.number(l.qty, 'Quantity', 0.0001); App.domain.quantityUnits(l.qty); App.number(l.cost, 'Purchase cost');
       });
-      App.number(paidNow || 0, 'Paid now');
+      App.number(paidNow ?? 0, 'Paid now');
       const sup = App.supplier(supplierId);
       if (!sup) throw new Error('Supplier not found.');
       const total = round2(lines.reduce((s, l) => s + l.qty * l.cost, 0));
+      const lineValues=App.purchaseLineValues(lines);
       if ((paidNow || 0) > total) throw new Error('Paid now exceeds the purchase total.');
       const paid = round2(clamp(paidNow || 0, 0, total));
+      const operation=command('purchase',null,options.operationId);
       const po = {
+        command:{...operation},request,calculationVersion:'purchase-allocation-v1',
         id: uid('po'), no: DB.counter.po++, storeId: S(), supplierId,
         supplierName: sup.name, lines: JSON.parse(JSON.stringify(lines)), total, paid, mode, note: note || '',
         staffId: DB.session.staffId, at: Date.now()
       };
-      lines.forEach((l) => {
+      po.lines.forEach((l,index) => {
+        l.lineId=uid('purchase_line');l.batchId=uid('purchase_batch');l.value=lineValues[index];
         const it = App.item(l.itemId);
-        if (it) { giveStock(it, l.qty, l.expiry || '', l.cost); it.cost = l.cost; it.lastBuyAt = Date.now(); }
+        if (it) { l.name=App.itemName(it);giveStock(it, l.qty, l.expiry || '', l.cost,{id:l.batchId,purchaseId:po.id,purchaseLineId:l.lineId});it.cost = l.cost; it.lastBuyAt = Date.now(); }
       });
       DB.purchases.unshift(po);
       if (sup) {
-        sup.balance = round2((sup.balance || 0) + (total - paid));
+        supplierEntry(sup,{id:operation.id,kind:'purchase',delta:total,at:po.at,storeId:S(),staffId:DB.session.staffId,purchaseId:po.id,note:'Purchase received'});
+        if(paid)supplierEntry(sup,{id:uid('initial_payment'),kind:'initial_payment',delta:-paid,at:po.at,storeId:S(),staffId:DB.session.staffId,purchaseId:po.id,mode,note:'Paid on receipt'});
         sup.lastAt = Date.now();
         if (sup.balance > 0 && !sup.dueSince) sup.dueSince = Date.now();
       }
@@ -579,14 +602,17 @@
       return po;
     },
 
-    async paySupplier(supplierId, amount, mode) {
+    async paySupplier(supplierId, amount, mode, options={}) {
       App.requirePermission('pay_supplier');
       const s = App.supplier(supplierId); if (!s) throw new Error('Supplier not found.');
       if (!['cash', 'upi', 'card'].includes(mode || 'cash')) throw new Error('Invalid payment mode.');
       const amt = round2(App.number(amount, 'Payment', 0.01));
+      const request={supplierId,amount:amt,mode:mode || 'cash',purchaseId:options.purchaseId || ''},prior=options.operationId&&DB.supplierPayments.find(p=>p.command?.id===options.operationId);
+      if(prior){if(prior.storeId!==S()||JSON.stringify(prior.request)!==JSON.stringify(request))throw new Error('Supplier payment ID was reused with different contents.');return true;}
       if (amt > Math.max(0, s.balance || 0)) throw new Error('Payment exceeds the outstanding balance.');
-      DB.supplierPayments.unshift({ id: uid('sp'), storeId: S(), supplierId, amount: amt, mode: mode || 'cash', staffId: DB.session.staffId, at: Date.now() });
-      s.balance = round2(Math.max(0, (s.balance || 0) - amt));
+      if(options.purchaseId){const po=App.purchases().find(p=>p.id===options.purchaseId&&p.supplierId===supplierId&&!p.cancelled);if(!po||amt>round2(po.total-App.purchasePaid(po)))throw new Error('Supplier payment link is invalid or exceeds the purchase remainder.');}
+      const operation=command('supplier_payment',null,options.operationId),payment={id:uid('sp'),command:{...operation},request,purchaseId:options.purchaseId || '',storeId:S(),supplierId,amount:amt,mode:mode || 'cash',staffId:DB.session.staffId,at:operation.at};DB.supplierPayments.unshift(payment);
+      supplierEntry(s,{id:operation.id,kind:'payment',delta:-amt,at:operation.at,storeId:S(),staffId:DB.session.staffId,paymentId:payment.id,mode:payment.mode,note:'Supplier payment'});
       if (s.balance <= 0) s.dueSince = null;
       log('spay', `Paid ${s.name} ${money(amt)}`, { supplierId });
       (await save({ op: 'spay' }));
@@ -683,8 +709,9 @@
       const payCash = App.payments().filter((p) => p.at >= s && p.at < e && p.mode === 'cash').reduce((x, p) => x + p.amount, 0);
       const purchaseCash = App.purchases().filter((p) => p.at >= s && p.at < e && (p.mode || 'cash') === 'cash').reduce((x, p) => x + p.paid, 0);
       const refundCash=mine(DB.refunds || []).filter(r=>r.at>=s&&r.at<e&&r.mode==='cash').reduce((n,r)=>n+r.amount,0);
+      const supplierRefundCash=mine(DB.supplierRefunds || []).filter(r=>r.at>=s&&r.at<e&&r.mode==='cash').reduce((n,r)=>n+r.amount,0);
       const out = purchaseCash + mine(DB.supplierPayments).filter((p) => p.at >= s && p.at < e && p.mode === 'cash').reduce((x, p) => x + p.amount, 0)+refundCash;
-      return { in: round2(billCash + payCash), out: round2(out), net: round2(billCash + payCash - out), billCash: round2(billCash), payCash: round2(payCash),refundCash:round2(refundCash) };
+      return { in: round2(billCash + payCash+supplierRefundCash), out: round2(out), net: round2(billCash + payCash+supplierRefundCash - out), billCash: round2(billCash), payCash: round2(payCash),refundCash:round2(refundCash),supplierRefundCash:round2(supplierRefundCash) };
     },
     /* 0-100 friendly composite of stock health, dues and sales trend */
     health() {

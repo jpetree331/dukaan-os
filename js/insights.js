@@ -491,6 +491,7 @@
       '<div class="kv"><span>Customer cash received (collections and advances)</span><b class="num">' + money(cash.payCash, true) + '</b></div>' +
       '<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ' + money(cash.out-cash.refundCash, true) + '</b></div>' +
       '<div class="kv"><span>Cash refunds paid</span><b class="num">− '+money(cash.refundCash,true)+'</b></div>' +
+      '<div class="kv"><span>Supplier cash refunds received</span><b class="num">'+money(cash.supplierRefundCash,true)+'</b></div>' +
       '<div class="kv" style="font-size:16px"><b>' + t('rep.expected') + '</b><b class="num">' + money(cash.net, true) + '</b></div>' +
       '<div class="row" style="margin-top:12px"><input class="inp num" id="countedCash" type="number" inputmode="decimal" placeholder="' + t('rep.counted') + '">' +
       '<button class="btn pri" id="reconcile" style="flex:0 0 auto">' + t('com.confirm') + '</button></div>' +
