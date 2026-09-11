@@ -4,7 +4,7 @@
   "baselineCommit": "74dfc18282d0faaff9db03ff2453e8cdb9c18935",
   "baselineVerification": "VERIFY-00",
   "authorization": "Implementation with separate detailed sprint commits and pushes authorized 2026-09-11; no production deployment implied.",
-  "defaultBuildDays": "1Ã¢â‚¬â€œ2 focused engineering days; split before exceeding 3",
+  "defaultBuildDays": "1ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“2 focused engineering days; split before exceeding 3",
   "sprints": [
     {
       "number": 1,
@@ -71,9 +71,11 @@
       "decisions": [],
       "recovery": "List every mutation caller and failure path; fall back to the tested adapter only if no newer-schema records were written.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "f89d5f602de069f3d3f2e0c531d72f7c6cfbee4a",
+      "evidence": [
+        "reports/BUILD-02.md"
+      ]
     },
     {
       "number": 3,
