@@ -466,6 +466,7 @@
     opts = opts || {};
     const body = el('<div style="text-align:center">' +
       (opts.sub ? '<p class="muted" style="font-size:13px;margin-bottom:10px">' + esc(opts.sub) + '</p>' : '') +
+      (opts.extra || '') +
       '<div id="npv" class="num" style="font-size:38px;font-weight:850;padding:12px 0;letter-spacing:-.03em">₹0</div>' +
       (opts.quick ? '<div class="chip-row" style="justify-content:center;margin-bottom:12px">' +
         opts.quick.map((q) => '<button class="chip tap" data-q="' + q + '">' + money(q) + '</button>').join('') + '</div>' : '') +
@@ -479,7 +480,7 @@
       title, body,
       buttons: [{ label: App.t('com.cancel'), cls: 'ghost' }, {
         label: opts.ok || App.t('com.confirm'), cls: 'ok',
-        fn: async () => { const n = parseFloat(val || '0') || 0; if (n <= 0 && !opts.allowZero) return false; return await onOk(n); }
+        fn: async () => { const n = parseFloat(val || '0') || 0; if (n <= 0 && !opts.allowZero) return false; return await onOk(n,body); }
       }]
     });
     body.addEventListener('click', (e) => {

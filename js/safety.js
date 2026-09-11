@@ -82,7 +82,7 @@
     const id = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(x) && !['__proto__', 'constructor', 'prototype'].includes(x);
     const date = (x) => !x || (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && new Date(x).toISOString().slice(0, 10) === x);
     const collections = ['stores', 'staff', 'items', 'customers', 'suppliers', 'bills', 'payments', 'purchases', 'supplierPayments', 'activity', 'shifts'];
-    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', ...collections]);
+    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', ...collections]);
     for (const key of Object.keys(d)) if (!rootKeys.has(key)) fail('unknown field: ' + key);
     for (const key of collections) {
       if (!Array.isArray(d[key])) fail(key + ' must be an array');
@@ -146,6 +146,22 @@
       if (typeof x.name !== 'string' || !x.name.trim()) fail('missing name');
       numeric(x, ['balance', 'spend', 'visits', 'points'], ['balance', 'points']);
     }
+    const ledgerIds=new Set();
+    if(d.customerLedgerVersion!==undefined&&d.customerLedgerVersion!==1)fail('unsupported customer ledger version');
+    for(const c of d.customers)if(c.ledger!==undefined){
+      if(d.customerLedgerVersion!==1)fail('customer ledger version marker missing');
+      if(!Array.isArray(c.ledger)||!c.ledger.length||c.ledger[0].kind!=='opening')fail('customer ledger needs an opening checkpoint');
+      let balance=0;
+      for(const [index,e] of c.ledger.entries()){
+        if(!obj(e)||!id(e.id)||ledgerIds.has(e.id)||e.storeId!==c.storeId||!['opening','sale','void','collection','advance','correction'].includes(e.kind)||(index>0&&e.kind==='opening'))fail('invalid customer ledger entry');
+        ledgerIds.add(e.id);App.number(e.delta,'ledger delta',-1e9);App.number(e.at,'ledger date',0,8640000000000000);
+        if(Math.abs(e.delta*100-Math.round(e.delta*100))>0.00001)fail('ledger amount has sub-paise precision');
+        balance+=Math.round(e.delta*100);
+        if(e.billId&&!d.bills.some(b=>b.id===e.billId&&b.customerId===c.id&&b.storeId===c.storeId))fail('ledger bill belongs to another customer/store');
+        if(e.paymentId&&!d.payments.some(p=>p.id===e.paymentId&&p.customerId===c.id&&p.storeId===c.storeId))fail('ledger payment belongs to another customer/store');
+      }
+      if(Math.abs(balance/100-c.balance)>0.00001)fail('customer balance differs from ledger projection');
+    }
     const ref = (x, field, key, optional = false) => {
       if (optional && !x[field]) return;
       const target = d[key].find((r) => r.id === x[field]);
@@ -194,6 +210,7 @@
       App.number(p.amount, 'payment', 0.01); App.number(p.at, 'payment date', 0, 8640000000000000);
       if (!['cash', 'upi', 'card'].includes(p.mode)) fail('invalid payment mode');
       ref(p, key === 'payments' ? 'customerId' : 'supplierId', key === 'payments' ? 'customers' : 'suppliers');
+      if(key==='payments'&&p.billId&&!d.bills.some(b=>b.id===p.billId&&b.customerId===p.customerId&&b.storeId===p.storeId&&b.credit))fail('invalid collection bill link');
     }
     // Reject objects where display code expects a primitive, including prototype-bearing input.
     const walk = (x) => {

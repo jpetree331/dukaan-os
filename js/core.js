@@ -368,6 +368,30 @@
       await save({sync:false,render:false});return record&&JSON.parse(JSON.stringify(record));
     }
   };
+  function customerOpening(c){
+    if(c.ledger)return;
+    DB.customerLedgerVersion=1;
+    c.ledger=[{id:uid('opening'),kind:'opening',delta:round2(c.balance || 0),at:Date.now(),storeId:c.storeId,staffId:DB.session.staffId,note:'Legacy balance checkpoint; earlier history is not reconstructed',source:'legacy-checkpoint'}];
+  }
+  function customerEntry(c,entry){
+    customerOpening(c);c.ledger.push(entry);
+    c.balance=c.ledger.reduce((total,e)=>total+Math.round(e.delta*100),0)/100;
+    if(c.balance<=0)c.dueSince=null;else if(!c.dueSince)c.dueSince=entry.at;
+  }
+  App.customerStatement = id => {
+    const c=App.customer(id);if(!c)throw new Error('Customer not found.');
+    let balance=0;
+    const entries=(c.ledger || [{id:'legacy_checkpoint',kind:'opening',delta:c.balance || 0,at:c.at || Date.now(),note:'Unconverted legacy balance checkpoint',source:'legacy-checkpoint'}]).map(e=>{balance=round2(balance+e.delta);return {...e,balance};});
+    return {customerId:id,balance,entries};
+  };
+  function moneyRequest(kind,customerId,amount,mode,note,options={}){
+    const id=options.operationId || uid('cmd');
+    const operation=App.domain.command({id,accountId:App.accountId,actorId:DB.session.staffId,storeId:S(),kind,at:options.at ?? Date.now()});
+    const request={kind,customerId,amount,mode:mode || '',note:note || '',billId:options.billId || '',at:options.at ?? null};
+    const previous=DB.customers.flatMap(c=>c.ledger || []).find(e=>e.id===id);
+    if(previous&&(previous.storeId!==S()||JSON.stringify(previous.request)!==JSON.stringify(request)))throw new Error('Operation ID was already used for different customer entry contents.');
+    return {operation,request,previous};
+  }
   App.actions = {
     /* Commit a cart into a bill. Deducts stock, moves credit, awards loyalty. */
     async checkout(cart) {
@@ -430,7 +454,7 @@
       });
 
       if (cust) {
-        if (credit) cust.balance = round2((cust.balance || 0) + total);
+        if (credit) customerEntry(cust,{id:operation.id,kind:'sale',delta:total,at:operation.at,storeId:S(),staffId:DB.session.staffId,billId:bill.id,note:'Credit sale'});
         cust.spend = round2((cust.spend || 0) + total);
         cust.visits = (cust.visits || 0) + 1;
         cust.lastAt = Date.now();
@@ -462,7 +486,7 @@
       });
       const c = b.customerId && DB.customers.find((x) => x.id === b.customerId && (!x.storeId || x.storeId === S()));
       if (c) {
-        if (b.credit) { c.balance = round2((c.balance || 0) - b.total); if (c.balance !== 0) c.deleted = false; }
+        if (b.credit) { customerEntry(c,{id:correction.id,kind:'void',delta:-b.total,at:correction.at,storeId:S(),staffId:DB.session.staffId,billId:b.id,note:reason || 'Sale void'});if (c.balance !== 0) c.deleted = false; }
         c.spend = round2((c.spend || 0) - b.total);
         c.visits = Math.max(0, (c.visits || 1) - 1);
         c.points = round2((c.points || 0) - (b.loyalty || 0) + (b.redeemedPoints != null ? b.redeemedPoints : (b.redeemed || 0) / DB.settings.loyaltyValue));
@@ -473,19 +497,50 @@
       return b;
     },
 
-    async takePayment(customerId, amount, mode, note) {
+    async takePayment(customerId, amount, mode, note, options={}) {
       App.requirePermission('take_payment');
       const c = App.customer(customerId); if (!c) throw new Error('Customer not found.');
       if (!['cash', 'upi', 'card'].includes(mode || 'cash')) throw new Error('Invalid payment mode.');
       const amt = round2(App.number(amount, 'Payment', 0.01));
+      const {operation,request,previous}=moneyRequest('collection',customerId,amt,mode || 'cash',note,options);
+      if(previous)return DB.payments.find(p=>p.id===previous.paymentId);
       if (amt > Math.max(0, c.balance || 0)) throw new Error('Payment exceeds the outstanding balance.');
+      if(options.billId){
+        const bill=App.bills().find(b=>b.id===options.billId&&b.customerId===customerId&&b.credit&&!b.void);
+        if(!bill)throw new Error('Collection link is not a live credit bill for this customer/store.');
+        const linked=DB.payments.filter(p=>p.billId===bill.id).reduce((s,p)=>s+p.amount,0);
+        if(amt>round2(bill.total-linked))throw new Error('Collection exceeds the linked bill remainder.');
+      }
       const p = { id: uid('pm'), storeId: S(), customerId, amount: amt, mode: mode || 'cash', note: note || '', staffId: DB.session.staffId, at: Date.now() };
+      p.billId=options.billId || '';p.command={...operation};p.kind='collection';
       DB.payments.unshift(p);
-      c.balance = round2(Math.max(0, (c.balance || 0) - amt));
+      customerEntry(c,{id:operation.id,kind:'collection',delta:-amt,at:p.at,storeId:S(),staffId:DB.session.staffId,paymentId:p.id,billId:p.billId,mode:p.mode,note:p.note,request});
       if (c.balance <= 0) c.dueSince = null;
       log('payment', `${c.name} paid ${money(amt)}`, { customerId });
       (await save({ op: 'payment' }));
       return p;
+    },
+    async openingBalance(customerId,amount,at,note,options={}){
+      App.requirePermission('settings');const c=App.customer(customerId);if(!c)throw new Error('Customer not found.');
+      const value=round2(App.number(amount,'Opening balance',-1e9));
+      if(!Number.isSafeInteger(at)||at<0||at>Date.now())throw new Error('Choose a valid opening date, no later than today.');
+      const {operation,request,previous}=moneyRequest('opening',customerId,value,'',note,{...options,at});if(previous)return previous;
+      if(c.ledger||(c.balance || 0)!==0||App.bills().some(b=>b.customerId===customerId)||App.payments().some(p=>p.customerId===customerId))throw new Error('This customer already has history. Add a correction instead.');
+      const entry={id:operation.id,kind:'opening',delta:value,at,storeId:S(),staffId:DB.session.staffId,note:note || 'Opening balance',source:'explicit-opening',request};
+      DB.customerLedgerVersion=1;c.ledger=[entry];c.balance=value;if(value>0)c.dueSince=at;await save({op:'customer_opening'});return entry;
+    },
+    async customerCredit(customerId,amount,mode,note,options={}){
+      App.requirePermission('take_payment');const c=App.customer(customerId);if(!c)throw new Error('Customer not found.');
+      const amt=round2(App.number(amount,'Advance',0.01));if(!['cash','upi','card'].includes(mode))throw new Error('Invalid payment mode.');
+      const {operation,request,previous}=moneyRequest('advance',customerId,amt,mode,note,options);if(previous)return previous;
+      const p={id:uid('pm'),kind:'advance',command:{...operation},storeId:S(),customerId,amount:amt,mode,note:note || '',staffId:DB.session.staffId,at:operation.at};DB.payments.unshift(p);
+      const entry={id:operation.id,kind:'advance',delta:-amt,at:p.at,storeId:S(),staffId:DB.session.staffId,paymentId:p.id,mode,note:p.note,request};customerEntry(c,entry);await save({op:'customer_advance'});return entry;
+    },
+    async correctCustomerBalance(customerId,amount,note,options={}){
+      App.requirePermission('settings');const c=App.customer(customerId);if(!c)throw new Error('Customer not found.');
+      const delta=round2(App.number(amount,'Correction',-1e9));if(!delta||typeof note!=='string'||note.trim().length<3)throw new Error('Provide a nonzero correction and a reason.');
+      const {operation,request,previous}=moneyRequest('correction',customerId,delta,'',note,options);if(previous)return previous;
+      const entry={id:operation.id,kind:'correction',delta,at:operation.at,storeId:S(),staffId:DB.session.staffId,note,request};customerEntry(c,entry);await save({op:'customer_correction'});return entry;
     },
 
     async recordPurchase(supplierId, lines, paidNow, note, mode = 'cash') {

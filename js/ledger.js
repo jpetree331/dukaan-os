@@ -58,15 +58,32 @@
   /* ═════════ customer actions ═════════ */
   function settle(id) {
     const c = App.customer(id); if (!c) return;
-    App.numpadModal('💰 ' + t('cus.logPayment'), c.balance ? String(App.round2(c.balance)) : '', async (amt) => {
-      (await App.actions.takePayment(id, amt, 'cash'));
+    const operationId=App.uid('collection');
+    const bills=App.bills().filter(b=>b.customerId===id&&b.credit&&!b.void);
+    App.numpadModal('💰 ' + t('cus.logPayment'), c.balance ? String(App.round2(c.balance)) : '', async (amt,body) => {
+      (await App.actions.takePayment(id, amt, App.$('#collectionMode',body).value,'',{operationId,billId:App.$('#collectionBill',body).value}));
       const done = (c.balance || 0) <= 0.5;
       App.toast('ok', t('cus.received', { name: c.name, amt: money(amt, true) }), done ? t('cus.paidFull', { name: c.name }) : money(c.balance) + ' ' + t('com.pending').toLowerCase());
       if (done) App.confetti({ count: 60 });
       App.render();
-    }, { sub: c.name + ' · ' + t('cus.balance') + ' ' + money(c.balance, true), ok: t('cus.logPayment'), quick: [100, 200, 500, App.round2(c.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });
+    }, { extra:'<div class="field"><label for="collectionMode">Payment method</label><select class="inp" id="collectionMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div><div class="field"><label for="collectionBill">Apply to bill (optional)</label><select class="inp" id="collectionBill"><option value="">Customer balance</option>'+bills.map(b=>'<option value="'+b.id+'">Bill #'+b.no+'</option>').join('')+'</select></div>',sub: c.name + ' · ' + t('cus.balance') + ' ' + money(c.balance, true), ok: t('cus.logPayment'), quick: [100, 200, 500, App.round2(c.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });
   }
   App.settleCustomer = settle;
+  App.customerEntryDialog = function(id,kind){
+    const c=App.customer(id);if(!c)return;
+    const operationId=App.uid('customer_entry');
+    const body=App.el('<div><p>'+esc(c.name)+' · '+esc(money(c.balance,true))+'</p><div class="field"><label for="entryAmount">'+(kind==='advance'?'Amount received':'Signed amount: positive debt, negative credit')+'</label><input class="inp" id="entryAmount" type="number" step="0.01" autofocus></div>'+
+      (kind==='advance'?'<div class="field"><label for="entryMode">Payment method</label><select class="inp" id="entryMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div>':'')+
+      (kind==='opening'?'<div class="field"><label for="entryDate">Opening date</label><input class="inp" id="entryDate" type="date" value="'+App.dayKey(Date.now())+'"></div>':'')+
+      '<div class="field"><label for="entryNote">Reason / note</label><input class="inp" id="entryNote"></div><p class="muted">'+(kind==='advance'?'This records money received and may create customer credit.':'This changes the balance without recording cash received or paid.')+'</p></div>');
+    App.modal({title:{advance:'Record advance',opening:'Opening balance',correction:'Correct customer balance'}[kind],body,buttons:[{label:t('com.cancel'),cls:'ghost'},{label:t('com.save'),cls:'pri',fn:async()=>{
+      const amount=Number(App.$('#entryAmount',body).value),note=App.$('#entryNote',body).value;
+      if(kind==='advance')await App.actions.customerCredit(id,amount,App.$('#entryMode',body).value,note,{operationId});
+      else if(kind==='opening')await App.actions.openingBalance(id,amount,new Date(App.$('#entryDate',body).value+'T00:00:00').getTime(),note,{operationId});
+      else await App.actions.correctCustomerBalance(id,amount,note,{operationId});
+      App.toast('ok','Customer entry saved');App.render();
+    }}]});
+  };
 
   async function remind(id) {
     const c = App.customer(id); if (!c) return;
@@ -126,6 +143,7 @@
 
   App.customerDetail = function (id) {
     const c = App.customer(id);
+    const statement=App.customerStatement(id);
     const bills = App.bills().filter((b) => b.customerId === id);
     const pays = App.payments().filter((p) => p.customerId === id);
     const feed = bills.map((b) => ({ t: b.at, kind: 'bill', b })).concat(pays.map((p) => ({ t: p.at, kind: 'pay', p })))
@@ -143,7 +161,9 @@
       (c.balance > 0 ? '<button class="btn ok" id="dPay">💰 ' + t('cus.logPayment') + '</button>' : '') +
       (c.phone && c.balance > 0 ? '<button class="btn" id="dRemind">💬 ' + t('cus.remind') + '</button>' : '') +
       '<button class="btn ghost" id="dEdit">✏️ ' + t('com.edit') + '</button>' +
-      '<button class="btn ghost" id="dCsv">📤 ' + t('com.export') + '</button></div>' +
+      '<button class="btn ghost" id="dCsv">📤 ' + t('com.export') + '</button><button class="btn ghost" id="dStatementCsv">Balance CSV</button></div>' +
+      '<div class="btn-row"><button class="btn" id="dAdvance">Record advance</button>'+(App.isOwner()?'<button class="btn" id="dOpening">Opening balance</button><button class="btn" id="dCorrection">Correct balance</button>':'')+'</div>'+
+      '<div class="sec-title">Balance entries (latest 40; CSV includes all)</div><div class="table-wrap"><table><thead><tr><th>Date / entry</th><th>Change</th><th>Balance</th></tr></thead><tbody>'+statement.entries.slice(-40).map(e=>'<tr><td>'+esc(App.fmtDT(e.at)+' · '+e.kind)+'<br><small>'+esc(e.note || '')+'</small></td><td>'+esc(money(e.delta,true))+'</td><td>'+esc(money(e.balance,true))+'</td></tr>').join('')+'</tbody></table></div>'+
       '<div class="sec-title">' + t('cus.history') + '</div>' +
       (feed.length ? feed.slice(0, 40).map((f) => f.kind === 'bill' ?
         '<div class="list-row"><span class="rank" style="background:' + (f.b.void ? 'var(--line)' : f.b.credit ? 'var(--bad-bg)' : 'var(--ok-bg)') + ';color:' + (f.b.credit ? 'var(--bad)' : 'var(--ok)') + '">' + (f.b.credit ? '📒' : '🧾') + '</span>' +
@@ -160,17 +180,21 @@
 
     const m = App.modal({ title: '👤 ' + esc(c.name) + (c.phone ? ' · ' + esc(c.phone) : ''), body, wide: true, foot: false });
     body.addEventListener('click', async (e) => {
+      for(const [button,kind] of [['#dAdvance','advance'],['#dOpening','opening'],['#dCorrection','correction']])if(e.target.closest(button)){m.close();return App.customerEntryDialog(id,kind);}
       if (e.target.closest('#dPay')) { m.close(); return settle(id); }
       if (e.target.closest('#dRemind')) return (await remind(id));
       if (e.target.closest('#dEdit')) { m.close(); return App.editCustomer(id, () => App.render()); }
       const rb = e.target.closest('[data-rebill]');
       if (rb) { const b = App.DB().bills.find((x) => x.id === rb.dataset.rebill); if (b) App.showReceipt(b); return; }
-      if (e.target.closest('#dCsv')) {
-        const rows = [['Date', 'Type', 'Ref', 'Items', 'Amount', 'Mode']];
-        feed.forEach((f) => f.kind === 'bill'
-          ? rows.push([App.fmtDT(f.b.at), f.b.void ? 'Cancelled' : f.b.credit ? 'Udhaar' : 'Sale', '#' + f.b.no, f.b.lines.map((l) => l.name + '×' + l.qty).join('; '), f.b.total, f.b.mode])
-          : rows.push([App.fmtDT(f.p.at), 'Payment', '', '', -f.p.amount, f.p.mode]));
-        App.download(App.toCSV(rows), 'ledger-' + c.name.replace(/\s+/g, '-') + '.csv', 'text/csv');
+      if (e.target.closest('#dStatementCsv')) {
+        const rows = [['Date','Entry','Reference','Change','Balance','Mode','Note']];
+        statement.entries.forEach(e=>rows.push([App.fmtDT(e.at),e.kind,e.billId || e.paymentId || e.id,e.delta,e.balance,e.mode || '',e.note || '']));
+        App.download(App.toCSV(rows), 'balance-' + c.name.replace(/\s+/g, '-') + '.csv', 'text/csv');
+      }
+      if(e.target.closest('#dCsv')){
+        const rows=[['Date','Type','Ref','Items','Amount','Mode']];
+        feed.forEach(f=>f.kind==='bill'?rows.push([App.fmtDT(f.b.at),f.b.void?'Cancelled':f.b.credit?'Udhaar':'Sale','#'+f.b.no,f.b.lines.map(l=>l.name+'×'+l.qty).join('; '),f.b.total,f.b.mode]):rows.push([App.fmtDT(f.p.at),f.p.kind==='advance'?'Advance':'Payment','','',-f.p.amount,f.p.mode]));
+        App.download(App.toCSV(rows),'ledger-'+c.name.replace(/\s+/g,'-')+'.csv','text/csv');
       }
     });
   };
