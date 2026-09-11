@@ -4,7 +4,7 @@
   "baselineCommit": "74dfc18282d0faaff9db03ff2453e8cdb9c18935",
   "baselineVerification": "VERIFY-00",
   "authorization": "Implementation with separate detailed sprint commits and pushes authorized 2026-09-11; no production deployment implied.",
-  "defaultBuildDays": "1ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ2 focused engineering days; split before exceeding 3",
+  "defaultBuildDays": "1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“2 focused engineering days; split before exceeding 3",
   "sprints": [
     {
       "number": 1,
@@ -108,9 +108,11 @@
       ],
       "recovery": "Use disposable databases; document the schema and commit boundary; keep production selection on the previous adapter until VERIFY-04.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "32c199b047dfa1abe9ab0d01a2ea87716cbf7186",
+      "evidence": [
+        "reports/BUILD-03.md"
+      ]
     },
     {
       "number": 4,
