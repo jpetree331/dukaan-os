@@ -1,6 +1,6 @@
 # BUILD-01 — Domain contracts and reference fixtures
 
-Status: **planned**. Track: Foundation.
+Status: **built-unverified**. See [build report](../reports/BUILD-01.md). Track: Foundation.
 Sizing target: 1–2 focused engineering days; split this card before exceeding 3. This is a slice budget, not a promised date.
 
 ## Why

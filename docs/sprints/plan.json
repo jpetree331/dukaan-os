@@ -4,7 +4,7 @@
   "baselineCommit": "74dfc18282d0faaff9db03ff2453e8cdb9c18935",
   "baselineVerification": "VERIFY-00",
   "authorization": "Implementation with separate detailed sprint commits and pushes authorized 2026-09-11; no production deployment implied.",
-  "defaultBuildDays": "1–2 focused engineering days; split before exceeding 3",
+  "defaultBuildDays": "1â€“2 focused engineering days; split before exceeding 3",
   "sprints": [
     {
       "number": 1,
@@ -34,9 +34,11 @@
       ],
       "recovery": "Record calculation tables and contract version; compare output to the current implementation; revert the adapter only, without rewriting persisted records.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "9a78653294b03bede1ae2242607fb1e3159c3ddc",
+      "evidence": [
+        "reports/BUILD-01.md"
+      ]
     },
     {
       "number": 2,
