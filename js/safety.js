@@ -254,6 +254,13 @@
       if(Math.abs(total/100-s.balance)>0.00001)fail('supplier balance differs from ledger');
     }
     const checkedReturns=[];
+    for(const po of d.purchases)if(po.calculationVersion==='purchase-allocation-v1'){
+      const ledger=d.suppliers.find(s=>s.id===po.supplierId)?.ledger || [];
+      if(!ledger.some(e=>e.kind==='purchase'&&e.purchaseId===po.id))fail('supplier purchase movement missing');
+      if(po.paid&&!ledger.some(e=>e.kind==='initial_payment'&&e.purchaseId===po.id))fail('supplier initial payment movement missing');
+      if((po.cancelled||po.cancellationId)&&!(d.supplierReturns || []).some(r=>r.id===po.cancellationId&&r.purchaseId===po.id&&r.cancel&&po.cancelled===true))fail('purchase cancellation record missing');
+    }
+    for(const p of d.supplierPayments)if(p.command?.kind==='supplier_payment'&&!d.suppliers.find(s=>s.id===p.supplierId)?.ledger?.some(e=>e.kind==='payment'&&e.paymentId===p.id))fail('supplier payment movement missing');
     for(const key of ['returns','refunds','supplierReturns','supplierRefunds'])if(d[key]!==undefined){
       if(!Array.isArray(d[key]))fail(key+' must be an array');const ids=new Set();
       for(const r of d[key]){if(!obj(r)||!id(r.id)||ids.has(r.id)||!exists('stores',r.storeId))fail('invalid '+key+' identity');ids.add(r.id);App.number(r.at,'return/refund date',0,8640000000000000);App.number(r.amount,'return/refund amount');}
