@@ -15,6 +15,7 @@
     if (locked || (App.auth && App.auth.gateOn() && !App.auth.currentAccount())) throw new Error('Unlock or sign in to continue.');
     const staff = App.me();
     if (!staff || staff.active === false) throw new Error('This staff member is not active.');
+    if(App.canStore&&!App.canStore(App.S(),staff))throw new Error('This staff member is not assigned to the active store.');
   };
   App.limits = { fileBytes: 16 * 1024 * 1024, text: 4096, records: 50000 };
   App.checkFile = (file) => { if (!file || file.size > App.limits.fileBytes) throw new Error('File is too large (maximum 16 MB).'); };
@@ -82,7 +83,7 @@
     const id = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(x) && !['__proto__', 'constructor', 'prototype'].includes(x);
     const date = (x) => !x || (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && new Date(x).toISOString().slice(0, 10) === x);
     const collections = ['stores', 'staff', 'items', 'customers', 'suppliers', 'bills', 'payments', 'purchases', 'supplierPayments', 'activity', 'shifts'];
-    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', 'returns', 'refunds', 'supplierLedgerVersion','supplierReturns','supplierRefunds','stockAdjustments', ...collections]);
+    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', 'returns', 'refunds', 'supplierLedgerVersion','supplierReturns','supplierRefunds','stockAdjustments','storeAccessVersion','storeProfilesVersion','stockTransfers','transferReceipts', ...collections]);
     for (const key of Object.keys(d)) if (!rootKeys.has(key)) fail('unknown field: ' + key);
     for (const key of collections) {
       if (!Array.isArray(d[key])) fail(key + ' must be an array');
@@ -109,6 +110,14 @@
     if (!d.stores.length || !exists('stores', d.settings.activeStore)) fail('active store is missing');
     if (!d.staff.some((s) => s.role === 'owner' && s.active !== false) || !d.staff.some((s) => s.id === d.session.staffId && s.active !== false)) fail('owner or active staff is missing');
     for (const s of d.staff) if (!['owner', 'cashier'].includes(s.role)) fail('unknown staff role');
+    if(d.storeAccessVersion!==undefined&&d.storeAccessVersion!==1)fail('unknown store access version');
+    if(d.storeProfilesVersion!==undefined&&d.storeProfilesVersion!==1)fail('unknown store profiles version');
+    for(const s of d.staff)if(s.storeIds!==undefined||d.storeAccessVersion===1){if(!Array.isArray(s.storeIds)||new Set(s.storeIds).size!==s.storeIds.length||s.storeIds.some(id=>!exists('stores',id)))fail('invalid staff store assignments');}
+    if(d.storeAccessVersion===1){const current=d.staff.find(s=>s.id===d.session.staffId);if(current.role!=='owner'&&!current.storeIds.includes(d.settings.activeStore))fail('active staff is not assigned to store');}
+    for(const store of d.stores){
+      if(store.dailyTarget!==undefined)App.number(store.dailyTarget,'store daily target');
+      if(store.receiptProfile!==undefined){const p=store.receiptProfile;if(d.storeProfilesVersion!==1||!obj(p)||Object.keys(p).some(k=>!['shopName','shopPhone','address','gstin','upiId','receiptTheme'].includes(k))||Object.values(p).some(v=>typeof v!=='string')||!p.shopName?.trim()||(p.receiptTheme&&!['saffron','tulsi','indigo','ink'].includes(p.receiptTheme)))fail('invalid store receipt profile');}
+    }
     for (const key of collections.filter((k) => !['stores', 'staff'].includes(k))) {
       for (const x of d[key]) {
         // Legacy single-store records have one unambiguous owner. Never guess in multi-store data.
@@ -324,6 +333,22 @@
         if((['expired','damaged'].includes(r.reasonCode)&&r.delta>0)||(r.reasonCode==='found'&&r.delta<0))fail('adjustment reason/sign differs');
         if(r.reasonCode==='reversal'){const original=prior.find(x=>x.id===r.reverses&&x.storeId===r.storeId&&x.itemId===r.itemId);if(!original||reversed.has(r.reverses)||r.delta!==-original.delta||['id','cost','expiry','quarantined','purchaseId','purchaseLineId'].some(k=>(r.batch[k] ?? null)!==(original.batch[k] ?? null)))fail('invalid adjustment reversal');reversed.add(r.reverses);}else if(r.reverses)fail('unexpected adjustment reversal link');
         prior.push(r);
+      }
+    }
+    if(d.stockTransfers!==undefined||d.transferReceipts!==undefined){
+      if(!Array.isArray(d.stockTransfers)||!(d.transferReceipts===undefined||Array.isArray(d.transferReceipts)))fail('invalid transfer collections');const transferIds=new Set(),receiptIds=new Set(),lotIds=new Set();
+      for(const t of d.stockTransfers){
+        if(!obj(t)||!id(t.id)||transferIds.has(t.id)||t.storeId!==t.fromStoreId||t.fromStoreId===t.toStoreId||!exists('stores',t.fromStoreId)||!exists('stores',t.toStoreId)||!Array.isArray(t.lines)||!t.lines.length||typeof t.note!=='string'||t.note.trim().length<3)fail('invalid transfer');transferIds.add(t.id);App.number(t.at,'transfer date',0,8640000000000000);const lineIds=new Set();
+        for(const l of t.lines){if(!id(l.lineId)||lineIds.has(l.lineId)||!d.items.some(i=>i.id===l.itemId&&i.storeId===t.fromStoreId)||!d.items.some(i=>i.id===l.targetItemId&&i.storeId===t.toStoreId)||typeof l.unit!=='string'||!l.unit||!Array.isArray(l.allocations))fail('invalid transfer line');lineIds.add(l.lineId);App.number(l.qty,'transfer quantity',0.0001);const qty=App.domain.quantityUnits(l.qty),ids=new Set();let sum=0;for(const a of l.allocations){if(!id(a.id)||ids.has(a.id)||!date(a.expiry)||a.quarantined)fail('invalid transfer allocation');ids.add(a.id);App.number(a.cost,'transfer cost');App.number(a.qty,'transfer allocation quantity',0.0001);sum+=App.domain.quantityUnits(a.qty);}if(sum!==qty)fail('transfer quantities differ');}
+      }
+      const accepted=new Map();
+      for(const r of d.transferReceipts || []){
+        const t=d.stockTransfers.find(t=>t.id===r.transferId);if(!obj(r)||!id(r.id)||receiptIds.has(r.id)||!t||typeof r.recall!=='boolean'||r.storeId!==(r.recall?t.fromStoreId:t.toStoreId)||!Array.isArray(r.lines)||!r.lines.length||typeof r.note!=='string'||r.note.trim().length<3)fail('invalid transfer receipt');receiptIds.add(r.id);App.number(r.at,'transfer receipt date',0,8640000000000000);const lineIds=new Set();
+        for(const l of r.lines){
+          const original=t.lines.find(x=>x.lineId===l.lineId),key=t.id+'/'+l.lineId,before=accepted.get(key)||0;if(!original||lineIds.has(l.lineId)||l.itemId!==(r.recall?original.itemId:original.targetItemId)||!Array.isArray(l.allocations))fail('invalid received line');lineIds.add(l.lineId);App.number(l.qty,'received quantity',0.0001);const qty=App.domain.quantityUnits(l.qty);if(before+qty>App.domain.quantityUnits(original.qty))fail('transfer receipt exceeds dispatched stock');
+          let skip=before,need=qty;const expected=[];for(const source of original.allocations){const units=App.domain.quantityUnits(source.qty);if(skip>=units){skip-=units;continue;}const use=Math.min(need,units-skip);skip=0;if(use){expected.push({...source,qty:use/App.domain.QUANTITY_SCALE});need-=use;}if(!need)break;}
+          if(need||l.allocations.length!==expected.length)fail('transfer receipt allocations differ');l.allocations.forEach((a,n)=>{const e=expected[n];if(!id(a.id)||lotIds.has(a.id)||a.sourceBatchId!==e.id||a.transferId!==t.id||a.transferLineId!==original.lineId||['qty','cost','expiry','quarantined','purchaseId','purchaseLineId'].some(k=>(a[k] ?? null)!==(e[k] ?? null)))fail('received stock provenance differs');lotIds.add(a.id);});accepted.set(key,before+qty);
+        }
       }
     }
     // Reject objects where display code expects a primitive, including prototype-bearing input.

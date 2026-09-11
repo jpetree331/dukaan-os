@@ -206,6 +206,11 @@
     if (data.storageVersion === 3) valid.settings.restoredCheckpoint = {...data.provenance};
     // A business backup never grants access or redirects payments.
     valid.staff = JSON.parse(JSON.stringify(DB.staff));
+    if(valid.storeAccessVersion===1||DB.storeAccessVersion===1){
+      valid.storeAccessVersion=1;
+      valid.staff.forEach(s=>{s.storeIds=(s.storeIds || (s.role==='owner'?DB.stores.map(s=>s.id):[DB.settings.activeStore])).filter(id=>valid.stores.some(st=>st.id===id));});
+    }
+    for(const store of valid.stores)if(store.receiptProfile)store.receiptProfile.upiId=DB.stores.find(s=>s.id===store.id)?.receiptProfile?.upiId ?? DB.settings.upiId;
     valid.session = { staffId: DB.session.staffId };
     for (const key of ['pin', 'pinOn', 'upiId']) valid.settings[key] = DB.settings[key];
     // Keep the prior snapshot for recovery, before replacing the live key.
@@ -459,7 +464,8 @@
         note: cart.note || '', staffId: DB.session.staffId, at: operation.at, void: false,
         loyalty: 0, redeemed: T.redeem, redeemedPoints: round2(T.redeem / st.loyaltyValue)
       };
-      bill.receiptSettings=Object.fromEntries(['shopName','shopPhone','address','gstin','currency','receiptTheme','upiId'].map(k=>[k,st[k]]));
+      const receiptSettings=App.storeSettings?App.storeSettings():st;
+      bill.receiptSettings=Object.fromEntries(['shopName','shopPhone','address','gstin','currency','receiptTheme','upiId'].map(k=>[k,receiptSettings[k]]));
       bill.loyaltyPolicy={rate:st.loyaltyRate,value:st.loyaltyValue};
       bill.customerPhone=cust?.phone || '';
       if(draft){bill.draftId=draft.id;bill.draftScope=draftScope();bill.draftSubmission=draftCart(cart);DB.drafts=DB.drafts.filter(d=>d.id!==draft.id);}

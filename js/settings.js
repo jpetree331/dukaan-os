@@ -87,6 +87,7 @@
   /* ───────── staff ───────── */
   async function editStaff(id) {
     App.requirePermission('settings');
+    if(!id&&App.DB().storeAccessVersion!==1){App.toast('info','Review store assignments before adding staff');return App.storeAssignmentsDialog();}
     const context = App.context();
     if (!await App.auth.verifyOwner()) return;
     App.assertContext(context);
@@ -125,7 +126,7 @@
             if (pin && !/^\d{4}$/.test(pin)) throw new Error('PIN must be exactly four digits.');
             if (role === 'owner' && db.staff.some((x) => x.role === 'cashier') && !pin) throw new Error('Set an owner PIN before using cashier accounts.');
             if (s && s.role === 'owner' && role !== 'owner' && !db.staff.some((x) => x.id !== s.id && x.role === 'owner')) throw new Error('Keep at least one owner.');
-            const rec = s || { id: App.uid('sf'), active: true };
+            const rec = s || { id: App.uid('sf'), active: true,storeIds:[] };
             rec.name = n; rec.role = App.$('#st_r', body).value;
             rec.pin = App.$('#st_p', body).value.replace(/\D/g, '').slice(0, 4);
             if (!s) db.staff.push(rec);
@@ -140,7 +141,7 @@
     App.requireAccess();
     const context = App.context();
     const db = App.DB();
-    const body = App.el('<div>' + db.staff.filter(s => s.active !== false).map((s, i) =>
+    const body = App.el('<div>' + db.staff.filter(s => s.active !== false&&App.canStore(App.S(),s)).map((s, i) =>
       '<button class="list-row" data-sw="' + s.id + '" style="width:100%;text-align:left">' + App.avatarFor(s.name, i) +
       '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' · 🔒' : '') + '</small></span>' +
       (db.session.staffId === s.id ? '<span class="chip ok">✓</span>' : '') + '</button>').join('') + '</div>');
@@ -156,6 +157,7 @@
       const go = async () => {
         App.assertContext(context);
         if (s.active === false) throw new Error('Staff member is inactive.');
+        if(!App.canStore(App.S(),s))throw new Error('Staff member is not assigned to this store.');
         App.invalidateContext();
         db.session.staffId = s.id;
         App.log('sys', 'Shift start: ' + s.name);
@@ -174,23 +176,23 @@
 
   /* ───────── stores ───────── */
   App.storePicker = function () {
-    App.requirePermission('settings');
+    App.requireAccess();
     const db = App.DB();
-    const body = App.el('<div>' + db.stores.map((s) => {
+    const body = App.el('<div>' + db.stores.filter(s=>App.canStore(s.id)).map((s) => {
       const bills = db.bills.filter((b) => b.storeId === s.id && !b.void);
       const today = bills.filter((b) => App.isToday(b.at)).reduce((x, b) => x + b.total, 0);
       return '<button class="list-row" data-st="' + s.id + '" style="width:100%;text-align:left">' +
         '<span class="rank" style="background:var(--surface-3)">🏪</span>' +
-        '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + bills.length + ' bills · ' + money(today) + ' today</small></span>' +
+        '<span style="flex:1"><b>' + esc(s.name) + '</b>'+(App.isOwner()?'<br><small class="muted">' + bills.length + ' bills · ' + money(today) + ' today</small>':'')+'</span>' +
         (db.settings.activeStore === s.id ? '<span class="chip ok">✓</span>' : '') + '</button>';
     }).join('') +
-      '<button class="btn block sm" id="addStore" style="margin-top:12px">➕ ' + t('set.addStore') + '</button>' +
-      (db.stores.length > 1 ? '<div class="alert info" style="margin-top:12px"><span class="ai">🏢</span><span>Combined across all stores: <b>' +
+      (App.isOwner()?'<button class="btn block sm" id="addStore" style="margin-top:12px">➕ ' + t('set.addStore') + '</button>':'') +
+      (App.isOwner()&&db.stores.length > 1 ? '<div class="alert info" style="margin-top:12px"><span class="ai">🏢</span><span>Combined across all stores: <b>' +
         money(db.bills.filter((b) => !b.void && App.isToday(b.at)).reduce((x, b) => x + b.total, 0)) + '</b> today</span></div>' : '') + '</div>');
     const m = App.modal({ title: '🏪 ' + t('set.stores'), body, foot: false });
     body.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-st]');
-      if (b) { App.requirePermission('settings'); App.invalidateContext(); db.settings.activeStore = b.dataset.st; (await App.save({ sync: false })); App.posClear(); m.close(); App.render(); App.toast('ok', 'Switched store'); return; }
+      if (b) { await App.actions.switchStore(b.dataset.st);m.close();App.render();App.toast('ok','Switched store');return; }
       if (e.target.closest('#addStore')) {
         App.requirePermission('settings');
         App.prompt(t('set.addStore'), t('com.name'), { placeholder: 'Branch 2' }).then(async (n) => {
@@ -262,6 +264,7 @@
       '<button class="btn sm block ghost" id="swStaff" style="margin-top:8px">🔄 ' + t('set.switchStaff') + '</button>' +
 
       '<div class="sec-title">🏪 ' + t('set.stores') + ' (' + db.stores.length + ')</div>' +
+      '<div class="btn-row"><button class="btn sm" id="storeAssignments">Review store assignments</button><button class="btn sm" id="storeProfile">Store receipt and target</button></div>'+
       db.stores.map((s) => '<div class="list-row"><span class="rank">🏪</span><span style="flex:1"><b>' + esc(s.name) + '</b></span>' +
         (st.activeStore === s.id ? '<span class="chip ok">Active</span>' : '') + '</div>').join('') +
       '<button class="btn sm block" id="mgStores" style="margin-top:12px">🏢 Manage stores</button>' +
@@ -353,6 +356,8 @@
       if (e.target.closest('#addStaff')) return editStaff(null).catch(App.reportError);
       if (e.target.closest('#swStaff')) return App.switchStaff();
       if (e.target.closest('#mgStores')) return App.storePicker();
+      if(e.target.closest('#storeAssignments'))return App.storeAssignmentsDialog().catch(App.reportError);
+      if(e.target.closest('#storeProfile'))return App.storeProfileDialog().catch(App.reportError);
       if (e.target.closest('#setPin')) return App.setPin().catch(App.reportError);
       if (e.target.closest('#expAll')) return await exportAll().catch(App.reportError);
       if (e.target.closest('#expLed')) return await exportLedgerCSV().catch(App.reportError);

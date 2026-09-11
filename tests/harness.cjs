@@ -29,7 +29,7 @@ async function create(shared, options = {}) {
   };
   ctx.window=ctx; vm.createContext(ctx);
   const load=(f)=>vm.runInContext(fs.readFileSync(path.join(ROOT,f),'utf8'),ctx,{filename:f});
-  ['js/domain.js','js/storage.js','js/indexeddb.js','js/core.js','js/safety.js','js/migrations.js','js/i18n.js','js/auth.js','js/backup.js','js/returns.js','js/supplier-corrections.js', 'js/stock-adjustments.js','js/voice.js','js/qr.js','js/ui.js','js/pos.js','js/insights.js','js/ledger.js','js/inventory.js','js/settings.js'].forEach(load);
+  ['js/domain.js','js/storage.js','js/indexeddb.js','js/core.js','js/safety.js','js/migrations.js','js/i18n.js','js/auth.js','js/backup.js','js/returns.js','js/supplier-corrections.js', 'js/stock-adjustments.js', 'js/stores-transfers.js','js/voice.js','js/qr.js','js/ui.js','js/pos.js','js/insights.js','js/ledger.js','js/inventory.js','js/settings.js'].forEach(load);
   const A=ctx.App; if (await A.acquireWriter()) { if (!options.noBoot) (await A.boot('audit')); }
   A.toast=()=>{}; A.buzz=()=>{}; A.bump=()=>{}; A.confetti=()=>{};
   A.$=node; A.$$=()=>[]; A.render=()=>{};

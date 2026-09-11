@@ -269,6 +269,7 @@
       '<div class="btn-row"><button class="btn sm" id="impCsv">📥 ' + t('inv.import') + '</button>' +
       '<button class="btn sm" id="expCsv">📤 CSV</button>' +
       (App.isOwner()?'<button class="btn sm" id="adjustHistory">Stock adjustments</button>':'')+
+      (App.isOwner()?'<button class="btn sm" id="transferHistory">Stock transfers</button>':'')+
       '<button class="btn pri" id="addItem">➕ ' + t('inv.addItem') + '</button></div></div>' +
 
       ((out.length || low.length || exp.length) ?
@@ -326,6 +327,7 @@
     main.addEventListener('click', (e) => {
       const adjust=e.target.closest('[data-adjust]');if(adjust)return App.stockAdjustmentDialog(adjust.dataset.adjust);
       if(e.target.closest('#adjustHistory'))return App.stockAdjustmentHistory();
+      if(e.target.closest('#transferHistory'))return App.transferHistory();
       const v = e.target.closest('[data-v]'), c = e.target.closest('[data-ic]');
       const r = e.target.closest('[data-restock]'), ed = e.target.closest('[data-edit]');
       if (v) { f.view = v.dataset.v; return App.render(); }

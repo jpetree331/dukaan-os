@@ -268,15 +268,15 @@
   /* ═════════ daily target celebration ═════════ */
   App.checkTarget = async function () {
     const st = App.DB().settings;
-    if (!st.dailyTarget) return;
+    if (!App.storeTarget()) return;
     const today = App.stats.today().sales;
     const key = App.dayKey(Date.now());
-    if (today >= st.dailyTarget && st.celebratedOn !== key) {
-      st.celebratedOn = key;
+    if (today >= App.storeTarget() && st.celebratedOn !== key+'/'+App.S()) {
+      st.celebratedOn = key+'/'+App.S();
       (await App.save({ sync: false, render: false }));
       setTimeout(() => {
         App.confetti({ count: 170, y: innerHeight * 0.3 });
-        App.toast('ok', '🎯 ' + t('dash.targetHit'), money(today, true) + ' / ' + money(st.dailyTarget));
+        App.toast('ok', '🎯 ' + t('dash.targetHit'), money(today, true) + ' / ' + money(App.storeTarget()));
       }, 700);
     }
   };
@@ -318,7 +318,7 @@
     const insights = AI.all().slice(0, 5);
     const outLow = App.items().filter((i) => App.stockState(i) !== 'ok');
     const exp = App.expiringBatches(14);
-    const pct = st.dailyTarget ? Math.min(100, (today.sales / st.dailyTarget) * 100) : 0;
+    const pct = App.storeTarget() ? Math.min(100, (today.sales / App.storeTarget()) * 100) : 0;
     const dPct = yest.sales > 0 ? Math.round(((today.sales - yest.sales) / yest.sales) * 100) : null;
     const hour = new Date().getHours();
     const greet = App.lang() === 'hi' ? 'नमस्ते' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -350,10 +350,10 @@
       '<div class="card">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
       '<h3 style="font-size:15px">🎯 ' + t('dash.target') + '</h3><div class="spacer"></div>' +
-      '<b class="num">' + money(today.sales) + ' / ' + money(st.dailyTarget) + '</b></div>' +
+      '<b class="num">' + money(today.sales) + ' / ' + money(App.storeTarget()) + '</b></div>' +
       '<div class="pbar" style="height:12px"><i class="' + (pct >= 100 ? 'g' : '') + '" style="width:' + pct + '%"></i></div>' +
       '<p style="font-size:12.5px;margin-top:8px;font-weight:650;color:' + (pct >= 100 ? 'var(--ok)' : 'var(--ink-3)') + '">' +
-      (pct >= 100 ? t('dash.targetHit') : t('dash.toGo', { amt: money(st.dailyTarget - today.sales) })) + '</p>' +
+      (pct >= 100 ? t('dash.targetHit') : t('dash.toGo', { amt: money(App.storeTarget() - today.sales) })) + '</p>' +
       '<div class="sec-title">📈 ' + t('dash.trend') + '</div>' +
       App.chart.line(series.map((s) => ({ label: s.label, short: s.dow[0], value: s.value })), { height: 200 }) +
       '</div>' +
