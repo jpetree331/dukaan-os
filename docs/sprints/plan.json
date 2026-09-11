@@ -4,7 +4,7 @@
   "baselineCommit": "74dfc18282d0faaff9db03ff2453e8cdb9c18935",
   "baselineVerification": "VERIFY-00",
   "authorization": "Implementation with separate detailed sprint commits and pushes authorized 2026-09-11; no production deployment implied.",
-  "defaultBuildDays": "1ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ2 focused engineering days; split before exceeding 3",
+  "defaultBuildDays": "1-2 focused engineering days; split before exceeding 3",
   "sprints": [
     {
       "number": 1,
@@ -149,9 +149,11 @@
       ],
       "recovery": "Publish the forward-recovery and rollback decision table. After new-version transactions exist, reconcile them into recovery; never simply swap to a stale source snapshot.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "58ac83d4567bdfc50846828696dbcb03318ac256",
+      "evidence": [
+        "reports/BUILD-04.md"
+      ]
     },
     {
       "number": 5,
