@@ -1,6 +1,6 @@
 # VERIFY-01 — Verify domain contracts and reference fixtures
 
-Status: **planned**. Build under review: [BUILD-01](BUILD-01.md).
+Status: **passed (self-verified)**. See [verification](../reports/VERIFY-01.md). Build under review: [BUILD-01](BUILD-01.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope
