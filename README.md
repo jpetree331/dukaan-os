@@ -4,7 +4,7 @@
 
 Dukaan OS is a smart billing, inventory and *udhaar* (customer credit) ledger built for small local Indian shops — kirana and general stores selling chips, chocolates and daily items. It is designed for someone who has never used software like this before, works on a cheap Android phone, and keeps working when the internet doesn't.
 
-> Zero build step. Zero dependencies. Run `node server.js` and open the local counter.
+> No development build step or runtime dependencies. Run `node server.js` and open the local counter. Deployment uses the public-assets build below.
 
 ---
 
@@ -106,7 +106,7 @@ sw.js             service worker
 
 Data lives in `localStorage`, namespaced per profile. Only one Dukaan OS tab per origin can write at a time. Saves complete before a transaction is reported as successful; a failed write restores the prior in-memory state. Export backups regularly. Cloud sync needs a real backend, authenticated writes, durable operations and conflict handling; the legacy queue is not a complete replication log.
 
-The optional login and staff PIN are local convenience controls. Shop data and PINs are not encrypted, and someone with browser/storage access can bypass them. Set an owner staff PIN before switching to a cashier. Broader security hardening remains separate work.
+The optional login and staff PIN are local convenience controls. Shop data and PINs are not encrypted, and someone with browser/storage access can bypass them. Set an owner staff PIN before switching to a cashier. See the security report for completed hardening and remaining architectural limits.
 
 ## Verification and repair notes
 
@@ -115,7 +115,7 @@ Run `npm test` with Node 22 or newer. Tests use synthetic, in-memory shop data a
 - New bills retain consumed batch details and redeemed-point counts so voids can reverse them accurately. Historical bills cannot recover batch metadata that the old code never stored.
 - Payments larger than the outstanding balance are rejected. Voiding a repaid credit bill records a negative customer balance as credit owed; subsequent udhaar bills offset that credit. A separate cash-refund workflow is still future work.
 - Purchases record cash/UPI/card mode; historical purchases without a mode are treated as cash for reconciliation.
-- Restore validates the complete v2 data shape and references before replacement, and retains the previous data under the account's `.before-restore` storage key. Invalid stored data stops startup and offers a raw recovery download. It is never automatically erased.
+- Restore validates the v2 data shape and references before replacement, and retains the previous data under the account's `.before-restore` storage key. Invalid stored data stops startup and is preserved. The raw startup download was removed during security hardening; retain the browser profile and use an owner-held backup or controlled local recovery.
 - GST reports and profit exclude collected tax appropriately; these are operational estimates, not a replacement for accounting review. Payment modes are manual records, not verified collections.
 
 ## 🗺️ Roadmap / help wanted
@@ -129,6 +129,8 @@ This is an open project and I'd love collaborators. Things I want to get right n
 - Field testing with actual shopkeepers
 
 Ideas and PRs welcome — open an issue or reach out.
+
+The [build and verification sprint plan](docs/sprints/README.md) translates this roadmap into short build/verify cycles, with all-pairs seam coverage, cumulative shop journeys, explicit decision gates and a report/push protocol. It contains 29 core build sprints and two optional local-vault extensions; these are planned, not implemented. Start execution with VERIFY-00. Run `npm run plan:check` to validate the planning package's structure.
 
 ## 📄 License
 
