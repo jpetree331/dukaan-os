@@ -1,6 +1,6 @@
 # VERIFY-07 — Verify customer returns and refunds
 
-Status: **planned**. Build under review: [BUILD-07](BUILD-07.md).
+Status: **passed; formal-shift seam remains due at VERIFY-11**. Build under review: [BUILD-07](BUILD-07.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

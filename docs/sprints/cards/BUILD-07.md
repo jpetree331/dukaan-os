@@ -1,6 +1,6 @@
 # BUILD-07 — Customer returns and refunds
 
-Status: **built-unverified**. Track: Local workflows.
+Status: **passed; formal-shift seam remains due at VERIFY-11**. Track: Local workflows.
 Sizing target: 1–2 focused engineering days; split this card before exceeding 3. This is a slice budget, not a promised date.
 
 ## Why

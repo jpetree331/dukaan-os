@@ -13,6 +13,8 @@ Open, sell cash/UPI, collect debt, pay supplier, refund, withdraw and close acro
 
 ## Verification work
 
+Carry-forward from [VERIFY-07](../reports/VERIFY-07.md): at SEAM-07-11, close a formal cash shift, then record a return refund in a later shift. Prove the closed count and expected amount remain unchanged, and only the later shift receives the cash movement. Earlier count-record checks did not exercise this future lifecycle.
+
 1. Review the final diff, schema changes, migrations, untracked/generated/configuration files and feature flags against the card.
 2. Run relevant existing regressions and targeted negative/failure cases. Current baseline commands are `npm test`, `npm run build` and `npm run plan:check`; add/document real-browser or backend commands where this build requires them.
 3. Test the changed feature through normal UI/API entry points and at the authorization/transaction boundary. Include restart, cancellation, duplicate submission, malformed input and applicable migration cases.
