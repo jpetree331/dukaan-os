@@ -2,6 +2,41 @@
 (function (w) {
   'use strict';
   const App = w.App;
+  let locked = false, epoch = 0;
+  App.isLocked = () => locked;
+  App.context = () => ({ epoch, account: App.accountId, staff: App.DB().session.staffId, store: App.S() });
+  App.contextValid = (c) => !locked && c.epoch === epoch && c.account === App.accountId &&
+    c.staff === App.DB().session.staffId && c.store === App.S();
+  App.assertContext = (c) => { if (!App.contextValid(c)) throw new Error('The counter changed or locked. Open this action again.'); App.requireAccess(); };
+  App.invalidateContext = () => { epoch++; App.emit('secureclear'); };
+  App.setLocked = (value) => { locked = value; if (value) App.invalidateContext(); };
+  App.requireAccess = () => {
+    if (locked || (App.auth && App.auth.gateOn() && !App.auth.currentAccount())) throw new Error('Unlock or sign in to continue.');
+    const staff = App.me();
+    if (!staff || staff.active === false) throw new Error('This staff member is not active.');
+  };
+  App.limits = { fileBytes: 16 * 1024 * 1024, text: 4096, records: 50000 };
+  App.checkFile = (file) => { if (!file || file.size > App.limits.fileBytes) throw new Error('File is too large (maximum 16 MB).'); };
+  // Bound the object before cloning or recursion in the schema validator.
+  App.checkDataBounds = (input) => {
+    const pending = [[input, 0]], seen = new Set(); let nodes = 0, chars = 0;
+    while (pending.length) {
+      const [value, depth] = pending.pop();
+      if (++nodes > 500000 || depth > 16) throw new Error('Shop data is too large or too deeply nested.');
+      if (typeof value === 'string') {
+        chars += value.length;
+        if (value.length > App.limits.text || chars > 4000000) throw new Error('Shop data contains too much text.');
+      } else if (value && typeof value === 'object') {
+        if (seen.has(value)) throw new Error('Shop data contains repeated or circular objects.');
+        seen.add(value);
+        if (Array.isArray(value) && value.length > App.limits.records) throw new Error('Too many records in one collection.');
+        for (const [key, child] of Object.entries(value)) {
+          if (key.length > 100 || ['__proto__', 'constructor', 'prototype'].includes(key)) throw new Error('Unsafe data key.');
+          pending.push([child, depth + 1]);
+        }
+      }
+    }
+  };
   let writable = false, release;
   App.assertWriter = () => {
     if (!writable) throw new Error('This counter is not writable. Close the other Dukaan OS tab and reload.');
@@ -17,11 +52,12 @@
       writable = false;
     }).catch(reject);
   });
-  w.addEventListener('pagehide', () => { writable = false; if (release) release(); });
+  w.addEventListener('pagehide', () => { App.invalidateContext(); writable = false; if (release) release(); });
   w.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
 
   App.requirePermission = (permission) => {
     App.assertWriter();
+    App.requireAccess();
     if (!App.can(permission)) throw new Error('Owner access required for this action.');
   };
   App.reportError = (e) => App.toast && App.toast('err', 'Not saved', e.message || String(e));
@@ -34,6 +70,7 @@
 
   // Validate before replacing storage. Never silently turn unreadable data into an empty shop.
   App.validateData = (input) => {
+    App.checkDataBounds(input);
     const d = JSON.parse(JSON.stringify(input, (k, v) => {
       if (typeof v === 'number' && !Number.isFinite(v)) throw new Error('Invalid shop data: non-finite number');
       return v;
@@ -44,6 +81,8 @@
     const id = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(x) && !['__proto__', 'constructor', 'prototype'].includes(x);
     const date = (x) => !x || (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && new Date(x).toISOString().slice(0, 10) === x);
     const collections = ['stores', 'staff', 'items', 'customers', 'suppliers', 'bills', 'payments', 'purchases', 'supplierPayments', 'activity', 'shifts'];
+    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', ...collections]);
+    for (const key of Object.keys(d)) if (!rootKeys.has(key)) fail('unknown field: ' + key);
     for (const key of collections) {
       if (!Array.isArray(d[key])) fail(key + ' must be an array');
       const ids = new Set();
@@ -54,10 +93,14 @@
     }
     const exists = (key, x) => d[key].some((r) => r.id === x);
     if (!d.stores.length || !exists('stores', d.settings.activeStore)) fail('active store is missing');
-    if (!d.staff.some((s) => s.role === 'owner' && s.active !== false) || !exists('staff', d.session.staffId)) fail('owner or active staff is missing');
+    if (!d.staff.some((s) => s.role === 'owner' && s.active !== false) || !d.staff.some((s) => s.id === d.session.staffId && s.active !== false)) fail('owner or active staff is missing');
     for (const s of d.staff) if (!['owner', 'cashier'].includes(s.role)) fail('unknown staff role');
     for (const key of collections.filter((k) => !['stores', 'staff'].includes(k))) {
-      for (const x of d[key]) if (x.storeId && !exists('stores', x.storeId)) fail(key + ' references a missing store');
+      for (const x of d[key]) {
+        // Legacy single-store records have one unambiguous owner. Never guess in multi-store data.
+        if (!x.storeId && d.stores.length === 1) x.storeId = d.stores[0].id;
+        if (!exists('stores', x.storeId)) fail(key + ' references a missing store');
+      }
     }
     const numeric = (x, keys, signed = []) => {
       for (const k of keys) if (x[k] != null) App.number(x[k], k, signed.includes(k) ? -1e9 : 0);

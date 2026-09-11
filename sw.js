@@ -1,22 +1,24 @@
 /* Dukaan OS — offline-first service worker.
    Cache-first for the shell so the counter opens with no network at all. */
-const CACHE = 'dukaan-os-v4';
+const PREFIX = 'dukaan-os-' + encodeURIComponent(self.registration.scope) + '-';
+const CACHE = PREFIX + 'security-v1';
 const SHELL = [
   './', './index.html', './manifest.json',
   './css/app.css',
-  './js/core.js', './js/safety.js', './js/i18n.js', './js/qr.js', './js/ui.js', './js/auth.js', './js/voice.js',
+  './js/core.js', './js/safety.js', './js/i18n.js', './js/qr.js', './js/ui.js', './js/auth.js', './js/backup.js', './js/voice.js',
   './js/pos.js', './js/inventory.js', './js/ledger.js', './js/insights.js',
   './js/settings.js', './js/app.js'
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Wait for old tabs to close. Do not replace a running till mid-transaction.
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('dukaan-os-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

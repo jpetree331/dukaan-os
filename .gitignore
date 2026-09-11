@@ -18,3 +18,7 @@ npm-debug.log*
 # Deploy artefacts
 .vercel/
 .netlify/
+dist/
+dukaan-backup-*.json
+dukaan-recovery*.json
+dukaan-ledger-*.csv

@@ -283,6 +283,7 @@
 
   /* ═════════ morning summary ═════════ */
   App.morningBrief = function (force) {
+    if (!App.can('reports')) return;
     const st = App.DB().settings;
     const key = App.dayKey(Date.now());
     if (!force && st.seenSummaryOn === key) return;
@@ -306,6 +307,7 @@
 
   /* ═════════ dashboard ═════════ */
   App.views.dashboard = function (main) {
+    App.requirePermission('reports');
     const st = App.DB().settings;
     const today = App.stats.today(), week = App.stats.days(7), month = App.stats.month();
     const yest = App.stats.range(App.startOfDay(Date.now() - App.DAY).getTime(), App.startOfDay(Date.now()).getTime() - 1);

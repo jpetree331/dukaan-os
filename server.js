@@ -4,11 +4,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const PORT = process.env.PORT || 4173;
 const HOST = process.env.HOST || '127.0.0.1';
-const PUBLIC = new Set(['index.html', 'manifest.json', 'sw.js', 'css/app.css',
-  ...['core', 'safety', 'i18n', 'qr', 'ui', 'auth', 'voice', 'pos', 'inventory', 'ledger', 'insights', 'settings', 'app'].map((s) => 'js/' + s + '.js')]);
+const PUBLIC = new Set(require('./public-assets.cjs'));
+const HEADERS = require('./security-headers.cjs');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8' };
 const server = http.createServer((req, res) => {
+  for (const [key, value] of Object.entries(HEADERS)) res.setHeader(key, value);
   if (!['GET', 'HEAD'].includes(req.method)) return res.writeHead(405, { Allow: 'GET, HEAD' }).end();
   let pathname;
   try { pathname = decodeURIComponent(req.url.split('?')[0]); }

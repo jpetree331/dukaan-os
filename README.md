@@ -55,11 +55,11 @@ Say **"do packet lays aur ek maggi"** and the cart fills itself.
 
 ### ⚙️ Everything else
 - **Hindi / English UI** toggle (some prompts and labels still need translation), dark mode, receipt colour themes
-- Staff logins with limited cashier permissions and an activity log
+- Staff switching with limited cashier permissions and a local activity log (not tamper-proof)
 - Multi-store support under one profile
 - Optional 4-digit PIN lock and an optional **username/password login** (PBKDF2-SHA256, salted — never stored in plain text; off by default)
 - Daily sales target with a celebration when it's hit, and a friendly **shop health score**
-- One-tap full JSON backup & restore, ledger CSV export
+- Password-encrypted JSON backup & business-record restore, owner ledger CSV export
 - **Offline-first PWA** — installable, service-worker cached, with a visible device-storage/offline indicator. No cloud upload is currently implemented
 
 ---
@@ -78,11 +78,13 @@ Voice input and barcode scanning need **Chrome on Android or desktop**.
 
 ## 🌐 Deploy
 
-It's a static site. Drop the folder on **Vercel**, **Netlify**, or **GitHub Pages** — no build command, output directory is the repo root. The service worker enables full offline use once deployed over HTTPS.
+Run `npm run build` and deploy **only `dist/`** to a dedicated HTTPS origin. Vercel and Netlify configuration is included; the generated Netlify `_headers` and Vercel response rules carry the security policies. On other hosts, configure the equivalent response headers from `security-headers.cjs`, plus HTTPS/HSTS. GitHub Pages alone does not provide the required configurable security response headers.
+
+Never deploy the repository root or place customer backups in the repository. A path prefix is not browser-storage isolation: use one Dukaan installation per origin. The build derives the service-worker version from public assets and headers. Updates wait for all existing tabs to close; finish work, close every tab, then reopen. Verify deployed headers and an installed-PWA upgrade before using a release with real records.
 
 ## 🧱 Tech
 
-Plain HTML, CSS and JavaScript. No framework, no bundler, no CDN dependencies — every piece (charts, QR encoder, voice parser, insight engine) is hand-written so the whole app runs with zero internet.
+Plain HTML, CSS and JavaScript. No framework, no bundler, no CDN dependencies — charts, QR encoding, voice parsing and insights run locally. Browser speech recognition may use a remote service and needs explicit consent; typing remains available offline.
 
 ```
 index.html        app shell
@@ -131,3 +133,18 @@ Ideas and PRs welcome — open an issue or reach out.
 ## 📄 License
 
 MIT
+
+
+## Security and backup behavior
+
+- Login is verified in memory on each page load and expires after eight hours. PIN/password attempts receive progressive delays. New passwords require 12–256 characters; existing password hashes migrate after successful login.
+- A protected counter locks after five idle minutes or when hidden. Open dialogs and microphone/camera activity are cancelled on lock, logout and staff/store changes. With account login enabled but no shop PIN, locking signs out.
+- Cashiers can bill, restock at the existing cost, view customers and take payments. Owners control costs, analytics, stores, staff, settings and inventory exports. These are application controls, not protection against someone controlling the browser profile.
+- Backups use AES-256-GCM with a separate password. Keep that password safely; it cannot be recovered. Staff PINs are omitted. Existing unencrypted backups remain importable, but new exports are encrypted.
+- Restore replaces business records while retaining current staff, PINs and UPI destination. A new device starts with its own owner/settings; set its payment address and staff access deliberately after restoring. Imported historical staff IDs can lack a corresponding current staff name. An old authentic backup can roll the books back: check dates and totals.
+- Ordinary JSON/CSV imports have size and structural limits. Single-store legacy records with missing store IDs are assigned to that store; ambiguous multi-store records are rejected without replacing current data.
+- Shop data and staff PINs **remain unencrypted in browser storage**. Local attempts/session controls can be bypassed by someone controlling that storage. Use a trusted device and browser profile. A fully encrypted local vault and server-enforced multi-user authorization are separate future work.
+- The automatic raw startup recovery download has been removed. Startup errors preserve the original data. Do not clear the browser profile on corruption: retain a copy of it and use an owner-held backup on a separate installation, or arrange controlled local recovery with the owner.
+- New migrations track copy ownership and remove migrated plaintext sources. Deletion removes known account/recovery/queue copies and an owned anonymous copy. Older unlabelled anonymous copies cannot safely be attributed to one account automatically; owners must review them separately. Downloaded backups and device backups are outside the app's deletion control.
+
+See [security policy](SECURITY.md) and [implementation/verification report](docs/SECURITY-HARDENING-PASS.md).

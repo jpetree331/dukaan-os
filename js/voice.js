@@ -227,10 +227,15 @@
     supported: () => !!SR,
     active: () => active,
 
-    start(opts) {
+    async start(opts) {
       opts = opts || {};
       if (!SR) { opts.onError && opts.onError('unsupported'); return false; }
-      if (active) this.stop();
+      App.requireAccess();
+      const context = App.context(), orb = App.$('#voiceOrb'); if (orb) orb.hidden = true;
+      if (!await App.confirm('Use voice input?', 'Your browser may send microphone audio to its speech provider. Use typing if you prefer not to share audio.')) { const orb = App.$('#voiceOrb'); if (orb) orb.hidden = true; return false; }
+      if (!App.contextValid(context)) return false;
+      if (orb) orb.hidden = false;
+      if (active) this.abort();
       try {
         rec = new SR();
         rec.lang = opts.lang || (App.lang() === 'hi' ? 'hi-IN' : 'en-IN');
@@ -241,6 +246,7 @@
 
       let finalText = '', alts = [];
       rec.onresult = (e) => {
+        if (!App.contextValid(context)) return;
         let interim = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const r = e.results[i];
@@ -252,12 +258,14 @@
         opts.onPartial && opts.onPartial((finalText + interim).trim());
       };
       rec.onerror = (e) => {
+        if (!App.contextValid(context)) return;
         active = false;
         const code = e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'denied'
           : e.error === 'no-speech' ? 'nospeech' : e.error;
         opts.onError && opts.onError(code);
       };
       rec.onend = () => {
+        if (!App.contextValid(context)) return;
         active = false;
         opts.onFinal && opts.onFinal(finalText.trim(), alts);
       };
@@ -266,7 +274,7 @@
     },
 
     stop() { if (rec) { try { rec.stop(); } catch (e) { } } active = false; },
-    abort() { if (rec) { try { rec.abort(); } catch (e) { } } active = false; },
+    abort() { if (rec) { rec.onresult = null; rec.onend = null; rec.onerror = null; try { rec.abort(); } catch (e) { } } active = false; },
 
     /* pick whichever alternative resolves to the most known items */
     bestOf(alts, items) {
@@ -295,6 +303,7 @@
     }
   };
 
+  App.on('secureclear', () => { voice.abort(); if (w.speechSynthesis) w.speechSynthesis.cancel(); });
   App.voice = voice;
   App.parseSpeech = parse;
   App.matchItem = matchItem;

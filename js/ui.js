@@ -31,7 +31,18 @@
 
   /* ───────── modal ───────── */
   let openModals = 0;
+  const modalClosers = new Set();
+  App.on('secureclear', () => {
+    for (const close of [...modalClosers]) close();
+    for (const id of ['#toastRoot', '#printArea']) { const node = $(id); if (node) node.innerHTML = ''; }
+    const orb = $('#voiceOrb'); if (orb) orb.hidden = true;
+    if (App.isLocked()) {
+      const shell = $('#shell'); if (shell) { shell.hidden = true; shell.inert = true; }
+      const main = $('#main'); if (main) main.innerHTML = '';
+    }
+  });
   App.modal = function (opts) {
+    const context = App.context();
     const back = el('<div class="modal-back"></div>');
     const m = el('<div class="modal' + (opts.wide ? ' wide' : '') + '"></div>');
     m.innerHTML =
@@ -44,10 +55,13 @@
     if (typeof opts.body === 'string') body.innerHTML = opts.body; else if (opts.body) body.appendChild(opts.body);
 
     const api = { root: m, body, foot, close: () => { busy = false; close(); } };
+    const forceClose = () => { busy = false; close(); back.hidden = true; };
+    modalClosers.add(forceClose);
     let closed = false, busy = false;
     function close() {
       if (closed || busy) return;
       closed = true;
+      modalClosers.delete(forceClose);
       document.removeEventListener('keydown', onk);
       m.classList.add('out'); back.style.opacity = 0;
       setTimeout(() => { back.remove(); App.emit('modalclosed'); }, 240);
@@ -61,6 +75,7 @@
         if (busy || closed) return;
         btn.disabled = true;
         try {
+          App.assertContext(context);
           // The callback may explicitly close its own modal after an awaited operation.
           let result = b.fn ? b.fn(api) : undefined;
           if (result && typeof result.then === 'function') { busy = true; result = await result; busy = false; }
@@ -79,7 +94,7 @@
     document.addEventListener('keydown', onk);
     $('#modalRoot').appendChild(back);
     openModals++; document.body.style.overflow = 'hidden';
-    setTimeout(() => { const f = m.querySelector('[autofocus],input,select'); if (f && w.innerWidth > 860) f.focus(); }, 120);
+    setTimeout(() => { const f = m.querySelector('[autofocus],input,select'); if (!closed && f && w.innerWidth > 860) f.focus(); }, 120);
     if (opts.onReady) opts.onReady(api);
     return api;
   };
@@ -112,7 +127,7 @@
         { label: opts.ok || App.t('com.save'), cls: 'pri', fn: () => res($('#_pv', body).value) }],
         onClose: () => res(null)
       });
-      $('#_pv', body).addEventListener('keydown', (e) => { if (e.key === 'Enter') { res($('#_pv', body).value); m.close(); } });
+      $('#_pv', body).addEventListener('keydown', (e) => { if (e.key === 'Enter') { if (!App.isLocked()) { res($('#_pv', body).value); m.close(); } } });
     });
   };
 
@@ -414,8 +429,10 @@
     }).join(',')).join('\n');
   };
   App.parseCSV = function (text) {
+    if (typeof text !== 'string' || text.length > 4000000) throw new Error('CSV is too large.');
     const rows = []; let row = [], cur = '', q = false;
     for (let i = 0; i < text.length; i++) {
+      if (row.length > 100 || rows.length >= App.limits.records || cur.length > App.limits.text) throw new Error('CSV exceeds the supported row or field limits.');
       const ch = text[i];
       if (q) {
         if (ch === '"' && text[i + 1] === '"') { cur += '"'; i++; }
@@ -425,6 +442,7 @@
       else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
       else if (ch !== '\r') cur += ch;
     }
+    if (cur.length > App.limits.text || row.length > 100) throw new Error('CSV field is too long.');
     if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
     return rows.filter((r) => r.some((c) => String(c).trim() !== ''));
   };

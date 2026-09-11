@@ -18,7 +18,7 @@ async function create(shared, options = {}) {
     });
     return nodes.get(key);
   };
-  const ctx = { console:{log(){},warn(){},error(){}}, TextEncoder, Uint8Array, crypto:crypto.webcrypto,
+  const ctx = { console:{log(){},warn(){},error(){}}, TextEncoder, TextDecoder, btoa, atob, Uint8Array, crypto:crypto.webcrypto,
     navigator:{onLine:false, locks: options.locks || {request: async (name, opts, fn) => fn({name})}}, location:{hash:'',hostname:'localhost',protocol:'http:',reload(){}},
     innerWidth:1280, innerHeight:900, devicePixelRatio:1,
     localStorage:{getItem:k=>storage.get(k)??null,setItem(k,v){storage.set(k,String(v));},removeItem:k=>storage.delete(k)},
@@ -29,7 +29,7 @@ async function create(shared, options = {}) {
   };
   ctx.window=ctx; vm.createContext(ctx);
   const load=(f)=>vm.runInContext(fs.readFileSync(path.join(ROOT,f),'utf8'),ctx,{filename:f});
-  ['js/core.js','js/safety.js','js/i18n.js','js/auth.js','js/voice.js','js/qr.js','js/ui.js','js/pos.js','js/insights.js','js/ledger.js','js/inventory.js','js/settings.js'].forEach(load);
+  ['js/core.js','js/safety.js','js/i18n.js','js/auth.js','js/backup.js','js/voice.js','js/qr.js','js/ui.js','js/pos.js','js/insights.js','js/ledger.js','js/inventory.js','js/settings.js'].forEach(load);
   const A=ctx.App; if (await A.acquireWriter()) { if (!options.noBoot) A.boot('audit'); }
   A.toast=()=>{}; A.buzz=()=>{}; A.bump=()=>{}; A.confetti=()=>{};
   A.$=node; A.$$=()=>[]; A.render=()=>{};

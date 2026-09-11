@@ -174,6 +174,7 @@
     }
   }
   function save(opts) {
+    App.requireAccess();
     persist(); // Success UI is permitted only after this atomic write succeeds.
     if (opts && opts.sync !== false) queueSync(opts.op);
     if (!opts || opts.render !== false) App.emit('change');
@@ -182,12 +183,18 @@
   App.persistNow = persist;
   App.restoreBackup = (data) => {
     App.requirePermission('settings');
+    App.auth.requireFresh();
     const valid = App.validateData(data);
+    // A business backup never grants access or redirects payments.
+    valid.staff = JSON.parse(JSON.stringify(DB.staff));
+    valid.session = { staffId: DB.session.staffId };
+    for (const key of ['pin', 'pinOn', 'upiId']) valid.settings[key] = DB.settings[key];
     // Keep the prior snapshot for recovery, before replacing the live key.
     const previous = localStorage.getItem(dataKey());
     if (previous) localStorage.setItem(dataKey() + '.before-restore', previous);
     restore(DB, valid);
     save({ sync: false });
+    App.invalidateContext();
     if (App.posClear) App.posClear();
   };
 
@@ -208,7 +215,7 @@
 
   /* ───────── scoped selectors ───────── */
   const S = () => DB.settings.activeStore;
-  const mine = (arr) => arr.filter((x) => !x.storeId || x.storeId === S());
+  const mine = (arr) => arr.filter((x) => x.storeId === S());
   App.S = S;
   App.items = () => mine(DB.items).filter((i) => !i.deleted);
   App.customers = () => mine(DB.customers).filter((c) => !c.deleted);
@@ -221,9 +228,10 @@
   App.customer = (id) => App.customers().find((c) => c.id === id);
   App.supplier = (id) => App.suppliers().find((s) => s.id === id);
   App.staff = (id) => DB.staff.find((s) => s.id === id);
-  App.me = () => App.staff(DB.session.staffId) || DB.staff[0];
+  App.me = () => App.staff(DB.session.staffId);
   App.isOwner = () => (App.me() || {}).role === 'owner';
   App.can = (what) => {
+    try { App.requireAccess(); } catch (e) { return false; }
     const r = (App.me() || {}).role;
     if (r === 'owner') return true;
     if (r !== 'cashier') return false;
@@ -473,6 +481,7 @@
       const it = App.item(itemId); if (!it) throw new Error('Item not found.');
       App.number(qty, 'Quantity', 0.0001);
       if (cost != null) App.number(cost, 'Cost');
+      if (!App.isOwner() && cost != null && cost !== it.cost) throw new Error('Only an owner can change item cost.');
       giveStock(it, +qty, expiry || '', cost);
       if (cost != null) it.cost = cost;
       log('restock', `${it.name} +${qty}`, { itemId });
@@ -573,6 +582,7 @@
   /* ───────── seeding ───────── */
   function seed() {
     App.requirePermission('settings');
+    App.requirePermission('settings');
     if (!App.isBlankAccount()) throw new Error('Sample data is only available in an empty shop.');
     const R = rng(20260724);
     const now = Date.now();
@@ -668,9 +678,10 @@
 
   App.resetAll = function () {
     App.requirePermission('settings');
-    localStorage.removeItem(dataKey());
+    App.auth.requireFresh();
+    App.wipeAccountData(App.accountId);
     committed.set(dataKey(), null);
-    localStorage.removeItem(queueKey());
+    App.setLocked(true);
     location.reload();
   };
 
@@ -691,8 +702,9 @@
      deleted. Takes an explicit id because the account being removed is not
      always the one currently signed in. */
   App.wipeAccountData = function (accountId) {
-    try { localStorage.removeItem('dukaanos.v2.' + accountId); } catch (e) { }
-    try { localStorage.removeItem('dukaanos.syncq.' + accountId); } catch (e) { }
+    App.assertWriter();
+    if (!/^[A-Za-z0-9_-]{1,100}$/.test(accountId)) throw new Error('Invalid account ID.');
+    for (const key of ['dukaanos.v2.' + accountId + '.before-restore', 'dukaanos.syncq.' + accountId, 'dukaanos.v2.' + accountId]) localStorage.removeItem(key);
   };
 
   App.boot = function (accountId) {

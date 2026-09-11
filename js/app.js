@@ -19,8 +19,8 @@
   /* ───────── routing ───────── */
   App.go = function (v) {
     if (!App.views[v]) v = 'dashboard';
-    if (!booted) return;
-    if (!App.isOwner() && ['settings', 'reports', 'suppliers'].includes(v)) v = 'billing';
+    if (!booted || App.isLocked()) return;
+    if (!App.isOwner() && ['dashboard', 'settings', 'reports', 'suppliers'].includes(v)) v = 'billing';
     view = v;
     location.hash = '#' + v;
     App.render();
@@ -31,8 +31,8 @@
   };
 
   App.render = function () {
-    if (!booted) return;
-    if (!App.isOwner() && ['settings', 'reports', 'suppliers'].includes(view)) { view = 'billing'; location.hash = '#billing'; }
+    if (!booted || App.isLocked()) return;
+    if (!App.isOwner() && ['dashboard', 'settings', 'reports', 'suppliers'].includes(view)) { view = 'billing'; location.hash = '#billing'; }
     const old = $('#main');
     if (!old) return;
     /* Swap in a brand-new <main> instead of just clearing innerHTML. Each
@@ -48,8 +48,9 @@
     catch (e) {
       console.error(e);
       main.innerHTML = '<div class="card"><div class="alert bad"><span class="ai">⚠️</span><span>Something went wrong drawing this screen.<br><code style="font-size:11px">' +
-        App.esc(e.message) + '</code></span></div><button class="btn pri" onclick="location.reload()" style="margin-top:12px">Reload</button></div>';
+        App.esc(e.message) + '</code></span></div><button class="btn pri" id="errorReload" style="margin-top:12px">Reload</button></div>';
     }
+    const errorReload = $('#errorReload', main); if (errorReload) errorReload.onclick = () => location.reload();
     $$('.nav-item').forEach((n) => n.classList.toggle('on', n.dataset.view === view));
     $$('.tab').forEach((n) => n.classList.toggle('on', n.dataset.view === view));
     paintChrome();
@@ -63,14 +64,16 @@
     $('#whoPill').title = me.name + ' · ' + t('set.' + me.role);
     const sp = $('#storePill');
     sp.textContent = '🏪 ' + (db.stores.find((s) => s.id === st.activeStore) || {}).name;
-    sp.hidden = false;
+    sp.hidden = !App.isOwner();
     $('#btnLock').hidden = !st.pinOn;
     const acc = App.auth.currentAccount();
     $('#btnLogout').hidden = !acc;               /* nothing to log out of while auth is off */
     $('#btnLogout').title = acc ? 'Log out (@' + acc.username + ')' : 'Log out';
+    $$('.nav-item, .tab').forEach(n => { n.hidden = !App.isOwner() && ['dashboard', 'settings', 'reports', 'suppliers'].includes(n.dataset.view); });
     const h = App.stats.health();
     const hm = $('#healthMini');
-    if (hm) hm.innerHTML = '<span class="muted">' + t('dash.health') + '</span><b style="color:' +
+    if (hm) hm.hidden = !App.isOwner();
+    if (hm && App.isOwner()) hm.innerHTML = '<span class="muted">' + t('dash.health') + '</span><b style="color:' +
       (h.score >= 75 ? 'var(--ok)' : h.score >= 45 ? 'var(--warn)' : 'var(--bad)') + '">' + h.score + '/100</b>' +
       '<div class="pbar" style="margin-top:6px"><i class="' + (h.score >= 75 ? 'g' : h.score >= 45 ? '' : 'r') + '" style="width:' + h.score + '%"></i></div>';
     App.applyI18n();
@@ -119,15 +122,21 @@
   w.addEventListener('unhandledrejection', (e) => { App.reportError(e.reason); });
 
   /* ───────── PIN lock screen ───────── */
-  let pinBuf = '', onUnlock = null;
+  let pinBuf = '', onUnlock = null, pinBusy = false;
   function paintPin() {
     $('#pinDots').innerHTML = [0, 1, 2, 3].map((i) => '<i class="' + (i < pinBuf.length ? 'f' : '') + '"></i>').join('');
   }
   App.lock = function (after) {
     const st = App.DB().settings;
-    if (!st.pinOn || !st.pin) { after && after(); return; }
+    if (!st.pinOn || !st.pin) {
+      if (App.auth.gateOn()) { doLogout(); return; }
+      after && after(); return;
+    }
+    App.setLocked(true);
+    $('#shell').inert = true;
+    $('#main').innerHTML = '';
     onUnlock = after;
-    pinBuf = '';
+    pinBuf = ''; pinBusy = false;
     $('#lockTitle').textContent = st.shopName;
     $('#lockSub').textContent = t('lock.enter');
     $('#pinErr').textContent = '';
@@ -136,19 +145,28 @@
     $('#shell').hidden = true;
   };
   function pinPress(k) {
+    if (pinBusy || !App.isLocked()) return;
     const st = App.DB().settings;
     if (k === 'del') pinBuf = pinBuf.slice(0, -1);
     else if (pinBuf.length < 4) pinBuf += k;
     paintPin(); App.buzz();
     if (pinBuf.length === 4) {
+      pinBusy = true;
+      const lockEpoch = App.context().epoch;
       setTimeout(() => {
-        if (pinBuf === st.pin) {
+        if (lockEpoch !== App.context().epoch) return;
+        pinBusy = false;
+        try {
+          App.auth.checkPin(pinBuf, st.pin);
+          if (App.auth.gateOn() && !App.auth.currentAccount()) { doLogout(); return; }
+          App.setLocked(false);
+          $('#shell').inert = false;
           $('#lockScreen').hidden = true;
           $('#shell').hidden = false;
           const f = onUnlock; onUnlock = null;
           f && f();
-        } else {
-          $('#pinErr').textContent = t('lock.wrong');
+        } catch (e) {
+          $('#pinErr').textContent = e.message;
           $('.lock-card').classList.add('shake');
           setTimeout(() => $('.lock-card').classList.remove('shake'), 460);
           pinBuf = ''; paintPin(); App.buzz(120);
@@ -194,6 +212,20 @@
     location.reload();
   }
   App.logout = doLogout;
+  let idleTimer;
+  function suspend() {
+    if (!booted || App.isLocked()) return;
+    App.invalidateContext();
+    if (App.auth.gateOn() || App.DB().settings.pinOn) App.lock(() => App.render());
+  }
+  function activity() {
+    clearTimeout(idleTimer);
+    if (booted && App.auth.gateOn() && !App.auth.currentAccount()) { suspend(); return; }
+    idleTimer = setTimeout(suspend, 5 * 60 * 1000);
+  }
+  ['pointerdown', 'keydown', 'touchstart'].forEach(e => document.addEventListener(e, activity, { passive: true }));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) suspend(); else activity(); });
+  activity();
 
   /* keyboard shortcuts for a desktop counter */
   document.addEventListener('keydown', (e) => {
@@ -253,8 +285,9 @@
         acc = await App.auth.logIn({ username: $('#a_user').value, password: $('#a_pass').value });
         App.toast('ok', 'Welcome back', acc.shopName);
       }
-      $('#authScreen').hidden = true;
       enterShell(acc.id);
+      $('#authScreen').hidden = true;
+      $('#a_pass').value = ''; $('#a_pass2').value = '';
     } catch (err) {
       errEl.textContent = err.message || 'Something went wrong';
       btn.disabled = false;
@@ -265,6 +298,8 @@
   /* ───────── boot ───────── */
   function enterShell(accountId) {
     App.boot(accountId);
+    App.setLocked(false);
+    $('#shell').inert = false;
     App.applyTheme();
     document.documentElement.lang = App.lang();
 
@@ -281,7 +316,7 @@
       setTimeout(() => { $('#boot').hidden = true; }, 450);
       /* morning brief once a day, after the UI has settled */
       setTimeout(() => {
-        if (!document.querySelector('.modal-back')) App.morningBrief(false);
+        if (!App.isLocked() && App.isOwner() && !document.querySelector('.modal-back')) App.morningBrief(false);
       }, 1100);
       if (navigator.onLine) App.sync.drain();
     };
@@ -330,14 +365,11 @@
       const panel = document.createElement('div');
       panel.className = 'card';
       panel.innerHTML = '<h2>Counter could not open</h2><p>' + App.esc(e.message) +
-        '</p><p>Existing shop data has been preserved. You can save its raw contents for recovery.</p>' +
-        '<button class="btn" id="recoverRaw">Save recovery file</button> <button class="btn pri" id="retryOpen">Reload</button>';
+        '</p><p>Existing shop data has been preserved. Close other tabs and retry. If data is damaged, keep this browser profile and contact the shop owner to recover from a backup.</p>' +
+        '<button class="btn pri" id="retryOpen">Reload</button>';
       document.body.appendChild(panel);
       $('#retryOpen', panel).onclick = () => location.reload();
-      $('#recoverRaw', panel).onclick = () => {
-        const key = 'dukaanos.v2.' + (App.accountId || 'local');
-        App.download(localStorage.getItem(key) || '', 'dukaan-recovery.json', 'application/json');
-      };
+      App.setLocked(true);
     }
   }
 
@@ -349,6 +381,15 @@
      serving the previous build while developing. */
   const isLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !isLocalhost) {
-    w.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
+    w.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(registration => {
+      const notifyUpdate = () => {
+        if (registration.waiting) App.toast('info', 'Update ready', 'Finish your work, close every Dukaan OS tab, then reopen to install the update.');
+      };
+      notifyUpdate();
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        if (worker) worker.addEventListener('statechange', notifyUpdate);
+      });
+    }).catch(() => { }));
   }
 })(window);

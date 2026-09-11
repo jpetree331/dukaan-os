@@ -334,8 +334,10 @@
 
   /* ───────── barcode scanning ───────── */
   async function scan() {
+    App.requirePermission('bill');
+    const context = App.context();
     const manual = () => App.prompt(t('inv.barcode'), t('inv.barcode'), { placeholder: '890...' })
-      .then((code) => { if (code) onCode(code.trim()); });
+      .then((code) => { if (code && App.contextValid(context)) onCode(code.trim()); });
 
     if (!('BarcodeDetector' in w)) {
       App.toast('warn', 'Camera scanner needs Chrome on Android', 'Type the barcode instead');
@@ -345,9 +347,11 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     } catch (e) {
+      if (!App.contextValid(context)) return;
       App.toast('err', 'Camera blocked', 'Allow camera access, or type the code');
       return manual();
     }
+    if (!App.contextValid(context)) { stream.getTracks().forEach(tr => tr.stop()); return; }
     const body = App.el('<div><div class="scanbox"><video playsinline muted autoplay></video>' +
       '<div class="scanframe"></div><div class="scanline"></div></div>' +
       '<p class="muted" style="font-size:12.5px;text-align:center;margin-top:10px">Point at the barcode</p></div>');
@@ -359,11 +363,14 @@
       buttons: [{ label: 'Type it instead', cls: 'ghost', fn: () => { stop = true; manual(); } }],
       onClose: () => { stop = true; stream.getTracks().forEach((tr) => tr.stop()); }
     });
-    const det = new w.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'] });
+    let det;
+    try { det = new w.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'] }); }
+    catch (e) { m.close(); return manual(); }
     const loop = async () => {
       if (stop) return;
       try {
         const codes = await det.detect(video);
+        if (!App.contextValid(context) || stop) return;
         if (codes && codes.length) {
           App.buzz(40);
           m.close();

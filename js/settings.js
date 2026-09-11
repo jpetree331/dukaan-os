@@ -8,56 +8,74 @@
   const RECEIPT_THEMES = [['saffron', '🟠 Saffron'], ['tulsi', '🟢 Tulsi'], ['indigo', '🔵 Indigo'], ['ink', '⚫ Ink']];
 
   /* ───────── backup ───────── */
-  function exportAll() {
-    const db = App.DB();
-    const blob = JSON.stringify({ app: 'DukaanOS', v: db.v, exportedAt: Date.now(), data: db }, null, 1);
-    App.download(blob, 'dukaan-backup-' + App.dayKey(Date.now()) + '.json', 'application/json');
+  async function exportAll() {
+    const context = App.context();
+    if (!await App.auth.verifyOwner()) return;
+    const password = await App.prompt('Encrypt backup', 'Choose a backup password (12–256 characters)', {
+      type: 'password', hint: 'Keep this password separately. A forgotten backup password cannot be recovered.' });
+    if (password == null) return;
+    const confirm = await App.prompt('Confirm backup password', 'Enter the backup password again', { type: 'password' });
+    if (confirm == null) return;
+    if (password !== confirm) throw new Error('Backup passwords do not match.');
+    App.assertContext(context); App.auth.requireFresh();
+    const encrypted = await App.backups.encrypt(App.DB(), password);
+    App.assertContext(context); App.auth.requireFresh();
+    App.download(JSON.stringify(encrypted), 'dukaan-backup-' + App.dayKey(Date.now()) + '.json', 'application/json');
     App.DB().settings.lastBackup = Date.now();
+    App.log('sys', 'Encrypted backup exported');
     App.save({ sync: false, render: false });
-    App.toast('ok', 'Backup saved', 'Keep this file safe — it restores everything');
+    App.toast('ok', 'Encrypted backup saved', 'Keep the file and its password safe. Staff PINs are not included.');
   }
 
-  function exportLedgerCSV() {
+  async function exportLedgerCSV() {
+    const context = App.context();
+    if (!await App.auth.verifyOwner()) return;
+    App.assertContext(context); App.auth.requireFresh();
+    if (!await App.confirm('Export readable customer data?', 'This CSV contains names, phone numbers and balances. Anyone with the file can read it.')) return;
+    App.assertContext(context); App.auth.requireFresh();
     const rows = [['Type', 'Name', 'Phone', 'Pending', 'Points', 'Visits', 'Total spent', 'Due since (days)']];
-    App.customers().forEach((c) => rows.push(['Customer', c.name, c.phone || '', c.balance || 0, Math.floor(c.points || 0),
-      c.visits || 0, c.spend || 0, c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0]));
-    App.suppliers().forEach((s) => rows.push(['Supplier', s.name, s.phone || '', -(s.balance || 0), '', '', '',
-      s.dueSince ? App.daysBetween(s.dueSince, Date.now()) : 0]));
+    App.customers().forEach(c => rows.push(['Customer', c.name, c.phone || '', c.balance || 0, Math.floor(c.points || 0), c.visits || 0, c.spend || 0, c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0]));
+    App.suppliers().forEach(s => rows.push(['Supplier', s.name, s.phone || '', -(s.balance || 0), '', '', '', s.dueSince ? App.daysBetween(s.dueSince, Date.now()) : 0]));
     App.download(App.toCSV(rows), 'dukaan-ledger-' + App.dayKey(Date.now()) + '.csv', 'text/csv');
-    App.toast('ok', 'Ledger exported');
+    App.log('sys', 'Ledger CSV exported'); App.save({ sync: false });
   }
 
-  function importBackup(file) {
-    App.requirePermission('settings');
-    const fr = new FileReader();
-    fr.onload = () => {
-      let p;
-      try { p = JSON.parse(String(fr.result)); } catch (e) { App.toast('err', 'Not a valid backup file'); return; }
-      const data = p && p.data ? p.data : p;
-      try {
-        if (p.data && (p.app !== 'DukaanOS' || p.v !== 2)) throw new Error('Unsupported backup format.');
-        App.validateData(data);
-      } catch (e) { App.reportError(e); return; }
-      App.confirm('Restore this backup?',
-        'It has ' + data.items.length + ' items, ' + (data.bills || []).length + ' bills and ' +
-        (data.customers || []).length + ' customers. Everything currently on this device will be replaced.',
-        { danger: true, ok: 'Restore' }).then((ok) => {
-          if (!ok) return;
-          App.restoreBackup(data);
-          App.toast('ok', 'Restored', 'Reloading…');
-          setTimeout(() => location.reload(), 700);
-        });
-    };
-    fr.readAsText(file);
+  async function importBackup(file) {
+    App.requirePermission('settings'); App.checkFile(file);
+    const context = App.context();
+    const raw = await file.text();
+    App.assertContext(context);
+    let p;
+    try { p = JSON.parse(raw); } catch (e) { throw new Error('Not a valid backup file.'); }
+    let data;
+    if (p && p.format === 'encrypted') {
+      const password = await App.prompt('Open encrypted backup', 'Enter the backup password', { type: 'password' });
+      if (password == null) return;
+      data = await App.backups.decrypt(p, password);
+    } else {
+      if (p && p.data && (p.app !== 'DukaanOS' || p.v !== 2)) throw new Error('Unsupported backup format.');
+      data = App.validateData(p && p.data ? p.data : p);
+    }
+    App.assertContext(context);
+    if (!await App.confirm('Restore business records?', 'Replace this shop’s records with ' + data.items.length + ' items, ' + data.bills.length + ' bills and ' + data.customers.length +
+      ' customers? Your current staff, PINs and UPI payment address will be kept. Check the backup date and totals: an old backup rolls the books back.', { danger: true, ok: 'Restore' })) return;
+    if (!await App.auth.verifyOwner()) return;
+    App.assertContext(context); App.restoreBackup(data);
+    App.log('sys', 'Business records restored; current access and payment settings retained'); App.save({ sync: false });
+    App.toast('ok', 'Restored', 'Reloading…');
+    setTimeout(() => location.reload(), 700);
   }
 
   /* ───────── PIN ───────── */
-  App.setPin = function () {
+  App.setPin = async function () {
     App.requirePermission('settings');
+    const context = App.context();
+    if (!await App.auth.verifyOwner()) return;
     App.prompt(t('set.setPin'), t('set.setPin'), { type: 'tel', placeholder: '••••' }).then((p) => {
       if (p == null) return;
       p = String(p).replace(/\D/g, '');
       if (p.length !== 4) { App.toast('err', 'PIN must be exactly 4 digits'); return; }
+      App.assertContext(context); App.auth.requireFresh();
       App.DB().settings.pin = p;
       App.DB().settings.pinOn = true;
       App.save({ sync: false });
@@ -66,8 +84,11 @@
   };
 
   /* ───────── staff ───────── */
-  function editStaff(id) {
+  async function editStaff(id) {
     App.requirePermission('settings');
+    const context = App.context();
+    if (!await App.auth.verifyOwner()) return;
+    App.assertContext(context);
     const db = App.DB();
     const s = id ? db.staff.find((x) => x.id === id) : null;
     const body = App.el('<div>' +
@@ -75,7 +96,7 @@
       '<div class="field"><label>' + t('set.role') + '</label><select class="inp" id="st_r">' +
       '<option value="cashier">' + t('set.cashier') + ' — can bill & take payments</option>' +
       '<option value="owner">' + t('set.owner') + ' — full access</option></select></div>' +
-      '<div class="field"><label>PIN (4 digits, ' + t('com.optional') + ')</label><input class="inp num" id="st_p" type="tel" maxlength="4" value="' + esc(s ? s.pin : '') + '"></div>' +
+      '<div class="field"><label>PIN (4 digits, ' + t('com.optional') + ')</label><input class="inp num" id="st_p" type="password" maxlength="4" value="' + esc(s ? s.pin : '') + '"></div>' +
       '<div class="alert info"><span class="ai">🔒</span><span>Cashiers can bill, restock and take payments. They cannot see full analytics, delete bills, or change settings.</span></div></div>');
     if (s) App.$('#st_r', body).value = s.role;
     App.modal({
@@ -85,6 +106,7 @@
           label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => {
             App.confirm(t('com.delete') + '?', s.name + ' will lose access.', { danger: true }).then((ok) => {
               if (!ok) return;
+              App.assertContext(context); App.auth.requireFresh();
               db.staff = db.staff.filter((x) => x.id !== s.id);
               if (db.session.staffId === s.id) db.session.staffId = db.staff[0].id;
               App.save({ sync: false }); api.close();
@@ -97,6 +119,7 @@
             const n = App.$('#st_n', body).value.trim();
             if (!n) { App.toast('err', 'Name is required'); return false; }
             App.requirePermission('settings');
+            App.assertContext(context); App.auth.requireFresh();
             const role = App.$('#st_r', body).value, pin = App.$('#st_p', body).value.trim();
             if (pin && !/^\d{4}$/.test(pin)) throw new Error('PIN must be exactly four digits.');
             if (role === 'owner' && db.staff.some((x) => x.role === 'cashier') && !pin) throw new Error('Set an owner PIN before using cashier accounts.');
@@ -113,8 +136,10 @@
   }
 
   App.switchStaff = function () {
+    App.requireAccess();
+    const context = App.context();
     const db = App.DB();
-    const body = App.el('<div>' + db.staff.map((s, i) =>
+    const body = App.el('<div>' + db.staff.filter(s => s.active !== false).map((s, i) =>
       '<button class="list-row" data-sw="' + s.id + '" style="width:100%;text-align:left">' + App.avatarFor(s.name, i) +
       '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' · 🔒' : '') + '</small></span>' +
       (db.session.staffId === s.id ? '<span class="chip ok">✓</span>' : '') + '</button>').join('') + '</div>');
@@ -122,11 +147,15 @@
     body.addEventListener('click', (e) => {
       const b = e.target.closest('[data-sw]'); if (!b) return;
       const s = db.staff.find((x) => x.id === b.dataset.sw);
+      if (!s || s.active === false) return;
       if (s.role === 'cashier' && db.staff.some((x) => x.role === 'owner' && !/^\d{4}$/.test(x.pin || ''))) {
         App.toast('warn', 'Set an owner PIN first', 'Every owner needs a four-digit staff PIN before switching to a cashier.'); return;
       }
       if (!App.isOwner() && s.role === 'owner' && !s.pin) { App.toast('err', 'Owner PIN is required'); return; }
       const go = () => {
+        App.assertContext(context);
+        if (s.active === false) throw new Error('Staff member is inactive.');
+        App.invalidateContext();
         db.session.staffId = s.id;
         App.log('sys', 'Shift start: ' + s.name);
         App.save({ sync: false });
@@ -136,8 +165,7 @@
       if (s.pin) {
         App.prompt('PIN for ' + s.name, 'Enter 4-digit PIN', { type: 'tel' }).then((p) => {
           if (p == null) return;
-          if (String(p).replace(/\D/g, '') === s.pin) go();
-          else App.toast('err', t('lock.wrong'));
+          try { App.auth.checkPin(String(p), s.pin); go(); } catch (e) { App.reportError(e); }
         });
       } else go();
     });
@@ -145,6 +173,7 @@
 
   /* ───────── stores ───────── */
   App.storePicker = function () {
+    App.requirePermission('settings');
     const db = App.DB();
     const body = App.el('<div>' + db.stores.map((s) => {
       const bills = db.bills.filter((b) => b.storeId === s.id && !b.void);
@@ -160,7 +189,7 @@
     const m = App.modal({ title: '🏪 ' + t('set.stores'), body, foot: false });
     body.addEventListener('click', (e) => {
       const b = e.target.closest('[data-st]');
-      if (b) { db.settings.activeStore = b.dataset.st; App.save({ sync: false }); App.posClear(); m.close(); App.render(); App.toast('ok', 'Switched store'); return; }
+      if (b) { App.requirePermission('settings'); App.invalidateContext(); db.settings.activeStore = b.dataset.st; App.save({ sync: false }); App.posClear(); m.close(); App.render(); App.toast('ok', 'Switched store'); return; }
       if (e.target.closest('#addStore')) {
         App.requirePermission('settings');
         App.prompt(t('set.addStore'), t('com.name'), { placeholder: 'Branch 2' }).then((n) => {
@@ -224,7 +253,7 @@
 
       /* staff + stores */
       '<div class="card"><div class="sec-title" style="margin-top:0">👥 ' + t('set.staff') + '</div>' +
-      db.staff.map((s, i) => '<div class="list-row">' + App.avatarFor(s.name, i) +
+      db.staff.filter(s => s.active !== false).map((s, i) => '<div class="list-row">' + App.avatarFor(s.name, i) +
         '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' · 🔒 PIN set' : '') + '</small></span>' +
         (db.session.staffId === s.id ? '<span class="chip ok">Active</span>' : '') +
         (owner ? '<button class="btn xs ghost" data-staff="' + s.id + '">✏️</button>' : '') + '</div>').join('') +
@@ -257,7 +286,7 @@
         :
         '<div class="alert info"><span class="ai">🔓</span><span>The app opens straight to your counter — no login needed.</span></div>' +
         '<button class="btn pri block" id="gateOn" style="margin-top:12px">🔐 Turn on login</button>' +
-        '<p class="muted" style="font-size:11.5px;margin-top:6px">Adds a username &amp; password before the shop opens, so nobody else can see your sales or udhaar. Everything you already have is carried over.</p>'
+        '<p class="muted" style="font-size:11.5px;margin-top:6px">Adds a username &amp; password before the shop opens, to discourage casual access. Records remain unencrypted on this device; someone controlling its browser storage can bypass the login. Existing records are carried over.</p>'
       ) +
       '</div>' +
 
@@ -265,7 +294,7 @@
       '<div class="card"><div class="sec-title" style="margin-top:0">💾 ' + t('set.backup') + '</div>' +
       '<div class="alert ' + (st.lastBackup && Date.now() - st.lastBackup < 7 * App.DAY ? 'ok' : 'warn') + '"><span class="ai">' +
       (st.lastBackup ? '✅' : '⚠️') + '</span><span>' +
-      (st.lastBackup ? 'Last backup ' + App.timeAgo(st.lastBackup) : 'You have never taken a backup. Do it now — it takes one tap.') + '</span></div>' +
+      (st.lastBackup ? 'Last backup ' + App.timeAgo(st.lastBackup) : 'You have never taken a backup. Export an encrypted copy and keep its password safe.') + '</span></div>' +
       '<div class="btn-row" style="margin-top:12px">' +
       '<button class="btn pri" id="expAll">💾 ' + t('set.exportAll') + '</button>' +
       '<button class="btn" id="expLed">📤 Ledger CSV</button></div>' +
@@ -285,11 +314,14 @@
 
     /* text/number/select fields write straight back to settings */
     App.$$('[data-s]', main).forEach((inp) => {
-      inp.addEventListener('change', () => {
+      inp.addEventListener('change', async () => {
         App.requirePermission('settings');
+        const context = App.context();
         const k = inp.dataset.s;
         let v = inp.value;
         if (inp.type === 'number' || k === 'lowStock' || k === 'dailyTarget' || k === 'loyaltyRate' || k === 'defaultGst') v = parseFloat(v) || 0;
+        if (k === 'upiId' && !await App.auth.verifyOwner()) { inp.value = st[k]; return; }
+        App.assertContext(context); App.requirePermission('settings');
         st[k] = v;
         App.save({ sync: false, render: false });
         App.toast('ok', t('set.saved'));
@@ -297,12 +329,15 @@
       });
     });
     App.$$('[data-t]', main).forEach((inp) => {
-      inp.addEventListener('change', () => {
+      inp.addEventListener('change', async () => {
         App.requirePermission('settings');
+        const context = App.context();
         const k = inp.dataset.t;
+        if (k === 'pinOn' && !inp.checked && !await App.auth.verifyOwner()) { inp.checked = st.pinOn; return; }
+        App.assertContext(context); App.requirePermission('settings');
+        if (k === 'pinOn' && inp.checked && !st.pin) { inp.checked = false; return App.setPin().catch(App.reportError); }
         if (k === 'theme') { st.theme = inp.checked ? 'dark' : 'light'; App.applyTheme(); }
         else st[k] = inp.checked;
-        if (k === 'pinOn' && inp.checked && !st.pin) { App.save({ sync: false, render: false }); return App.setPin(); }
         App.save({ sync: false, render: false });
       });
     });
@@ -312,13 +347,13 @@
       const l = e.target.closest('[data-lang]'), rt = e.target.closest('[data-rt]'), sf = e.target.closest('[data-staff]');
       if (l) { App.setLang(l.dataset.lang); App.render(); App.applyI18n(); return; }
       if (rt) { st.receiptTheme = rt.dataset.rt; App.save({ sync: false }); return; }
-      if (sf) return editStaff(sf.dataset.staff);
-      if (e.target.closest('#addStaff')) return editStaff(null);
+      if (sf) return editStaff(sf.dataset.staff).catch(App.reportError);
+      if (e.target.closest('#addStaff')) return editStaff(null).catch(App.reportError);
       if (e.target.closest('#swStaff')) return App.switchStaff();
       if (e.target.closest('#mgStores')) return App.storePicker();
-      if (e.target.closest('#setPin')) return App.setPin();
-      if (e.target.closest('#expAll')) return exportAll();
-      if (e.target.closest('#expLed')) return exportLedgerCSV();
+      if (e.target.closest('#setPin')) return App.setPin().catch(App.reportError);
+      if (e.target.closest('#expAll')) return exportAll().catch(App.reportError);
+      if (e.target.closest('#expLed')) return exportLedgerCSV().catch(App.reportError);
       if (e.target.closest('#dlQr')) {
         const cv = document.createElement('canvas'); cv.width = 600; cv.height = 700;
         const c = cv.getContext('2d');
@@ -339,8 +374,8 @@
       if (e.target.closest('#resetAll')) {
         App.confirm(t('set.reset'), t('set.resetWarn'), { danger: true, ok: t('set.reset') }).then((ok) => {
           if (!ok) return;
-          App.prompt('Type ERASE to confirm', 'This cannot be undone').then((v) => {
-            if (String(v || '').trim().toUpperCase() === 'ERASE') App.resetAll();
+          App.prompt('Type ERASE to confirm', 'This cannot be undone').then(async (v) => {
+            if (String(v || '').trim().toUpperCase() === 'ERASE') { if (await App.auth.verifyOwner()) App.resetAll(); }
             else App.toast('warn', 'Cancelled — nothing was deleted');
           });
         });
@@ -351,7 +386,7 @@
           '<p class="muted" style="font-size:13px;line-height:1.6;margin-bottom:14px">Create the owner login for <b>' + esc(st.shopName) + '</b>. Your ' +
           db.bills.length + ' bills and ' + db.items.filter((i) => !i.deleted).length + ' items come with you.</p>' +
           '<div class="field"><label>Username</label><input class="inp" id="g_user" placeholder="raj123" autocapitalize="off" spellcheck="false" autofocus></div>' +
-          '<div class="field"><label>Password</label><input class="inp" id="g_pass" type="password" placeholder="at least 6 characters"></div>' +
+          '<div class="field"><label>Password</label><input class="inp" id="g_pass" type="password" placeholder="12 to 256 characters"></div>' +
           '<div class="field"><label>Confirm password</label><input class="inp" id="g_pass2" type="password"></div>' +
           '<div class="alert warn"><span class="ai">⚠️</span><span>There is no "forgot password" — this works offline, so nothing can reset it for you. Write it down somewhere safe.</span></div>' +
           '<p class="auth-err" id="g_err"></p></div>');
@@ -378,8 +413,8 @@
       }
       if (e.target.closest('#gateOff')) {
         App.confirm('Turn off login?', 'The shop will open without asking for a password. Your bills, stock and udhaar all stay exactly as they are.', { ok: 'Turn off login' })
-          .then((ok) => {
-            if (!ok) return;
+          .then(async (ok) => {
+            if (!ok || !await App.auth.verifyOwner()) return;
             App.persistNow();
             App.auth.disableGate();
             App.toast('ok', 'Login turned off');
@@ -440,6 +475,6 @@
         });
       }
     });
-    App.$('#impFile', main).addEventListener('change', (e) => { if (e.target.files[0]) importBackup(e.target.files[0]); });
+    App.$('#impFile', main).addEventListener('change', (e) => { if (e.target.files[0]) importBackup(e.target.files[0]).catch(App.reportError); });
   };
 })(window);

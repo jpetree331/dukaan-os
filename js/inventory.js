@@ -104,6 +104,8 @@
 
   /* ───────── restock ───────── */
   App.restockModal = function (id) {
+    App.requirePermission('restock');
+    const context = App.context();
     const it = App.item(id);
     const body = App.el('<div style="text-align:center">' +
       '<div style="font-size:34px">' + esc(it.emoji || '📦') + '</div>' +
@@ -113,7 +115,7 @@
       [5, 10, 20, 50, 100].map((n) => '<button class="chip tap pri" data-q="' + n + '" style="padding:9px 15px;font-size:14px">+' + n + '</button>').join('') + '</div>' +
       '<div class="row" style="margin-top:14px;text-align:left">' +
       '<div class="field"><label>' + t('com.qty') + '</label><input class="inp num" id="r_q" type="number" inputmode="numeric" value="10"></div>' +
-      '<div class="field"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="r_c" type="number" inputmode="decimal" value="' + (it.cost || '') + '"></div></div>' +
+      (App.isOwner() ? '<div class="field"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="r_c" type="number" inputmode="decimal" value="' + (it.cost || '') + '"></div>' : '') + '</div>' +
       '<div class="field" style="text-align:left"><label>' + t('inv.expiry') + ' <span class="muted">(' + t('com.optional') + ')</span></label>' +
       '<input class="inp" id="r_e" type="date"></div></div>');
 
@@ -123,7 +125,7 @@
         label: t('com.save'), cls: 'ok', fn: () => {
           const q = parseFloat(App.$('#r_q', body).value) || 0;
           if (q <= 0) return false;
-          App.actions.restock(it.id, q, App.$('#r_e', body).value, App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value));
+          App.actions.restock(it.id, q, App.$('#r_e', body).value, !App.isOwner() || App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value));
           App.toast('ok', t('inv.restocked', { name: App.itemName(it), n: q }));
         }
       }]
@@ -131,7 +133,8 @@
     body.addEventListener('click', (e) => {
       const q = e.target.closest('[data-q]');
       if (q) {
-        App.actions.restock(it.id, +q.dataset.q, App.$('#r_e', body).value, App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value));
+        App.assertContext(context);
+        App.actions.restock(it.id, +q.dataset.q, App.$('#r_e', body).value, !App.isOwner() || App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value));
         App.toast('ok', t('inv.restocked', { name: App.itemName(it), n: q.dataset.q }));
         m.close();
       }
@@ -140,6 +143,7 @@
 
   // Validate every row before touching inventory; omitted numeric cells preserve existing data.
   App.importItemRows = (rows) => {
+    App.checkDataBounds(rows);
     App.requirePermission('edit_inventory');
     const staged = JSON.parse(JSON.stringify(App.DB().items));
     let added = 0, updated = 0;
@@ -197,9 +201,12 @@
 
     App.$('#csvf', body).onchange = (e) => {
       const file = e.target.files[0]; if (!file) return;
+      try { App.checkFile(file); } catch (e) { App.reportError(e); return; }
+      const context = App.context();
       const fr = new FileReader();
       fr.onload = () => {
         rows = null;
+        if (!App.contextValid(context)) return;
         const grid = App.parseCSV(String(fr.result));
         if (grid.length < 2) { App.$('#prev', body).innerHTML = '<div class="alert bad"><span class="ai">⚠️</span><span>Need a header row plus at least one item.</span></div>'; return; }
         const head = grid[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, ''));
@@ -250,7 +257,7 @@
 
     main.innerHTML =
       '<div class="page-head"><div><h1>📦 ' + t('inv.title') + '</h1>' +
-      '<div class="sub">' + t('inv.sub', { n: all.length, v: money(App.stats.stockValue()) }) + '</div></div>' +
+      '<div class="sub">' + (App.isOwner() ? t('inv.sub', { n: all.length, v: money(App.stats.stockValue()) }) : all.length + ' items') + '</div></div>' +
       '<div class="spacer"></div>' +
       '<div class="btn-row"><button class="btn sm" id="impCsv">📥 ' + t('inv.import') + '</button>' +
       '<button class="btn sm" id="expCsv">📤 CSV</button>' +
@@ -284,7 +291,7 @@
 
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
       '<th>' + t('com.name') + '</th><th>' + t('com.category') + '</th><th class="r">' + t('com.price') + '</th>' +
-      '<th class="r">' + t('com.cost') + '</th><th class="r">' + t('com.stock') + '</th><th></th></tr></thead><tbody>' +
+      (App.isOwner() ? '<th class="r">' + t('com.cost') + '</th>' : '') + '<th class="r">' + t('com.stock') + '</th><th></th></tr></thead><tbody>' +
       (list.length ? list.map((i) => {
         const s = App.itemStock(i), state = App.stockState(i);
         const th = i.threshold != null ? i.threshold : App.DB().settings.lowStock;
@@ -295,7 +302,7 @@
           (i.barcode ? '<br><small class="muted num" style="font-size:11px">' + esc(i.barcode) + '</small>' : '') + '</span></div></td>' +
           '<td><span class="chip">' + esc(i.category || '—') + '</span></td>' +
           '<td class="r num"><b>' + money(i.price) + '</b></td>' +
-          '<td class="r num muted">' + (i.cost ? money(i.cost) : '—') + '</td>' +
+          (App.isOwner() ? '<td class="r num muted">' + (i.cost ? money(i.cost) : '—') + '</td>' : '') +
           '<td class="r" style="min-width:110px"><b class="num" style="color:' + (state === 'out' ? 'var(--bad)' : state === 'low' ? 'var(--warn)' : 'inherit') + '">' + s + '</b>' +
           '<div class="pbar" style="margin-top:5px"><i class="' + (state === 'out' ? 'r' : state === 'low' ? '' : 'g') + '" style="width:' + pct + '%"></i></div></td>' +
           '<td class="r" style="white-space:nowrap"><button class="btn xs" data-restock="' + i.id + '">+ ' + t('inv.restock') + '</button> ' +
@@ -303,7 +310,7 @@
       }).join('') : '<tr><td colspan="6">' + App.emptyState('📦', 'No items here', 'Add your first item or import a CSV') + '</td></tr>') +
       '</tbody></table></div></div>';
 
-    if (!App.can('edit_inventory')) App.$$('#addItem, #impCsv, [data-edit]', main).forEach((el) => { el.hidden = true; });
+    if (!App.can('edit_inventory')) App.$$('#addItem, #impCsv, #expCsv, [data-edit]', main).forEach((el) => { el.hidden = true; });
     const Q = App.$('#invQ');
     Q.addEventListener('input', () => { f.q = Q.value; App.render(); setTimeout(() => { const n = App.$('#invQ'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 0); });
 
@@ -317,6 +324,7 @@
       if (e.target.closest('#addItem')) return App.editItem(null);
       if (e.target.closest('#impCsv')) return importCSV();
       if (e.target.closest('#expCsv')) {
+        App.requirePermission('edit_inventory');
         const rows = [['name', 'nameHi', 'price', 'cost', 'stock', 'category', 'barcode', 'gst']];
         all.forEach((i) => rows.push([i.name, i.nameHi || '', i.price, i.cost, App.itemStock(i), i.category || '', i.barcode || '', i.gst]));
         App.download(App.toCSV(rows), 'dukaan-inventory-' + App.dayKey(Date.now()) + '.csv', 'text/csv');
