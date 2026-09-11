@@ -300,9 +300,11 @@
       ],
       "recovery": "Preserve the original purchase and append corrections; block unsupported historical adjustments with a recoverable exception.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "b19f8269b4ae25114e14c37c18bd2722d304789a",
+      "evidence": [
+        "reports/BUILD-08.md"
+      ]
     },
     {
       "number": 9,
