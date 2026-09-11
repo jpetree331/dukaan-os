@@ -1,6 +1,6 @@
 # VERIFY-00 — Re-establish the repaired baseline
 
-Status: **planned**. This is the first execution sprint; it has not been run by creating this plan.
+Status: **passed for the desktop software baseline; physical-device/PWA evidence remains unavailable**. See the [execution report](../reports/VERIFY-00.md). Self-verification, not independent review.
 
 ## Why
 

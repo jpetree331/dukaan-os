@@ -3,7 +3,7 @@
   "created": "2026-09-11",
   "baselineCommit": "74dfc18282d0faaff9db03ff2453e8cdb9c18935",
   "baselineVerification": "VERIFY-00",
-  "authorization": "Planning package only; future builds have not begun.",
+  "authorization": "Implementation with separate detailed sprint commits and pushes authorized 2026-09-11; no production deployment implied.",
   "defaultBuildDays": "1–2 focused engineering days; split before exceeding 3",
   "sprints": [
     {

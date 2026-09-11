@@ -1,6 +1,6 @@
 # Per-sprint reports, commits and pushes
 
-The user requested this planning package first. All future BUILD/VERIFY cards are **planned**, not executed. Creating this plan does not start deployment, provisioning, participant outreach or the next build.
+The user first requested planning, then authorized implementation with detailed per-sprint commits and pushes on 11 September 2026. Follow the evidence statuses: authorization is not proof of execution. Deployment, paid provisioning and participant outreach remain separate from code delivery.
 
 ## One reviewable build and verification cycle
 

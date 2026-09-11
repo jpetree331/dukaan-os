@@ -1,6 +1,6 @@
 # Dukaan OS — build and verification sprint plan
 
-**Plan only; no future feature sprint has started.** Created 11 September 2026 against application commit `74dfc18282d0faaff9db03ff2453e8cdb9c18935`. Start execution with [VERIFY-00](cards/VERIFY-00.md), after the user requests implementation.
+**Execution authorized on 11 September 2026.** The user requested implementation with separate detailed commits and pushes. Current evidence is recorded in [VERIFY-00](reports/VERIFY-00.md); each later card remains planned until its own report records otherwise. Original planning application baseline: `74dfc18282d0faaff9db03ff2453e8cdb9c18935`.
 
 The recommended approach is **small vertical builds, a separate verification sprint after every build, and cumulative seam coverage**. Preserve the current plain-JavaScript counter while extracting transaction and persistence contracts. Finish dependable local workflows before enabling cloud writes for real shops. Treat regional languages, printer hardware and optional vault encryption as explicit, separately gated deliverables.
 
