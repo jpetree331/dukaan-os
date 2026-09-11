@@ -263,9 +263,11 @@
       ],
       "recovery": "Use compensating records linked to the original sale; historical legacy allocation uncertainty is visible, never guessed away.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "bdaa4bca5e8f000d13cf2034802c1f37603a036b",
+      "evidence": [
+        "reports/BUILD-07.md"
+      ]
     },
     {
       "number": 8,
