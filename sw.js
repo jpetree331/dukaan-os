@@ -5,7 +5,7 @@ const CACHE = PREFIX + 'security-v1';
 const SHELL = [
   './', './index.html', './manifest.json',
   './css/app.css',
-  './js/core.js', './js/safety.js', './js/i18n.js', './js/qr.js', './js/ui.js', './js/auth.js', './js/backup.js', './js/voice.js',
+  './js/domain.js', './js/core.js', './js/safety.js', './js/i18n.js', './js/qr.js', './js/ui.js', './js/auth.js', './js/backup.js', './js/voice.js',
   './js/pos.js', './js/inventory.js', './js/ledger.js', './js/insights.js',
   './js/settings.js', './js/app.js'
 ];

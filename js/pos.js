@@ -28,6 +28,7 @@
     const it = App.item(itemId);
     if (!it) return;
     qty = qty || 1;
+    App.number(qty, 'Quantity', 0.0001); App.domain.quantityUnits(qty);
     const have = App.sellableStock(it);
     const inCart = (cart.lines.find((l) => l.itemId === itemId) || {}).qty || 0;
     if (have <= 0) { App.toast('err', App.itemName(it), t('pos.outOfStock')); return; }
@@ -37,7 +38,7 @@
       App.toast('warn', App.itemName(it), t('pos.onlyLeft', { n: have }));
     }
     const ex = cart.lines.find((l) => l.itemId === itemId);
-    if (ex) ex.qty = App.round2(ex.qty + qty);
+    if (ex) ex.qty = App.domain.quantity(ex.qty + qty);
     else cart.lines.push({ itemId, name: App.itemName(it), emoji: it.emoji || '🛍️', qty, price: it.price });
     if (fromEl) App.flyTo(fromEl, '#cartCount', it.emoji || '🛒');
     App.buzz();
@@ -46,6 +47,7 @@
   App.posAdd = add;
 
   function setQty(itemId, q) {
+    App.domain.quantityUnits(q);
     const l = cart.lines.find((x) => x.itemId === itemId); if (!l) return;
     const it = App.item(itemId);
     const max = it ? App.sellableStock(it) : 999;
@@ -54,7 +56,7 @@
       const node = App.$('[data-line="' + itemId + '"]');
       if (node) { node.classList.add('rm'); setTimeout(() => { cart.lines = cart.lines.filter((x) => x.itemId !== itemId); paintCart(); }, 220); return; }
       cart.lines = cart.lines.filter((x) => x.itemId !== itemId);
-    } else l.qty = App.round2(q);
+    } else l.qty = App.domain.quantity(q);
     paintCart();
   }
   function clearCart() { lastBill = null; cart.storeId = ''; cart.lines = []; cart.discount = 0; cart.redeem = 0; cart.customerId = ''; cart.mode = 'cash'; cart.note = ''; paintCart(); }
@@ -207,6 +209,7 @@
 
   /* ───────── receipt modal ───────── */
   function showReceipt(bill) {
+    bill = App.domain.snapshot(bill);
     const cust = bill.customerId ? App.customer(bill.customerId) : null;
     const wrap = App.el('<div><div class="receipt-prev" id="rcp"></div></div>');
     const cv = App.receiptCanvas(bill);

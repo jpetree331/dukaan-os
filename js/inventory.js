@@ -54,13 +54,15 @@
             const price = parseFloat(App.$('#i_price', body).value);
             if (!name) { App.toast('err', 'Name is required'); return false; }
             if (!(price >= 0)) { App.toast('err', 'Price is required'); return false; }
+            const stock = it && it.batches && it.batches.length ? null : parseFloat(App.$('#i_stock', body).value) || 0;
+            if (stock !== null) App.domain.quantityUnits(stock);
             const rec = it || { id: App.uid('it'), storeId: App.S(), batches: [], at: Date.now() };
             rec.name = name;
             rec.nameHi = App.$('#i_hi', body).value.trim();
             rec.alias = App.$('#i_alias', body).value.trim();
             rec.price = App.round2(price);
             rec.cost = App.round2(parseFloat(App.$('#i_cost', body).value) || 0);
-            if (!(it && it.batches && it.batches.length)) rec.stock = App.round2(parseFloat(App.$('#i_stock', body).value) || 0);
+            if (stock !== null) rec.stock = stock;
             const th = App.$('#i_th', body).value.trim();
             rec.threshold = th === '' ? null : +th;
             rec.category = App.$('#i_cat', body).value.trim();
@@ -150,13 +152,14 @@
     rows.forEach((r, index) => {
       if (!r.name || !r.name.trim()) throw new Error('CSV row ' + (index + 2) + ': name is required.');
       for (const k of ['price', 'cost', 'stock', 'gst']) if (r[k] != null) App.number(r[k], 'CSV row ' + (index + 2) + ' ' + k, 0, k === 'gst' ? 100 : 1e9);
+      if (r.stock != null) App.domain.quantityUnits(r.stock);
       const matches = staged.filter((i) => !i.deleted && (!i.storeId || i.storeId === App.S()) &&
         ((r.barcode && i.barcode === r.barcode) || i.name.toLowerCase() === r.name.toLowerCase()));
       if (matches.length > 1) throw new Error('CSV row ' + (index + 2) + ': barcode and name identify different items.');
       const ex = matches[0];
       if (ex) {
         if (r.stock != null && ex.batches.length && r.stock !== App.itemStock(ex)) throw new Error('Use Restock to change dated stock for ' + ex.name + '.');
-        for (const k of ['price', 'cost', 'stock', 'gst']) if (r[k] != null) ex[k] = App.round2(r[k]);
+        for (const k of ['price', 'cost', 'stock', 'gst']) if (r[k] != null) ex[k] = k === 'stock' ? r[k] : App.round2(r[k]);
         for (const k of ['nameHi', 'category', 'barcode', 'emoji', 'alias']) if (r[k]) ex[k] = r[k];
         updated++;
       } else {

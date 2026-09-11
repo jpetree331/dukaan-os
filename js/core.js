@@ -243,9 +243,9 @@
     if (it.batches && it.batches.length) return it.batches.reduce((s, b) => s + (+b.qty || 0), 0);
     return +it.stock || 0;
   }
-  App.sellableStock = (it) => it.batches && it.batches.length ? round2(it.batches.filter((b) => !b.expiry || b.expiry >= dayKey(Date.now())).reduce((n, b) => n + b.qty, 0)) : itemStock(it);
+  App.sellableStock = (it) => it.batches && it.batches.length ? App.domain.quantity(it.batches.filter((b) => !b.expiry || b.expiry >= dayKey(Date.now())).reduce((n, b) => n + b.qty, 0)) : itemStock(it);
   function takeStock(it, qty) {
-    App.number(qty, 'Quantity', 0.0001);
+    App.number(qty, 'Quantity', 0.0001); App.domain.quantityUnits(qty);
     if (qty > App.sellableStock(it)) throw new Error('Insufficient stock for ' + it.name);
     const allocations = [];
     if (it.batches && it.batches.length) {
@@ -256,18 +256,18 @@
         if (need <= 0) break;
         const used = Math.min(b.qty, need);
         allocations.push({ ...b, qty: used });
-        b.qty = round2(b.qty - used); need = round2(need - used);
+        b.qty = App.domain.quantity(b.qty - used); need = App.domain.quantity(need - used);
       }
       it.batches = it.batches.filter((b) => b.qty > 0);
-      it.stock = round2(it.batches.reduce((sum, b) => sum + b.qty, 0));
+      it.stock = App.domain.quantity(it.batches.reduce((sum, b) => sum + b.qty, 0));
     } else {
       allocations.push({ id: uid('b'), qty, expiry: '', cost: it.cost, at: Date.now() });
-      it.stock = round2(it.stock - qty);
+      it.stock = App.domain.quantity(it.stock - qty);
     }
     return allocations;
   }
   function giveStock(it, qty, expiry, cost, original) {
-    App.number(qty, 'Quantity', 0.0001);
+    App.number(qty, 'Quantity', 0.0001); App.domain.quantityUnits(qty);
     cost = cost == null ? it.cost : App.number(cost, 'Cost');
     if (expiry || (it.batches && it.batches.length) || original) {
       if (!it.batches || !it.batches.length) {
@@ -275,10 +275,10 @@
         if (it.stock > 0) it.batches.push({ id: uid('b'), qty: it.stock, expiry: '', cost: it.cost, at: Date.now() });
       }
       const ex = it.batches.find((b) => original ? b.id === original.id : b.expiry === (expiry || '') && b.cost === cost);
-      if (ex) ex.qty = round2(ex.qty + qty);
-      else it.batches.push({ id: uid('b'), at: Date.now(), ...original, qty: round2(qty), expiry: expiry || '', cost });
-      it.stock = round2(it.batches.reduce((sum, b) => sum + b.qty, 0));
-    } else it.stock = round2(it.stock + qty);
+      if (ex) ex.qty = App.domain.quantity(ex.qty + qty);
+      else it.batches.push({ id: uid('b'), at: Date.now(), ...original, qty: App.domain.quantity(qty), expiry: expiry || '', cost });
+      it.stock = App.domain.quantity(it.batches.reduce((sum, b) => sum + b.qty, 0));
+    } else it.stock = App.domain.quantity(it.stock + qty);
   }
   App.itemStock = itemStock; App.takeStock = takeStock; App.giveStock = giveStock;
   App.stockState = (it) => {
@@ -307,27 +307,20 @@
 
   /* ───────── money-movement actions ───────── */
   App.cartTotals = (cart) => {
-    const st = DB.settings;
-    const sub = round2(cart.lines.reduce((sum, l) => sum + round2(l.price * l.qty), 0));
-    const disc = round2(clamp(cart.discount || 0, 0, sub));
-    const cust = App.customer(cart.customerId);
-    const redeem = round2(Math.max(0, Math.min(cart.redeem || 0, sub - disc, cust ? Math.max(0, cust.points || 0) * st.loyaltyValue : 0)));
-    const ratio = sub ? (sub - disc - redeem) / sub : 0;
-    const taxes = cart.lines.map((l) => {
-      const it = App.item(l.itemId);
-      const gst = st.gstEnabled ? (it && it.gst != null ? it.gst : st.defaultGst) : 0;
-      const taxable = round2(round2(l.price * l.qty) * ratio);
-      return { gst, taxable, tax: round2(taxable * gst / 100) };
+    const st = DB.settings, cust = App.customer(cart.customerId);
+    return App.domain.sale({
+      lines: cart.lines.map(l => {
+        const it=App.item(l.itemId);
+        return {...l, gst:st.gstEnabled ? (it && it.gst != null ? it.gst : st.defaultGst) : 0};
+      }),
+      discount:cart.discount || 0, redeem:cart.redeem || 0,
+      points:cust ? cust.points || 0 : 0, loyaltyValue:st.loyaltyValue
     });
-    // Allocate the last paise of discount so the line bases equal the bill base.
-    if (taxes.length) {
-      const last = taxes[taxes.length - 1];
-      last.taxable = round2(last.taxable + sub - disc - redeem - taxes.reduce((n, x) => n + x.taxable, 0));
-      last.tax = round2(last.taxable * last.gst / 100);
-    }
-    const tax = round2(taxes.reduce((n, x) => n + x.tax, 0));
-    return { sub, disc, redeem, tax, taxes, total: round2(sub - disc - redeem + tax) };
   };
+  function command(kind, corrects = null) {
+    return App.domain.command({id:'cmd_' + w.crypto.randomUUID().replace(/-/g,''),
+      accountId:App.accountId, actorId:DB.session.staffId, storeId:S(), kind, at:Date.now(), corrects});
+  }
   App.actions = {
     /* Commit a cart into a bill. Deducts stock, moves credit, awards loyalty. */
     checkout(cart) {
@@ -340,9 +333,9 @@
       cart.lines.forEach((l) => {
         const it = App.item(l.itemId);
         if (!it) throw new Error('An item was removed or belongs to another store. Update the cart.');
-        App.number(l.qty, 'Quantity', 0.0001); App.number(l.price, 'Price');
+        App.number(l.qty, 'Quantity', 0.0001); App.domain.quantityUnits(l.qty); App.number(l.price, 'Price');
         if (l.price !== it.price) throw new Error(it.name + ' has a new price. Remove it and add it again.');
-        quantities.set(it.id, (quantities.get(it.id) || 0) + l.qty);
+        quantities.set(it.id, App.domain.quantity((quantities.get(it.id) || 0) + l.qty));
         if (quantities.get(it.id) > App.sellableStock(it)) throw new Error('Insufficient stock for ' + it.name + '. Update the cart.');
       });
       const st = DB.settings, cust = cart.customerId ? App.customer(cart.customerId) : null;
@@ -357,12 +350,14 @@
           gross: round2(l.price * l.qty), ...T.taxes[index] };
       });
 
+      const operation = command('sale');
       const bill = {
+        calculationVersion: App.domain.CALCULATION_VERSION, command: {...operation},
         id: uid('bl'), no: DB.counter.bill++, storeId: S(),
         customerId: cust ? cust.id : '', customerName: cust ? cust.name : (cart.customerName || 'Walk-in'),
         lines, sub, discount: disc, tax, total,
         paid: credit ? 0 : total, mode: cart.mode || 'cash', credit,
-        note: cart.note || '', staffId: DB.session.staffId, at: Date.now(), void: false,
+        note: cart.note || '', staffId: DB.session.staffId, at: operation.at, void: false,
         loyalty: 0, redeemed: T.redeem, redeemedPoints: round2(T.redeem / st.loyaltyValue)
       };
 
@@ -393,7 +388,9 @@
       App.requirePermission('void_bill');
       const b = App.bills().find((x) => x.id === id);
       if (!b || b.void) return null;
-      b.void = true; b.voidAt = Date.now(); b.voidReason = reason || '';
+      const correction = command('void_sale', b.command ? b.command.id : b.id);
+      b.voidCommand = {...correction};
+      b.void = true; b.voidAt = correction.at; b.voidReason = reason || '';
       b.lines.forEach((l) => {
         const it = DB.items.find((x) => x.id === l.itemId && (!x.storeId || x.storeId === S()));
         if (!it) return;
@@ -434,7 +431,7 @@
       if (!lines.length) throw new Error('Add purchase items first.');
       lines.forEach((l) => {
         if (!App.item(l.itemId)) throw new Error('Purchase item not found in this store.');
-        App.number(l.qty, 'Quantity', 0.0001); App.number(l.cost, 'Purchase cost');
+        App.number(l.qty, 'Quantity', 0.0001); App.domain.quantityUnits(l.qty); App.number(l.cost, 'Purchase cost');
       });
       App.number(paidNow || 0, 'Paid now');
       const sup = App.supplier(supplierId);
