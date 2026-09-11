@@ -375,10 +375,11 @@
       ],
       "recovery": "Permissions default closed; migrations preserve existing ownership with an explicit assignment preview; transferred stock cannot be counted twice.",
       "optional": false,
-      "status": "built-unverified",
+      "status": "passed",
       "codeCommit": "9222d3f3e25549be46d64b764cca785d621c7fdb",
       "evidence": [
-        "reports/BUILD-10.md"
+        "reports/BUILD-10.md",
+        "reports/VERIFY-10.md"
       ]
     },
     {

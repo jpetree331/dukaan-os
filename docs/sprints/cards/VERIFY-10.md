@@ -1,6 +1,6 @@
 # VERIFY-10 — Verify store assignments and stock transfers
 
-Status: **planned**. Build under review: [BUILD-10](BUILD-10.md).
+Status: **passed**. Build under review: [BUILD-10](BUILD-10.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope
