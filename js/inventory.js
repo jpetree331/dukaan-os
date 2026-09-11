@@ -10,6 +10,7 @@
 
   /* ───────── item editor ───────── */
   App.editItem = function (id, done, preset) {
+    App.requirePermission('edit_inventory');
     const it = id ? App.item(id) : null;
     const d = Object.assign({
       name: '', nameHi: '', alias: '', price: '', cost: '', stock: 0, category: '', barcode: '',
@@ -48,6 +49,7 @@
         { label: t('com.cancel'), cls: 'ghost' },
         {
           label: t('com.save'), cls: 'pri', fn: () => {
+            App.requirePermission('edit_inventory');
             const name = App.$('#i_name', body).value.trim();
             const price = parseFloat(App.$('#i_price', body).value);
             if (!name) { App.toast('err', 'Name is required'); return false; }
@@ -87,6 +89,7 @@
   };
 
   function removeItem(id) {
+    App.requirePermission('edit_inventory');
     const it = App.item(id);
     return App.confirm(t('com.delete') + '?', it.name + ' will be hidden from billing. Past bills keep their record.', { danger: true, ok: t('com.delete') })
       .then((ok) => {
@@ -103,7 +106,7 @@
   App.restockModal = function (id) {
     const it = App.item(id);
     const body = App.el('<div style="text-align:center">' +
-      '<div style="font-size:34px">' + (it.emoji || '📦') + '</div>' +
+      '<div style="font-size:34px">' + esc(it.emoji || '📦') + '</div>' +
       '<h3 style="margin:6px 0 2px">' + esc(App.itemName(it)) + '</h3>' +
       '<p class="muted" style="font-size:13px">' + t('com.stock') + ': <b class="num">' + App.itemStock(it) + '</b></p>' +
       '<div class="chip-row" style="justify-content:center;margin:16px 0 6px">' +
@@ -120,7 +123,7 @@
         label: t('com.save'), cls: 'ok', fn: () => {
           const q = parseFloat(App.$('#r_q', body).value) || 0;
           if (q <= 0) return false;
-          App.actions.restock(it.id, q, App.$('#r_e', body).value, parseFloat(App.$('#r_c', body).value) || it.cost);
+          App.actions.restock(it.id, q, App.$('#r_e', body).value, App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value));
           App.toast('ok', t('inv.restocked', { name: App.itemName(it), n: q }));
         }
       }]
@@ -128,15 +131,47 @@
     body.addEventListener('click', (e) => {
       const q = e.target.closest('[data-q]');
       if (q) {
-        App.actions.restock(it.id, +q.dataset.q, App.$('#r_e', body).value, parseFloat(App.$('#r_c', body).value) || it.cost);
+        App.actions.restock(it.id, +q.dataset.q, App.$('#r_e', body).value, App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value));
         App.toast('ok', t('inv.restocked', { name: App.itemName(it), n: q.dataset.q }));
         m.close();
       }
     });
   };
 
+  // Validate every row before touching inventory; omitted numeric cells preserve existing data.
+  App.importItemRows = (rows) => {
+    App.requirePermission('edit_inventory');
+    const staged = JSON.parse(JSON.stringify(App.DB().items));
+    let added = 0, updated = 0;
+    rows.forEach((r, index) => {
+      if (!r.name || !r.name.trim()) throw new Error('CSV row ' + (index + 2) + ': name is required.');
+      for (const k of ['price', 'cost', 'stock', 'gst']) if (r[k] != null) App.number(r[k], 'CSV row ' + (index + 2) + ' ' + k, 0, k === 'gst' ? 100 : 1e9);
+      const matches = staged.filter((i) => !i.deleted && (!i.storeId || i.storeId === App.S()) &&
+        ((r.barcode && i.barcode === r.barcode) || i.name.toLowerCase() === r.name.toLowerCase()));
+      if (matches.length > 1) throw new Error('CSV row ' + (index + 2) + ': barcode and name identify different items.');
+      const ex = matches[0];
+      if (ex) {
+        if (r.stock != null && ex.batches.length && r.stock !== App.itemStock(ex)) throw new Error('Use Restock to change dated stock for ' + ex.name + '.');
+        for (const k of ['price', 'cost', 'stock', 'gst']) if (r[k] != null) ex[k] = App.round2(r[k]);
+        for (const k of ['nameHi', 'category', 'barcode', 'emoji', 'alias']) if (r[k]) ex[k] = r[k];
+        updated++;
+      } else {
+        if (r.price == null) throw new Error('CSV row ' + (index + 2) + ': a new item needs a price.');
+        staged.push({ id: App.uid('it'), storeId: App.S(), name: r.name, nameHi: r.nameHi || '', alias: r.alias || '',
+          price: r.price, cost: r.cost ?? 0, stock: r.stock ?? 0, category: r.category || '', barcode: r.barcode || '',
+          emoji: r.emoji || '🛍️', fav: false, threshold: null, gst: r.gst ?? App.DB().settings.defaultGst, batches: [], at: Date.now() });
+        added++;
+      }
+    });
+    App.DB().items = staged;
+    App.log('import', added + ' items imported, ' + updated + ' updated');
+    App.save({ op: 'import' });
+    return { added, updated };
+  };
+
   /* ───────── CSV import ───────── */
   function importCSV() {
+    App.requirePermission('edit_inventory');
     const body = App.el('<div>' +
       '<div class="alert info"><span class="ai">📄</span><span>' + t('inv.csvHelp') + '<br><small>First row must be the header. Existing barcodes/names get updated.</small></span></div>' +
       '<div class="field" style="margin-top:14px"><label>CSV file</label><input class="inp" type="file" id="csvf" accept=".csv,text/csv"></div>' +
@@ -149,29 +184,7 @@
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
         label: t('com.add'), cls: 'pri', fn: () => {
           if (!rows || !rows.length) { App.toast('err', 'Pick a CSV first'); return false; }
-          let added = 0, updated = 0;
-          rows.forEach((r) => {
-            const ex = App.items().find((i) =>
-              (r.barcode && i.barcode === r.barcode) || i.name.toLowerCase() === r.name.toLowerCase());
-            if (ex) {
-              ex.price = r.price != null ? r.price : ex.price;
-              ex.cost = r.cost != null ? r.cost : ex.cost;
-              if (r.stock != null && !(ex.batches || []).length) ex.stock = r.stock;
-              ex.category = r.category || ex.category;
-              ex.barcode = r.barcode || ex.barcode;
-              updated++;
-            } else {
-              App.DB().items.push({
-                id: App.uid('it'), storeId: App.S(), name: r.name, nameHi: r.nameHi || '', alias: r.alias || '',
-                price: r.price || 0, cost: r.cost || 0, stock: r.stock || 0, category: r.category || '',
-                barcode: r.barcode || '', emoji: r.emoji || '🛍️', fav: false, threshold: null,
-                gst: r.gst != null ? r.gst : App.DB().settings.defaultGst, batches: [], at: Date.now()
-              });
-              added++;
-            }
-          });
-          App.log('import', added + ' items imported, ' + updated + ' updated');
-          App.save({ op: 'import' });
+          const { added, updated } = App.importItemRows(rows);
           App.toast('ok', 'Import done', added + ' added · ' + updated + ' updated');
         }
       }]
@@ -186,6 +199,7 @@
       const file = e.target.files[0]; if (!file) return;
       const fr = new FileReader();
       fr.onload = () => {
+        rows = null;
         const grid = App.parseCSV(String(fr.result));
         if (grid.length < 2) { App.$('#prev', body).innerHTML = '<div class="alert bad"><span class="ai">⚠️</span><span>Need a header row plus at least one item.</span></div>'; return; }
         const head = grid[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, ''));
@@ -194,12 +208,12 @@
         if (ci.name < 0) { App.$('#prev', body).innerHTML = '<div class="alert bad"><span class="ai">⚠️</span><span>No <b>name</b> column found.</span></div>'; return; }
         rows = grid.slice(1).map((r) => ({
           name: (r[ci.name] || '').trim(), nameHi: ci.hi > -1 ? (r[ci.hi] || '').trim() : '',
-          price: ci.price > -1 ? parseFloat(r[ci.price]) || 0 : null,
-          cost: ci.cost > -1 ? parseFloat(r[ci.cost]) || 0 : null,
-          stock: ci.stock > -1 ? parseFloat(r[ci.stock]) || 0 : null,
+          price: ci.price > -1 && (r[ci.price] || '').trim() !== '' ? Number(r[ci.price]) : null,
+          cost: ci.cost > -1 && (r[ci.cost] || '').trim() !== '' ? Number(r[ci.cost]) : null,
+          stock: ci.stock > -1 && (r[ci.stock] || '').trim() !== '' ? Number(r[ci.stock]) : null,
           category: ci.cat > -1 ? (r[ci.cat] || '').trim() : '',
           barcode: ci.bc > -1 ? (r[ci.bc] || '').trim() : '',
-          gst: ci.gst > -1 ? parseFloat(r[ci.gst]) || 0 : null,
+          gst: ci.gst > -1 && (r[ci.gst] || '').trim() !== '' ? Number(r[ci.gst]) : null,
           emoji: ci.emoji > -1 ? (r[ci.emoji] || '').trim() : ''
         })).filter((r) => r.name);
         App.$('#prev', body).innerHTML = '<div class="alert ok"><span class="ai">✅</span><span><b>' + rows.length + '</b> items ready to import.</span></div>' +
@@ -263,7 +277,7 @@
 
       (exp.length ? '<div class="card" style="margin-bottom:16px;border-color:color-mix(in srgb,var(--indigo) 30%,var(--line))">' +
         '<div class="sec-title" style="margin-top:0">📅 ' + t('inv.expiring') + '</div>' +
-        exp.slice(0, 6).map((e2) => '<div class="list-row"><span style="font-size:19px">' + (e2.item.emoji || '📦') + '</span>' +
+        exp.slice(0, 6).map((e2) => '<div class="list-row"><span style="font-size:19px">' + esc(e2.item.emoji || '📦') + '</span>' +
           '<span style="flex:1"><b>' + esc(App.itemName(e2.item)) + '</b><br><small class="muted">' + t('inv.fifoHint', { date: App.fmtD(e2.at), n: e2.batch.qty }) + '</small></span>' +
           '<span class="chip ' + (e2.days <= 3 ? 'bad' : e2.days <= 14 ? 'warn' : '') + '">' + (e2.days < 0 ? 'expired' : e2.days + ' d') + '</span></div>').join('') +
         '</div>' : '') +
@@ -276,7 +290,7 @@
         const th = i.threshold != null ? i.threshold : App.DB().settings.lowStock;
         const pct = Math.max(3, Math.min(100, (s / Math.max(th * 3, 1)) * 100));
         return '<tr data-row="' + i.id + '">' +
-          '<td><div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">' + (i.emoji || '🛍️') + '</span>' +
+          '<td><div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">' + esc(i.emoji || '🛍️') + '</span>' +
           '<span><b>' + esc(App.itemName(i)) + '</b>' + (i.fav ? ' ⭐' : '') +
           (i.barcode ? '<br><small class="muted num" style="font-size:11px">' + esc(i.barcode) + '</small>' : '') + '</span></div></td>' +
           '<td><span class="chip">' + esc(i.category || '—') + '</span></td>' +
@@ -289,6 +303,7 @@
       }).join('') : '<tr><td colspan="6">' + App.emptyState('📦', 'No items here', 'Add your first item or import a CSV') + '</td></tr>') +
       '</tbody></table></div></div>';
 
+    if (!App.can('edit_inventory')) App.$$('#addItem, #impCsv, [data-edit]', main).forEach((el) => { el.hidden = true; });
     const Q = App.$('#invQ');
     Q.addEventListener('input', () => { f.q = Q.value; App.render(); setTimeout(() => { const n = App.$('#invQ'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 0); });
 

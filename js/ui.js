@@ -43,24 +43,40 @@
     const body = $('.modal-body', m), foot = $('.modal-foot', m);
     if (typeof opts.body === 'string') body.innerHTML = opts.body; else if (opts.body) body.appendChild(opts.body);
 
-    const api = { root: m, body, foot, close };
+    const api = { root: m, body, foot, close: () => { busy = false; close(); } };
+    let closed = false, busy = false;
     function close() {
+      if (closed || busy) return;
+      closed = true;
+      document.removeEventListener('keydown', onk);
       m.classList.add('out'); back.style.opacity = 0;
-      setTimeout(() => back.remove(), 240);
+      setTimeout(() => { back.remove(); App.emit('modalclosed'); }, 240);
       openModals--; if (!openModals) document.body.style.overflow = '';
       if (opts.onClose) opts.onClose();
     }
     (opts.buttons || []).forEach((b) => {
       if (!b) return;
       const btn = el('<button class="btn ' + (b.cls || '') + '">' + esc(b.label) + '</button>');
-      btn.onclick = () => { if (b.fn) { if (b.fn(api) === false) return; } if (b.keepOpen !== true) close(); };
+      btn.onclick = async () => {
+        if (busy || closed) return;
+        btn.disabled = true;
+        try {
+          // The callback may explicitly close its own modal after an awaited operation.
+          let result = b.fn ? b.fn(api) : undefined;
+          if (result && typeof result.then === 'function') { busy = true; result = await result; busy = false; }
+          if (result === false) return;
+          if (b.keepOpen !== true) close();
+        } catch (e) { App.reportError(e); }
+        finally { busy = false; btn.disabled = false; }
+      };
       foot && foot.appendChild(btn);
     });
     $('[data-x]', m).onclick = close;
     back.addEventListener('mousedown', (e) => { if (e.target === back && opts.dismissable !== false) close(); });
-    document.addEventListener('keydown', function onk(e) {
-      if (e.key === 'Escape' && document.body.contains(back)) { close(); document.removeEventListener('keydown', onk); }
-    });
+    function onk(e) {
+      if (e.key === 'Escape' && $('#modalRoot').lastElementChild === back) close();
+    }
+    document.addEventListener('keydown', onk);
     $('#modalRoot').appendChild(back);
     openModals++; document.body.style.overflow = 'hidden';
     setTimeout(() => { const f = m.querySelector('[autofocus],input,select'); if (f && w.innerWidth > 860) f.focus(); }, 120);
@@ -141,7 +157,7 @@
     if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
     const to = $(toSel); if (!fromEl || !to) return;
     const a = fromEl.getBoundingClientRect(), b = to.getBoundingClientRect();
-    const g = el('<div class="fly">' + (emoji || '🛒') + '</div>');
+    const g = el('<div class="fly">' + esc(emoji || '🛒') + '</div>');
     g.style.cssText += 'left:' + a.left + 'px;top:' + a.top + 'px;width:' + Math.min(a.width, 90) + 'px;height:' + Math.min(a.height, 60) + 'px';
     document.body.appendChild(g);
     const dx = (b.left + b.width / 2) - (a.left + Math.min(a.width, 90) / 2);
@@ -283,13 +299,13 @@
     else if (sub) c.fillText('— धन्यवाद —', W / 2, 76);
 
     c.textAlign = 'left'; c.fillStyle = '#333'; c.font = F(12, 600);
-    c.fillText('Bill #' + bill.no, 18, 118);
+    c.fillText((bill.void ? 'VOID · Bill #' : 'Bill #') + bill.no, 18, 118);
     c.textAlign = 'right';
     c.fillText(App.fmtDT(bill.at), W - 18, 118);
     c.textAlign = 'left'; c.font = F(12.5, 700); c.fillStyle = '#1a1a1a';
     c.fillText(String(bill.customerName || 'Walk-in').slice(0, 30), 18, 138);
     c.textAlign = 'right'; c.font = F(11, 600); c.fillStyle = th.a;
-    c.fillText((bill.credit ? 'UDHAAR' : String(bill.mode || 'cash').toUpperCase()), W - 18, 138);
+    c.fillText((bill.void ? 'CANCELLED' : bill.credit ? 'UDHAAR' : String(bill.mode || 'cash').toUpperCase()), W - 18, 138);
 
     c.strokeStyle = '#e3e3e3'; c.setLineDash([4, 4]);
     c.beginPath(); c.moveTo(14, 152); c.lineTo(W - 14, 152); c.stroke(); c.setLineDash([]);
@@ -355,8 +371,8 @@
     if (bill.discount > 0) s += 'Discount: −' + money(bill.discount) + '\n';
     if (bill.tax > 0) s += 'GST: ' + money(bill.tax) + '\n';
     s += '*Total: ' + money(bill.total, true) + '*\n';
-    s += bill.credit ? '\n⚠️ _Udhaar — payment pending_\n' : '✅ Paid by ' + String(bill.mode).toUpperCase() + '\n';
-    if (st.upiId && bill.credit) s += '\nPay on UPI: ' + st.upiId + '\n';
+    s += bill.void ? '\nCANCELLED / VOID — not a payment request\n' : bill.credit ? '\n⚠️ _Udhaar — payment pending_\n' : '✅ Paid by ' + String(bill.mode).toUpperCase() + '\n';
+    if (st.upiId && bill.credit && !bill.void) s += '\nPay on UPI: ' + st.upiId + '\n';
     s += '\nधन्यवाद 🙏';
     return s;
   };
@@ -392,7 +408,8 @@
   /* ───────── CSV ───────── */
   App.toCSV = function (rows) {
     return rows.map((r) => r.map((c) => {
-      const s = c == null ? '' : String(c);
+      let s = c == null ? '' : String(c);
+      if (typeof c === 'string' && /^[\s]*[=+@-]/.test(s)) s = "'" + s;
       return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     }).join(',')).join('\n');
   };
@@ -419,7 +436,7 @@
     return '<div class="avatar ' + cls + '">' + esc(init) + '</div>';
   };
   App.emptyState = (emoji, title, sub, btn) =>
-    '<div class="empty"><div class="e">' + emoji + '</div><h4>' + esc(title) + '</h4>' +
+    '<div class="empty"><div class="e">' + esc(emoji) + '</div><h4>' + esc(title) + '</h4>' +
     (sub ? '<p>' + esc(sub) + '</p>' : '') + (btn || '') + '</div>';
 
   App.skeleton = (n, h) => Array.from({ length: n || 3 }, () => '<div class="sk" style="height:' + (h || 64) + 'px;border-radius:16px;margin-bottom:10px"></div>').join('');

@@ -28,18 +28,22 @@
   }
 
   function importBackup(file) {
+    App.requirePermission('settings');
     const fr = new FileReader();
     fr.onload = () => {
       let p;
       try { p = JSON.parse(String(fr.result)); } catch (e) { App.toast('err', 'Not a valid backup file'); return; }
       const data = p && p.data ? p.data : p;
-      if (!data || !data.settings || !Array.isArray(data.items)) { App.toast('err', 'Not a Dukaan OS backup'); return; }
+      try {
+        if (p.data && (p.app !== 'DukaanOS' || p.v !== 2)) throw new Error('Unsupported backup format.');
+        App.validateData(data);
+      } catch (e) { App.reportError(e); return; }
       App.confirm('Restore this backup?',
         'It has ' + data.items.length + ' items, ' + (data.bills || []).length + ' bills and ' +
         (data.customers || []).length + ' customers. Everything currently on this device will be replaced.',
         { danger: true, ok: 'Restore' }).then((ok) => {
           if (!ok) return;
-          localStorage.setItem('dukaanos.v2.' + App.accountId, JSON.stringify(data));
+          App.restoreBackup(data);
           App.toast('ok', 'Restored', 'Reloading…');
           setTimeout(() => location.reload(), 700);
         });
@@ -49,6 +53,7 @@
 
   /* ───────── PIN ───────── */
   App.setPin = function () {
+    App.requirePermission('settings');
     App.prompt(t('set.setPin'), t('set.setPin'), { type: 'tel', placeholder: '••••' }).then((p) => {
       if (p == null) return;
       p = String(p).replace(/\D/g, '');
@@ -62,6 +67,7 @@
 
   /* ───────── staff ───────── */
   function editStaff(id) {
+    App.requirePermission('settings');
     const db = App.DB();
     const s = id ? db.staff.find((x) => x.id === id) : null;
     const body = App.el('<div>' +
@@ -90,6 +96,11 @@
           label: t('com.save'), cls: 'pri', fn: () => {
             const n = App.$('#st_n', body).value.trim();
             if (!n) { App.toast('err', 'Name is required'); return false; }
+            App.requirePermission('settings');
+            const role = App.$('#st_r', body).value, pin = App.$('#st_p', body).value.trim();
+            if (pin && !/^\d{4}$/.test(pin)) throw new Error('PIN must be exactly four digits.');
+            if (role === 'owner' && db.staff.some((x) => x.role === 'cashier') && !pin) throw new Error('Set an owner PIN before using cashier accounts.');
+            if (s && s.role === 'owner' && role !== 'owner' && !db.staff.some((x) => x.id !== s.id && x.role === 'owner')) throw new Error('Keep at least one owner.');
             const rec = s || { id: App.uid('sf'), active: true };
             rec.name = n; rec.role = App.$('#st_r', body).value;
             rec.pin = App.$('#st_p', body).value.replace(/\D/g, '').slice(0, 4);
@@ -111,12 +122,16 @@
     body.addEventListener('click', (e) => {
       const b = e.target.closest('[data-sw]'); if (!b) return;
       const s = db.staff.find((x) => x.id === b.dataset.sw);
+      if (s.role === 'cashier' && db.staff.some((x) => x.role === 'owner' && !/^\d{4}$/.test(x.pin || ''))) {
+        App.toast('warn', 'Set an owner PIN first', 'Every owner needs a four-digit staff PIN before switching to a cashier.'); return;
+      }
+      if (!App.isOwner() && s.role === 'owner' && !s.pin) { App.toast('err', 'Owner PIN is required'); return; }
       const go = () => {
         db.session.staffId = s.id;
         App.log('sys', 'Shift start: ' + s.name);
         App.save({ sync: false });
         App.toast('ok', t('lock.welcome'), s.name);
-        m.close(); App.render();
+        m.close(); App.go('billing');
       };
       if (s.pin) {
         App.prompt('PIN for ' + s.name, 'Enter 4-digit PIN', { type: 'tel' }).then((p) => {
@@ -145,13 +160,15 @@
     const m = App.modal({ title: '🏪 ' + t('set.stores'), body, foot: false });
     body.addEventListener('click', (e) => {
       const b = e.target.closest('[data-st]');
-      if (b) { db.settings.activeStore = b.dataset.st; App.save({ sync: false }); m.close(); App.render(); App.toast('ok', 'Switched store'); return; }
+      if (b) { db.settings.activeStore = b.dataset.st; App.save({ sync: false }); App.posClear(); m.close(); App.render(); App.toast('ok', 'Switched store'); return; }
       if (e.target.closest('#addStore')) {
+        App.requirePermission('settings');
         App.prompt(t('set.addStore'), t('com.name'), { placeholder: 'Branch 2' }).then((n) => {
           if (!n || !n.trim()) return;
           const st = { id: App.uid('st'), name: n.trim(), address: '' };
+          App.requirePermission('settings');
           db.stores.push(st); db.settings.activeStore = st.id;
-          App.save({ sync: false }); m.close(); App.render();
+          App.save({ sync: false }); App.posClear(); m.close(); App.render();
           App.toast('ok', 'Store added', n + ' — start by adding items');
         });
       }
@@ -160,6 +177,7 @@
 
   /* ───────── view ───────── */
   App.views.settings = function (main) {
+    App.requirePermission('settings');
     const db = App.DB(), st = db.settings;
     const owner = App.isOwner();
     const account = App.auth.currentAccount();
@@ -257,7 +275,7 @@
       '<div class="kv"><span>Bills stored</span><b class="num">' + db.bills.length + '</b></div>' +
       '<div class="kv"><span>Items</span><b class="num">' + db.items.filter((i) => !i.deleted).length + '</b></div>' +
       '<div class="kv"><span>Customers</span><b class="num">' + db.customers.filter((c) => !c.deleted).length + '</b></div>' +
-      '<div class="kv"><span>Waiting to sync</span><b class="num">' + App.sync.pending() + '</b></div>' +
+      '<div class="kv"><span>Cloud sync unavailable; legacy queued changes</span><b class="num">' + App.sync.pending() + '</b></div>' +
       (isBlank ? '<button class="btn sm block" id="loadSample" style="margin-top:14px">🧪 Load sample data</button>' +
         '<p class="muted" style="font-size:11.5px;margin-top:6px">Optional demo shop to explore with. Only offered while your shop is still empty — nothing is ever added on its own.</p>' : '') +
       (owner ? '<button class="btn danger block" id="resetAll" style="margin-top:16px">🗑️ ' + t('set.reset') + '</button>' : '') +
@@ -268,6 +286,7 @@
     /* text/number/select fields write straight back to settings */
     App.$$('[data-s]', main).forEach((inp) => {
       inp.addEventListener('change', () => {
+        App.requirePermission('settings');
         const k = inp.dataset.s;
         let v = inp.value;
         if (inp.type === 'number' || k === 'lowStock' || k === 'dailyTarget' || k === 'loyaltyRate' || k === 'defaultGst') v = parseFloat(v) || 0;
@@ -279,6 +298,7 @@
     });
     App.$$('[data-t]', main).forEach((inp) => {
       inp.addEventListener('change', () => {
+        App.requirePermission('settings');
         const k = inp.dataset.t;
         if (k === 'theme') { st.theme = inp.checked ? 'dark' : 'light'; App.applyTheme(); }
         else st[k] = inp.checked;
@@ -288,6 +308,7 @@
     });
 
     main.addEventListener('click', (e) => {
+      App.requirePermission('settings');
       const l = e.target.closest('[data-lang]'), rt = e.target.closest('[data-rt]'), sf = e.target.closest('[data-staff]');
       if (l) { App.setLang(l.dataset.lang); App.render(); App.applyI18n(); return; }
       if (rt) { st.receiptTheme = rt.dataset.rt; App.save({ sync: false }); return; }

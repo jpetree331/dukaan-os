@@ -19,13 +19,8 @@
   /* ───────── routing ───────── */
   App.go = function (v) {
     if (!App.views[v]) v = 'dashboard';
-    if (v !== 'dashboard' && v !== 'billing' && v !== 'inventory' && v !== 'customers' && !App.can('all') && !App.isOwner()) {
-      // cashiers may not open reports / settings / suppliers
-      if (v === 'reports' || v === 'settings' || v === 'suppliers') {
-        App.toast('warn', 'Owner access only', 'Ask the owner to switch user');
-        return;
-      }
-    }
+    if (!booted) return;
+    if (!App.isOwner() && ['settings', 'reports', 'suppliers'].includes(v)) v = 'billing';
     view = v;
     location.hash = '#' + v;
     App.render();
@@ -36,6 +31,8 @@
   };
 
   App.render = function () {
+    if (!booted) return;
+    if (!App.isOwner() && ['settings', 'reports', 'suppliers'].includes(view)) { view = 'billing'; location.hash = '#billing'; }
     const old = $('#main');
     if (!old) return;
     /* Swap in a brand-new <main> instead of just clearing innerHTML. Each
@@ -87,7 +84,8 @@
     const span = pill.querySelector('span');
     pill.classList.toggle('off', !on);
     pill.classList.toggle('sync', on && q > 0);
-    span.textContent = !on ? t('sync.offline') : q > 0 ? (App.sync.draining() ? t('sync.syncing') : t('sync.pending', { n: q })) : t('sync.online');
+    span.textContent = on ? 'Saved on this device · online' : 'Saved on this device · offline';
+    pill.title = 'Cloud sync is not available. Export backups from Settings.';
   }
   App.on('net', paintNet);
 
@@ -102,17 +100,23 @@
   });
 
   /* re-render whenever state changes, but never while typing */
-  let rerender = null;
+  let rerender = null, needsRender = false;
+  function refreshWhenReady() {
+    if (!booted || !needsRender) return;
+    const a = document.activeElement;
+    if ((a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) || $('#modalRoot').children.length) { paintChrome(); return; }
+    needsRender = false;
+    App.render();
+  }
   App.on('change', () => {
-    if (!booted) return;
+    needsRender = true;
     clearTimeout(rerender);
-    rerender = setTimeout(() => {
-      const a = document.activeElement;
-      if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) { paintChrome(); return; }
-      if ($('#modalRoot').children.length) { paintChrome(); return; }
-      App.render();
-    }, 90);
+    rerender = setTimeout(refreshWhenReady, 90);
   });
+  App.on('modalclosed', refreshWhenReady);
+  document.addEventListener('focusout', () => setTimeout(refreshWhenReady, 0));
+  w.addEventListener('error', (e) => { if (e.error) App.reportError(e.error); });
+  w.addEventListener('unhandledrejection', (e) => { App.reportError(e.reason); });
 
   /* ───────── PIN lock screen ───────── */
   let pinBuf = '', onUnlock = null;
@@ -193,7 +197,7 @@
 
   /* keyboard shortcuts for a desktop counter */
   document.addEventListener('keydown', (e) => {
-    if (!$('#lockScreen').hidden) return;
+    if (!booted || !$('#lockScreen').hidden) return;
     const typing = /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName);
     if (e.altKey && /^[1-7]$/.test(e.key)) {
       e.preventDefault();
@@ -208,7 +212,7 @@
 
   w.addEventListener('hashchange', () => {
     const v = location.hash.replace('#', '');
-    if (v && v !== view && App.views[v]) { view = v; App.render(); }
+    if (booted && v && v !== view && App.views[v]) App.go(v);
   });
 
   /* ───────── auth screen ───────── */
@@ -299,24 +303,42 @@
      is ever seeded — a fresh install starts genuinely empty. */
   const LOCAL_ACCOUNT_ID = 'local';
 
-  function start() {
-    document.documentElement.lang = 'en';
-    $('#authScreen').hidden = true;
+  async function start() {
+    try {
+      if (!await App.acquireWriter()) throw new Error('Dukaan OS is already open in another tab. Close that tab, then reload this one.');
+      document.documentElement.lang = 'en';
+      $('#authScreen').hidden = true;
 
-    if (!App.auth.gateOn()) { enterShell(LOCAL_ACCOUNT_ID); return; }
+      if (!App.auth.gateOn()) { enterShell(LOCAL_ACCOUNT_ID); return; }
 
-    setAuthMode('login');
-    const acc = App.auth.currentAccount();
+      setAuthMode('login');
+      const acc = App.auth.currentAccount();
 
-    if (!acc) {
-      /* Gate is on and nobody is signed in — the counter stays shut. */
+      if (!acc) {
+        /* Gate is on and nobody is signed in — the counter stays shut. */
+        $('#boot').hidden = true;
+        $('#shell').hidden = true;
+        $('#lockScreen').hidden = true;
+        $('#authScreen').hidden = false;
+        return;
+      }
+      enterShell(acc.id);
+    } catch (e) {
       $('#boot').hidden = true;
       $('#shell').hidden = true;
-      $('#lockScreen').hidden = true;
-      $('#authScreen').hidden = false;
-      return;
+      $('#authScreen').hidden = true;
+      const panel = document.createElement('div');
+      panel.className = 'card';
+      panel.innerHTML = '<h2>Counter could not open</h2><p>' + App.esc(e.message) +
+        '</p><p>Existing shop data has been preserved. You can save its raw contents for recovery.</p>' +
+        '<button class="btn" id="recoverRaw">Save recovery file</button> <button class="btn pri" id="retryOpen">Reload</button>';
+      document.body.appendChild(panel);
+      $('#retryOpen', panel).onclick = () => location.reload();
+      $('#recoverRaw', panel).onclick = () => {
+        const key = 'dukaanos.v2.' + (App.accountId || 'local');
+        App.download(localStorage.getItem(key) || '', 'dukaan-recovery.json', 'application/json');
+      };
     }
-    enterShell(acc.id);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

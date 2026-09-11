@@ -20,7 +20,7 @@
 
   const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
   const inr2 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const money = (n, dec) => '₹' + (dec ? inr2 : inr).format(Math.abs(round2(n) || 0) < 0.005 ? 0 : round2(n));
+  const money = (n, dec) => '₹' + ((dec == null ? round2(n) % 1 !== 0 : dec) ? inr2 : inr).format(Math.abs(round2(n) || 0) < 0.005 ? 0 : round2(n));
   const short = (n) => {
     n = +n || 0;
     if (Math.abs(n) >= 1e7) return '₹' + (n / 1e7).toFixed(2).replace(/\.00$/, '') + 'Cr';
@@ -127,80 +127,83 @@
   let DB = blank();
   App.DB = () => DB;
 
+  const committed = new Map();
   function load() {
-    try {
-      const raw = localStorage.getItem(dataKey());
-      if (raw) {
-        const p = JSON.parse(raw);
-        DB = Object.assign(blank(), p);
-        DB.settings = Object.assign(blank().settings, p.settings || {});
-        return true;
-      }
-    } catch (e) { console.warn('load failed', e); }
+    const raw = localStorage.getItem(dataKey());
+    if (raw !== null) {
+      const parsed = App.validateData(JSON.parse(raw));
+      DB = Object.assign(blank(), parsed);
+      DB.settings = Object.assign(blank().settings, parsed.settings);
+      committed.set(dataKey(), raw);
+      return true;
+    }
+    committed.set(dataKey(), null);
     return false;
   }
 
-  let saveTimer = null, dirty = false;
+  // Restore objects in place so open editor references cannot retain failed edits.
+  function restore(target, source) {
+    Object.keys(target).forEach((k) => { if (!(k in source)) delete target[k]; });
+    Object.keys(source).forEach((k) => {
+      const v = source[k];
+      if (Array.isArray(v)) {
+        const old = Array.isArray(target[k]) ? target[k] : [];
+        target[k] = v.map((x, i) => {
+          const prior = x && typeof x === 'object' ? (x.id ? old.find((y) => y && y.id === x.id) : old[i]) : null;
+          if (prior && typeof prior === 'object') { restore(prior, x); return prior; }
+          return x;
+        });
+      } else if (v && typeof v === 'object') {
+        if (!target[k] || typeof target[k] !== 'object') target[k] = {};
+        restore(target[k], v);
+      } else target[k] = v;
+    });
+  }
   function persist() {
-    try { localStorage.setItem(dataKey(), JSON.stringify(DB)); dirty = false; }
-    catch (e) {
-      console.error(e);
-      if (App.toast) App.toast('err', 'Storage full', 'Export a backup and clear old bills.');
+    const key = dataKey(), previous = committed.has(key) ? committed.get(key) : null;
+    try {
+      App.assertWriter();
+      if (localStorage.getItem(key) !== previous) throw new Error('Shop data changed in another tab. Reload before saving; your cart has been kept.');
+      const raw = JSON.stringify(App.validateData(DB));
+      localStorage.setItem(key, raw);
+      committed.set(key, raw);
+    } catch (e) {
+      if (previous) restore(DB, JSON.parse(previous));
+      else restore(DB, blank());
+      throw e;
     }
   }
   function save(opts) {
-    dirty = true;
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(persist, 180);
-    if (opts && opts.sync !== false) queueSync(opts && opts.op);
+    persist(); // Success UI is permitted only after this atomic write succeeds.
+    if (opts && opts.sync !== false) queueSync(opts.op);
     if (!opts || opts.render !== false) App.emit('change');
   }
   App.save = save;
   App.persistNow = persist;
-  w.addEventListener('beforeunload', () => { if (dirty) persist(); });
+  App.restoreBackup = (data) => {
+    App.requirePermission('settings');
+    const valid = App.validateData(data);
+    // Keep the prior snapshot for recovery, before replacing the live key.
+    const previous = localStorage.getItem(dataKey());
+    if (previous) localStorage.setItem(dataKey() + '.before-restore', previous);
+    restore(DB, valid);
+    save({ sync: false });
+    if (App.posClear) App.posClear();
+  };
 
   /* ───────── tiny event bus ───────── */
   const subs = {};
   App.on = (ev, fn) => { (subs[ev] = subs[ev] || []).push(fn); };
   App.emit = (ev, d) => { (subs[ev] || []).forEach((f) => { try { f(d); } catch (e) { console.error(e); } }); };
 
-  /* ───────── offline sync queue ─────────
-     No backend is wired up in the MVP, so every mutation lands in a
-     durable local queue. When the browser reports it is online we drain
-     the queue through App.sync.push — swap that one function for a
-     Firestore write and the app is cloud-backed with no other change. */
+  /* This release stores data on this device only. No upload is simulated. */
   let queue = [];
   function loadQueue() {
     try { queue = JSON.parse(localStorage.getItem(queueKey()) || '[]'); } catch (e) { queue = []; }
   }
-  function saveQ() { try { localStorage.setItem(queueKey(), JSON.stringify(queue.slice(-500))); } catch (e) { } }
-
-  function queueSync(op) {
-    queue.push({ id: uid('q'), op: op || 'update', at: Date.now(), store: DB.settings.activeStore });
-    saveQ();
-    App.emit('net');
-    if (navigator.onLine) drain();
-  }
-  let draining = false;
-  function drain() {
-    if (draining || !queue.length || !navigator.onLine) return;
-    draining = true;
-    App.emit('net');
-    setTimeout(() => {
-      // Replace this block with a real remote write to go multi-device.
-      const n = queue.length;
-      queue = []; saveQ(); draining = false;
-      App.emit('net');
-      if (n > 3) App.toast && App.toast('ok', App.t('sync.done'), App.t('sync.doneSub').replace('{n}', n));
-    }, 700);
-  }
-  App.sync = {
-    pending: () => queue.length,
-    draining: () => draining,
-    drain,
-    push: null // hook point for Firebase
-  };
-  w.addEventListener('online', () => { App.emit('net'); drain(); });
+  function queueSync() { App.emit('net'); }
+  App.sync = { pending: () => queue.length, draining: () => false, drain: () => {}, push: null };
+  w.addEventListener('online', () => App.emit('net'));
   w.addEventListener('offline', () => App.emit('net'));
 
   /* ───────── scoped selectors ───────── */
@@ -214,15 +217,16 @@
   App.liveBills = () => mine(DB.bills).filter((b) => !b.void);
   App.payments = () => mine(DB.payments);
   App.purchases = () => mine(DB.purchases);
-  App.item = (id) => DB.items.find((i) => i.id === id);
-  App.customer = (id) => DB.customers.find((c) => c.id === id);
-  App.supplier = (id) => DB.suppliers.find((s) => s.id === id);
+  App.item = (id) => App.items().find((i) => i.id === id);
+  App.customer = (id) => App.customers().find((c) => c.id === id);
+  App.supplier = (id) => App.suppliers().find((s) => s.id === id);
   App.staff = (id) => DB.staff.find((s) => s.id === id);
   App.me = () => App.staff(DB.session.staffId) || DB.staff[0];
   App.isOwner = () => (App.me() || {}).role === 'owner';
   App.can = (what) => {
     const r = (App.me() || {}).role;
     if (r === 'owner') return true;
+    if (r !== 'cashier') return false;
     return ['bill', 'view_inventory', 'restock', 'view_customers', 'take_payment'].indexOf(what) > -1;
   };
 
@@ -231,35 +235,42 @@
     if (it.batches && it.batches.length) return it.batches.reduce((s, b) => s + (+b.qty || 0), 0);
     return +it.stock || 0;
   }
+  App.sellableStock = (it) => it.batches && it.batches.length ? round2(it.batches.filter((b) => !b.expiry || b.expiry >= dayKey(Date.now())).reduce((n, b) => n + b.qty, 0)) : itemStock(it);
   function takeStock(it, qty) {
+    App.number(qty, 'Quantity', 0.0001);
+    if (qty > App.sellableStock(it)) throw new Error('Insufficient stock for ' + it.name);
+    const allocations = [];
     if (it.batches && it.batches.length) {
       let need = qty;
-      it.batches.sort((a, b) => (a.expiry || '9999') < (b.expiry || '9999') ? -1 : 1);
+      it.batches.sort((a, b) => (a.expiry || '9999').localeCompare(b.expiry || '9999') || (a.at || 0) - (b.at || 0));
       for (const b of it.batches) {
+        if (b.expiry && b.expiry < dayKey(Date.now())) continue;
         if (need <= 0) break;
-        const t = Math.min(b.qty, need); b.qty -= t; need -= t;
+        const used = Math.min(b.qty, need);
+        allocations.push({ ...b, qty: used });
+        b.qty = round2(b.qty - used); need = round2(need - used);
       }
-      it.batches = it.batches.filter((b) => b.qty > 0.0001);
-      it.stock = itemStock(it);
-      if (need > 0) it.stock = round2(it.stock - need);
+      it.batches = it.batches.filter((b) => b.qty > 0);
+      it.stock = round2(it.batches.reduce((sum, b) => sum + b.qty, 0));
     } else {
-      it.stock = round2((+it.stock || 0) - qty);
+      allocations.push({ id: uid('b'), qty, expiry: '', cost: it.cost, at: Date.now() });
+      it.stock = round2(it.stock - qty);
     }
+    return allocations;
   }
-  function giveStock(it, qty, expiry, cost) {
-    if (expiry) {
-      it.batches = it.batches || [];
-      const ex = it.batches.find((b) => b.expiry === expiry);
+  function giveStock(it, qty, expiry, cost, original) {
+    App.number(qty, 'Quantity', 0.0001);
+    cost = cost == null ? it.cost : App.number(cost, 'Cost');
+    if (expiry || (it.batches && it.batches.length) || original) {
+      if (!it.batches || !it.batches.length) {
+        it.batches = [];
+        if (it.stock > 0) it.batches.push({ id: uid('b'), qty: it.stock, expiry: '', cost: it.cost, at: Date.now() });
+      }
+      const ex = it.batches.find((b) => original ? b.id === original.id : b.expiry === (expiry || '') && b.cost === cost);
       if (ex) ex.qty = round2(ex.qty + qty);
-      else it.batches.push({ id: uid('b'), qty: round2(qty), expiry, cost: cost || it.cost, at: Date.now() });
-      it.stock = itemStock(it);
-    } else if (it.batches && it.batches.length) {
-      const nx = it.batches.find((b) => !b.expiry);
-      if (nx) nx.qty = round2(nx.qty + qty); else it.batches.push({ id: uid('b'), qty: round2(qty), expiry: '', cost: cost || it.cost, at: Date.now() });
-      it.stock = itemStock(it);
-    } else {
-      it.stock = round2((+it.stock || 0) + qty);
-    }
+      else it.batches.push({ id: uid('b'), at: Date.now(), ...original, qty: round2(qty), expiry: expiry || '', cost });
+      it.stock = round2(it.batches.reduce((sum, b) => sum + b.qty, 0));
+    } else it.stock = round2(it.stock + qty);
   }
   App.itemStock = itemStock; App.takeStock = takeStock; App.giveStock = giveStock;
   App.stockState = (it) => {
@@ -287,27 +298,56 @@
   App.activity = () => mine(DB.activity);
 
   /* ───────── money-movement actions ───────── */
+  App.cartTotals = (cart) => {
+    const st = DB.settings;
+    const sub = round2(cart.lines.reduce((sum, l) => sum + round2(l.price * l.qty), 0));
+    const disc = round2(clamp(cart.discount || 0, 0, sub));
+    const cust = App.customer(cart.customerId);
+    const redeem = round2(Math.max(0, Math.min(cart.redeem || 0, sub - disc, cust ? Math.max(0, cust.points || 0) * st.loyaltyValue : 0)));
+    const ratio = sub ? (sub - disc - redeem) / sub : 0;
+    const taxes = cart.lines.map((l) => {
+      const it = App.item(l.itemId);
+      const gst = st.gstEnabled ? (it && it.gst != null ? it.gst : st.defaultGst) : 0;
+      const taxable = round2(round2(l.price * l.qty) * ratio);
+      return { gst, taxable, tax: round2(taxable * gst / 100) };
+    });
+    // Allocate the last paise of discount so the line bases equal the bill base.
+    if (taxes.length) {
+      const last = taxes[taxes.length - 1];
+      last.taxable = round2(last.taxable + sub - disc - redeem - taxes.reduce((n, x) => n + x.taxable, 0));
+      last.tax = round2(last.taxable * last.gst / 100);
+    }
+    const tax = round2(taxes.reduce((n, x) => n + x.tax, 0));
+    return { sub, disc, redeem, tax, taxes, total: round2(sub - disc - redeem + tax) };
+  };
   App.actions = {
     /* Commit a cart into a bill. Deducts stock, moves credit, awards loyalty. */
     checkout(cart) {
-      const st = DB.settings;
-      const lines = cart.lines.map((l) => {
+      App.requirePermission('bill');
+      if (!cart.lines || !cart.lines.length) throw new Error('The cart is empty.');
+      if (cart.storeId && cart.storeId !== S()) throw new Error('The cart belongs to a different store. Clear it and try again.');
+      if (!['cash', 'upi', 'card', 'credit'].includes(cart.mode || 'cash')) throw new Error('Invalid payment mode.');
+      App.number(cart.discount || 0, 'Discount'); App.number(cart.redeem || 0, 'Redemption');
+      const quantities = new Map();
+      cart.lines.forEach((l) => {
         const it = App.item(l.itemId);
-        const gstPc = st.gstEnabled ? (l.gst != null ? l.gst : (it && it.gst != null ? it.gst : st.defaultGst)) : 0;
-        const gross = round2(l.price * l.qty);
-        return { itemId: l.itemId, name: l.name, emoji: l.emoji || '', qty: l.qty, price: l.price, cost: it ? it.cost : 0, gst: gstPc, gross };
+        if (!it) throw new Error('An item was removed or belongs to another store. Update the cart.');
+        App.number(l.qty, 'Quantity', 0.0001); App.number(l.price, 'Price');
+        if (l.price !== it.price) throw new Error(it.name + ' has a new price. Remove it and add it again.');
+        quantities.set(it.id, (quantities.get(it.id) || 0) + l.qty);
+        if (quantities.get(it.id) > App.sellableStock(it)) throw new Error('Insufficient stock for ' + it.name + '. Update the cart.');
       });
-      const sub = round2(lines.reduce((s, l) => s + l.gross, 0));
-      const disc = round2(clamp(cart.discount || 0, 0, sub));
-      const taxable = round2(sub - disc);
-      let tax = 0;
-      if (st.gstEnabled) {
-        const ratio = sub > 0 ? taxable / sub : 0;
-        tax = round2(lines.reduce((s, l) => s + (l.gross * ratio) * (l.gst / 100), 0));
-      }
-      const total = round2(taxable + tax);
-      const cust = cart.customerId ? App.customer(cart.customerId) : null;
+      const st = DB.settings, cust = cart.customerId ? App.customer(cart.customerId) : null;
       const credit = cart.mode === 'credit';
+      if ((cart.customerId || credit || cart.redeem) && !cust) throw new Error('Select a valid customer.');
+      const T = App.cartTotals(cart);
+      if (round2(cart.redeem || 0) !== T.redeem) throw new Error('Available loyalty points changed. Review the redemption.');
+      const { sub, tax, total } = T, disc = round2(T.disc + T.redeem);
+      const lines = cart.lines.map((l, index) => {
+        const it = App.item(l.itemId);
+        return { itemId: it.id, name: it.name, emoji: it.emoji || '', qty: l.qty, price: l.price, cost: it.cost,
+          gross: round2(l.price * l.qty), ...T.taxes[index] };
+      });
 
       const bill = {
         id: uid('bl'), no: DB.counter.bill++, storeId: S(),
@@ -315,10 +355,13 @@
         lines, sub, discount: disc, tax, total,
         paid: credit ? 0 : total, mode: cart.mode || 'cash', credit,
         note: cart.note || '', staffId: DB.session.staffId, at: Date.now(), void: false,
-        loyalty: 0, redeemed: round2(cart.redeem || 0)
+        loyalty: 0, redeemed: T.redeem, redeemedPoints: round2(T.redeem / st.loyaltyValue)
       };
 
-      lines.forEach((l) => { const it = App.item(l.itemId); if (it) takeStock(it, l.qty); });
+      lines.forEach((l) => {
+        l.allocations = takeStock(App.item(l.itemId), l.qty);
+        l.cost = l.allocations.reduce((n, b) => n + b.cost * b.qty, 0) / l.qty;
+      });
 
       if (cust) {
         if (credit) cust.balance = round2((cust.balance || 0) + total);
@@ -328,7 +371,7 @@
         if (!cust.firstAt) cust.firstAt = Date.now();
         if (credit && !cust.dueSince) cust.dueSince = Date.now();
         const pts = Math.floor(total / (st.loyaltyRate || 100));
-        cust.points = Math.max(0, round2((cust.points || 0) - (bill.redeemed / (st.loyaltyValue || 1)) + pts));
+        cust.points = round2((cust.points || 0) - bill.redeemedPoints + pts);
         bill.loyalty = pts;
       }
 
@@ -339,17 +382,23 @@
     },
 
     voidBill(id, reason) {
-      const b = DB.bills.find((x) => x.id === id);
+      App.requirePermission('void_bill');
+      const b = App.bills().find((x) => x.id === id);
       if (!b || b.void) return null;
       b.void = true; b.voidAt = Date.now(); b.voidReason = reason || '';
-      b.lines.forEach((l) => { const it = App.item(l.itemId); if (it) giveStock(it, l.qty); });
-      const c = b.customerId && App.customer(b.customerId);
+      b.lines.forEach((l) => {
+        const it = DB.items.find((x) => x.id === l.itemId && (!x.storeId || x.storeId === S()));
+        if (!it) return;
+        if (l.allocations) l.allocations.forEach((batch) => giveStock(it, batch.qty, batch.expiry, batch.cost, batch));
+        else { giveStock(it, l.qty, '', l.cost); b.legacyStockRestore = true; }
+      });
+      const c = b.customerId && DB.customers.find((x) => x.id === b.customerId && (!x.storeId || x.storeId === S()));
       if (c) {
-        if (b.credit) c.balance = round2((c.balance || 0) - b.total);
+        if (b.credit) { c.balance = round2((c.balance || 0) - b.total); if (c.balance !== 0) c.deleted = false; }
         c.spend = round2((c.spend || 0) - b.total);
         c.visits = Math.max(0, (c.visits || 1) - 1);
-        c.points = Math.max(0, round2((c.points || 0) - (b.loyalty || 0)));
-        if (c.balance <= 0) { c.balance = 0; c.dueSince = null; }
+        c.points = round2((c.points || 0) - (b.loyalty || 0) + (b.redeemedPoints != null ? b.redeemedPoints : (b.redeemed || 0) / DB.settings.loyaltyValue));
+        if (c.balance <= 0) c.dueSince = null; // Negative balance is credit owed to this customer.
       }
       log('void', `Cancelled bill #${b.no} · ${money(b.total)}`, { billId: b.id });
       save({ op: 'void' });
@@ -357,8 +406,11 @@
     },
 
     takePayment(customerId, amount, mode, note) {
-      const c = App.customer(customerId); if (!c) return null;
-      const amt = round2(clamp(amount, 0, 1e9));
+      App.requirePermission('take_payment');
+      const c = App.customer(customerId); if (!c) throw new Error('Customer not found.');
+      if (!['cash', 'upi', 'card'].includes(mode || 'cash')) throw new Error('Invalid payment mode.');
+      const amt = round2(App.number(amount, 'Payment', 0.01));
+      if (amt > Math.max(0, c.balance || 0)) throw new Error('Payment exceeds the outstanding balance.');
       const p = { id: uid('pm'), storeId: S(), customerId, amount: amt, mode: mode || 'cash', note: note || '', staffId: DB.session.staffId, at: Date.now() };
       DB.payments.unshift(p);
       c.balance = round2(Math.max(0, (c.balance || 0) - amt));
@@ -368,18 +420,28 @@
       return p;
     },
 
-    recordPurchase(supplierId, lines, paidNow, note) {
+    recordPurchase(supplierId, lines, paidNow, note, mode = 'cash') {
+      App.requirePermission('purchase');
+      if (!['cash', 'upi', 'card'].includes(mode)) throw new Error('Invalid payment mode.');
+      if (!lines.length) throw new Error('Add purchase items first.');
+      lines.forEach((l) => {
+        if (!App.item(l.itemId)) throw new Error('Purchase item not found in this store.');
+        App.number(l.qty, 'Quantity', 0.0001); App.number(l.cost, 'Purchase cost');
+      });
+      App.number(paidNow || 0, 'Paid now');
       const sup = App.supplier(supplierId);
+      if (!sup) throw new Error('Supplier not found.');
       const total = round2(lines.reduce((s, l) => s + l.qty * l.cost, 0));
+      if ((paidNow || 0) > total) throw new Error('Paid now exceeds the purchase total.');
       const paid = round2(clamp(paidNow || 0, 0, total));
       const po = {
         id: uid('po'), no: DB.counter.po++, storeId: S(), supplierId,
-        supplierName: sup ? sup.name : 'Supplier', lines, total, paid, note: note || '',
+        supplierName: sup.name, lines: JSON.parse(JSON.stringify(lines)), total, paid, mode, note: note || '',
         staffId: DB.session.staffId, at: Date.now()
       };
       lines.forEach((l) => {
         const it = App.item(l.itemId);
-        if (it) { giveStock(it, l.qty, l.expiry || '', l.cost); if (l.cost) it.cost = l.cost; it.lastBuyAt = Date.now(); }
+        if (it) { giveStock(it, l.qty, l.expiry || '', l.cost); it.cost = l.cost; it.lastBuyAt = Date.now(); }
       });
       DB.purchases.unshift(po);
       if (sup) {
@@ -393,8 +455,11 @@
     },
 
     paySupplier(supplierId, amount, mode) {
-      const s = App.supplier(supplierId); if (!s) return null;
-      const amt = round2(clamp(amount, 0, 1e9));
+      App.requirePermission('pay_supplier');
+      const s = App.supplier(supplierId); if (!s) throw new Error('Supplier not found.');
+      if (!['cash', 'upi', 'card'].includes(mode || 'cash')) throw new Error('Invalid payment mode.');
+      const amt = round2(App.number(amount, 'Payment', 0.01));
+      if (amt > Math.max(0, s.balance || 0)) throw new Error('Payment exceeds the outstanding balance.');
       DB.supplierPayments.unshift({ id: uid('sp'), storeId: S(), supplierId, amount: amt, mode: mode || 'cash', staffId: DB.session.staffId, at: Date.now() });
       s.balance = round2(Math.max(0, (s.balance || 0) - amt));
       if (s.balance <= 0) s.dueSince = null;
@@ -404,22 +469,44 @@
     },
 
     restock(itemId, qty, expiry, cost) {
-      const it = App.item(itemId); if (!it) return;
+      App.requirePermission('restock');
+      const it = App.item(itemId); if (!it) throw new Error('Item not found.');
+      App.number(qty, 'Quantity', 0.0001);
+      if (cost != null) App.number(cost, 'Cost');
       giveStock(it, +qty, expiry || '', cost);
+      if (cost != null) it.cost = cost;
       log('restock', `${it.name} +${qty}`, { itemId });
       save({ op: 'restock' });
     }
   };
 
   /* ───────── analytics ───────── */
+  App.gstBreakdown = (bills) => {
+    const rows = Object.create(null);
+    bills.forEach((b) => {
+      const bases = b.lines.map((l) => l.taxable != null ? l.taxable : round2(l.gross * (b.sub ? (b.sub - b.discount) / b.sub : 0)));
+      const weights = bases.map((base, i) => base * (b.lines[i].gst || 0) / 100);
+      const sum = weights.reduce((n, x) => n + x, 0);
+      let allocated = 0;
+      b.lines.forEach((l, i) => {
+        const rate = b.tax ? l.gst || 0 : 0;
+        const row = rows[rate] = rows[rate] || { taxable: 0, tax: 0 };
+        let tax = l.tax != null ? l.tax : (sum ? round2(b.tax * weights[i] / sum) : 0);
+        if (l.tax == null && i === b.lines.length - 1) tax = round2((b.tax || 0) - allocated);
+        allocated = round2(allocated + tax);
+        row.taxable = round2(row.taxable + bases[i]); row.tax = round2(row.tax + tax);
+      });
+    });
+    return rows;
+  };
   App.stats = {
     range(fromTs, toTs) {
-      const bs = App.liveBills().filter((b) => b.at >= fromTs && b.at <= toTs);
+      const bs = App.liveBills().filter((b) => b.at >= fromTs && b.at < toTs);
       const sales = round2(bs.reduce((s, b) => s + b.total, 0));
       const cost = round2(bs.reduce((s, b) => s + b.lines.reduce((x, l) => x + (l.cost || 0) * l.qty, 0), 0));
       const credit = round2(bs.filter((b) => b.credit).reduce((s, b) => s + b.total, 0));
       const items = bs.reduce((s, b) => s + b.lines.reduce((x, l) => x + l.qty, 0), 0);
-      return { bills: bs, count: bs.length, sales, cost, profit: round2(sales - cost), credit, items, avg: bs.length ? round2(sales / bs.length) : 0 };
+      return { bills: bs, count: bs.length, sales, cost, profit: round2(sales - bs.reduce((n, b) => n + (b.tax || 0), 0) - cost), credit, items, avg: bs.length ? round2(sales / bs.length) : 0 };
     },
     today() { const s = startOfDay(Date.now()).getTime(); return this.range(s, s + DAY); },
     days(n) { const s = startOfDay(Date.now() - (n - 1) * DAY).getTime(); return this.range(s, Date.now() + 1); },
@@ -428,15 +515,16 @@
       const out = [];
       for (let i = n - 1; i >= 0; i--) {
         const s = startOfDay(Date.now() - i * DAY).getTime();
-        const r = this.range(s, s + DAY - 1);
+        const r = this.range(s, s + DAY);
         out.push({ t: s, label: new Date(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), dow: new Date(s).toLocaleDateString('en-IN', { weekday: 'short' }), value: r.sales, count: r.count, profit: r.profit });
       }
       return out;
     },
-    topItems(n, days) {
-      const from = days ? startOfDay(Date.now() - (days - 1) * DAY).getTime() : 0;
-      const m = {};
-      App.liveBills().filter((b) => b.at >= from).forEach((b) => b.lines.forEach((l) => {
+    topItems(n, days, fromTs, toTs) {
+      const from = fromTs != null ? fromTs : days ? startOfDay(Date.now() - (days - 1) * DAY).getTime() : 0;
+      const to = toTs != null ? toTs : Date.now() + 1;
+      const m = Object.create(null);
+      App.liveBills().filter((b) => b.at >= from && b.at < to).forEach((b) => b.lines.forEach((l) => {
         const k = l.itemId || l.name;
         m[k] = m[k] || { id: l.itemId, name: l.name, emoji: l.emoji, qty: 0, amt: 0 };
         m[k].qty += l.qty; m[k].amt = round2(m[k].amt + l.gross);
@@ -448,9 +536,9 @@
         .map((c) => ({ c, days: c.dueSince ? daysBetween(c.dueSince, Date.now()) : 0 }))
         .sort((a, b) => b.c.balance - a.c.balance);
     },
-    totalDue() { return round2(App.customers().reduce((s, c) => s + (c.balance || 0), 0)); },
+    totalDue() { return round2(App.customers().reduce((s, c) => s + Math.max(0, c.balance || 0), 0)); },
     totalOwed() { return round2(App.suppliers().reduce((s, x) => s + (x.balance || 0), 0)); },
-    stockValue() { return round2(App.items().reduce((s, i) => s + itemStock(i) * (i.cost || 0), 0)); },
+    stockValue() { return round2(App.items().reduce((s, i) => s + (i.batches && i.batches.length ? i.batches.reduce((n, b) => n + b.qty * b.cost, 0) : itemStock(i) * (i.cost || 0)), 0)); },
     /* velocity = units sold per day over the window */
     velocity(itemId, days) {
       days = days || 21;
@@ -463,7 +551,8 @@
       const s = startOfDay(dayTs || Date.now()).getTime(), e = s + DAY;
       const billCash = App.liveBills().filter((b) => b.at >= s && b.at < e && b.mode === 'cash').reduce((x, b) => x + b.total, 0);
       const payCash = App.payments().filter((p) => p.at >= s && p.at < e && p.mode === 'cash').reduce((x, p) => x + p.amount, 0);
-      const out = mine(DB.supplierPayments).filter((p) => p.at >= s && p.at < e && p.mode === 'cash').reduce((x, p) => x + p.amount, 0);
+      const purchaseCash = App.purchases().filter((p) => p.at >= s && p.at < e && (p.mode || 'cash') === 'cash').reduce((x, p) => x + p.paid, 0);
+      const out = purchaseCash + mine(DB.supplierPayments).filter((p) => p.at >= s && p.at < e && p.mode === 'cash').reduce((x, p) => x + p.amount, 0);
       return { in: round2(billCash + payCash), out: round2(out), net: round2(billCash + payCash - out), billCash: round2(billCash), payCash: round2(payCash) };
     },
     /* 0-100 friendly composite of stock health, dues and sales trend */
@@ -483,6 +572,8 @@
 
   /* ───────── seeding ───────── */
   function seed() {
+    App.requirePermission('settings');
+    if (!App.isBlankAccount()) throw new Error('Sample data is only available in an empty shop.');
     const R = rng(20260724);
     const now = Date.now();
     DB.items = SEED_ITEMS.map((s, i) => ({
@@ -576,7 +667,9 @@
   App.isBlankAccount = () => !DB.items.length && !DB.customers.length && !DB.bills.length && !DB.suppliers.length;
 
   App.resetAll = function () {
+    App.requirePermission('settings');
     localStorage.removeItem(dataKey());
+    committed.set(dataKey(), null);
     localStorage.removeItem(queueKey());
     location.reload();
   };
@@ -587,6 +680,7 @@
   App.initAccountData = function (accountId, shopName) {
     App.accountId = accountId;
     loadQueue();
+    committed.set(dataKey(), localStorage.getItem(dataKey()));
     DB = blank();
     if (shopName) DB.settings.shopName = shopName;
     persist();
@@ -602,6 +696,7 @@
   };
 
   App.boot = function (accountId) {
+    App.assertWriter();
     App.accountId = accountId || App.accountId;
     loadQueue();
     const had = load();

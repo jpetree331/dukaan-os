@@ -4,7 +4,7 @@
 
 Dukaan OS is a smart billing, inventory and *udhaar* (customer credit) ledger built for small local Indian shops — kirana and general stores selling chips, chocolates and daily items. It is designed for someone who has never used software like this before, works on a cheap Android phone, and keeps working when the internet doesn't.
 
-> Zero build step. Zero dependencies. Open `index.html` and it runs.
+> Zero build step. Zero dependencies. Run `node server.js` and open the local counter.
 
 ---
 
@@ -15,7 +15,7 @@ Dukaan OS is a smart billing, inventory and *udhaar* (customer credit) ledger bu
 - Quantity steppers, discounts, loyalty-point redemption
 - Cash / UPI / Card / **Udhaar** payment modes on every bill
 - Receipt rendered as an image with an embedded **UPI QR code** — share on WhatsApp, download, or print
-- Undo the last bill straight from the confirmation toast
+- Owners can undo the last bill straight from the confirmation toast
 - Barcode scanning via the phone camera (`BarcodeDetector`), with manual fallback
 
 ### 🎙️ Voice billing — Hindi, Hinglish and English
@@ -30,7 +30,7 @@ Say **"do packet lays aur ek maggi"** and the cart fills itself.
 - Auto-deducts on every sale, auto-restocks on every purchase
 - **Out of stock** and **Low stock** dashboards with per-item thresholds
 - Quick restock (+5 / +10 / +50 / custom) with optional expiry date
-- Batch tracking with **FIFO suggestions** and an *expiring soon* warning
+- Batch tracking with earliest-expiry-first sale allocation, recorded batch costs, and an *expiring soon* warning. Expired batches remain in physical inventory but cannot be sold.
 - CSV import/export for large catalogues
 
 ### 🤝 Customers & Udhaar ledger
@@ -54,27 +54,25 @@ Say **"do packet lays aur ek maggi"** and the cart fills itself.
 - Morning brief / end-of-day summary in Hindi or English, with read-aloud
 
 ### ⚙️ Everything else
-- Full **Hindi / English UI** toggle, dark mode, receipt colour themes
+- **Hindi / English UI** toggle (some prompts and labels still need translation), dark mode, receipt colour themes
 - Staff logins with limited cashier permissions and an activity log
 - Multi-store support under one profile
 - Optional 4-digit PIN lock and an optional **username/password login** (PBKDF2-SHA256, salted — never stored in plain text; off by default)
 - Daily sales target with a celebration when it's hit, and a friendly **shop health score**
 - One-tap full JSON backup & restore, ledger CSV export
-- **Offline-first PWA** — installable, service-worker cached, with a visible offline indicator and a local sync queue
+- **Offline-first PWA** — installable, service-worker cached, with a visible device-storage/offline indicator. No cloud upload is currently implemented
 
 ---
 
 ## 🚀 Run it
 
-**Just open it:** double-click `index.html`. That's it.
-
-**Or with the dev server** (needed for camera / microphone permissions on some browsers):
+**Use the local development server:**
 
 ```bash
 node server.js
 ```
 
-Then open <http://localhost:4173>. No `npm install` required — the server is 30 lines of plain Node.
+Then open <http://127.0.0.1:4173>. No `npm install` required. The server binds to loopback and serves only application assets. Use a current browser with Web Locks; production must use HTTPS. Direct `file://` launch is not supported for shop storage coordination.
 
 Voice input and barcode scanning need **Chrome on Android or desktop**.
 
@@ -89,7 +87,8 @@ Plain HTML, CSS and JavaScript. No framework, no bundler, no CDN dependencies �
 ```
 index.html        app shell
 css/app.css       design system — warm "neighbourhood store" palette
-js/core.js        state, persistence, offline queue, money actions, analytics
+js/core.js        state, durable persistence, money actions, analytics
+js/safety.js      data validation and exclusive browser writer lock
 js/auth.js        optional accounts (Web Crypto PBKDF2)
 js/i18n.js        Hindi / English strings
 js/voice.js       speech → cart parser (Hindi numbers, transliteration, fuzzy match)
@@ -103,7 +102,19 @@ js/qr.js          QR encoder for UPI payment codes
 sw.js             service worker
 ```
 
-Data lives in `localStorage`, namespaced per profile. Swap the one `drain()` function in `core.js` for a Firestore write and it becomes cloud-synced with no other change.
+Data lives in `localStorage`, namespaced per profile. Only one Dukaan OS tab per origin can write at a time. Saves complete before a transaction is reported as successful; a failed write restores the prior in-memory state. Export backups regularly. Cloud sync needs a real backend, authenticated writes, durable operations and conflict handling; the legacy queue is not a complete replication log.
+
+The optional login and staff PIN are local convenience controls. Shop data and PINs are not encrypted, and someone with browser/storage access can bypass them. Set an owner staff PIN before switching to a cashier. Broader security hardening remains separate work.
+
+## Verification and repair notes
+
+Run `npm test` with Node 22 or newer. Tests use synthetic, in-memory shop data and a disposable local server; no dependencies or real shop records are needed. See [the repair report](docs/BUGFIX-PASS.md) for the B01–B30 mapping, browser checks, compatibility choices and remaining limitations.
+
+- New bills retain consumed batch details and redeemed-point counts so voids can reverse them accurately. Historical bills cannot recover batch metadata that the old code never stored.
+- Payments larger than the outstanding balance are rejected. Voiding a repaid credit bill records a negative customer balance as credit owed; subsequent udhaar bills offset that credit. A separate cash-refund workflow is still future work.
+- Purchases record cash/UPI/card mode; historical purchases without a mode are treated as cash for reconciliation.
+- Restore validates the complete v2 data shape and references before replacement, and retains the previous data under the account's `.before-restore` storage key. Invalid stored data stops startup and offers a raw recovery download. It is never automatically erased.
+- GST reports and profit exclude collected tax appropriately; these are operational estimates, not a replacement for accounting review. Payment modes are manual records, not verified collections.
 
 ## 🗺️ Roadmap / help wanted
 

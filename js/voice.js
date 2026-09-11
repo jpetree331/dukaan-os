@@ -123,7 +123,7 @@
 
   function haystack(it) {
     const key = String(it.name || '').toLowerCase();
-    return [it.name, it.nameHi, it.alias, ALIAS[key], it.category, it.barcode]
+    return [it.name, it.nameHi, it.alias, ALIAS[key], it.barcode]
       .filter(Boolean).join(' ').toLowerCase();
   }
 
@@ -145,40 +145,42 @@
     const pSkSpaced = p.split(/\s+/).map(skel).filter(Boolean).join(' ');
     if (!pSkSpaced) return null;
 
-    let best = null, bestScore = 0;
+    let best = null, bestScore = 0, runnerUp = 0;
     items.forEach((it) => {
       const hay = haystack(it);
-      let score = 0;
+      let score = 0, matched = 0;
 
       const hTok = hay.split(/[\s,()]+/).filter(Boolean);
       const hSkTok = hTok.map(skel).filter((x) => x.length > 1);
       const haySkSpaced = ' ' + hSkTok.join(' ') + ' ';
 
-      if (hay.indexOf(p) > -1) score = Math.max(score, 100 + p.length);
+      if ((' ' + hay + ' ').indexOf(' ' + p + ' ') > -1) score = Math.max(score, 100 + p.length);
       if (pSkSpaced.length >= 3 && haySkSpaced.indexOf(' ' + pSkSpaced + ' ') > -1)
         score = Math.max(score, 84 + pSkSpaced.length);
 
       pTok.forEach((t) => {
         const ts = skel(t);
         if (ts.length < 2) return;
-        if (hTok.indexOf(t) > -1) { score += 40; return; }
-        if (hSkTok.indexOf(ts) > -1) { score += 34; return; }
+        if (hTok.indexOf(t) > -1) { matched++; score += 40; return; }
+        if (hSkTok.indexOf(ts) > -1) { matched++; score += 34; return; }
         for (const h of hSkTok) {
           if (h.length < 2) continue;
-          if (h.indexOf(ts) === 0 || ts.indexOf(h) === 0) { score += 22; return; }
+          if (h.indexOf(ts) === 0 || ts.indexOf(h) === 0) { matched++; score += 22; return; }
           const d = lev(ts, h);
-          if (d <= (Math.max(ts.length, h.length) >= 6 ? 2 : 1)) { score += 26 - d * 5; return; }
+          if (d <= (Math.max(ts.length, h.length) >= 6 ? 2 : 1)) { matched++; score += 26 - d * 5; return; }
         }
       });
-      if (score > bestScore) { bestScore = score; best = it; }
+      if (matched !== pTok.length) return;
+      if (score > bestScore) { runnerUp = bestScore; bestScore = score; best = it; }
+      else runnerUp = Math.max(runnerUp, score);
     });
-    return bestScore >= MIN_SCORE ? { item: best, score: bestScore } : null;
+    return bestScore >= MIN_SCORE && bestScore - runnerUp >= 15 ? { item: best, score: bestScore } : null;
   }
 
   /* ───────── parse a whole utterance ───────── */
   function parse(transcript, items) {
     items = items || App.items();
-    const clean = String(transcript || '').replace(/[।.!?]+/g, ' ').trim();
+    const clean = String(transcript || '').replace(/[।!?]+/g, ' ').replace(/(?<!\d)\.|\.(?!\d)/g, ' ').trim();
     if (!clean) return { lines: [], unknown: [] };
 
     const chunks = clean.split(SEPS).map((s) => s.trim()).filter(Boolean);

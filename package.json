@@ -5,8 +5,20 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test": "node --test tests/*.test.cjs"
   },
-  "keywords": ["pos", "billing", "inventory", "kirana", "udhaar", "ledger", "pwa", "offline-first", "hindi", "voice"],
+  "keywords": [
+    "pos",
+    "billing",
+    "inventory",
+    "kirana",
+    "udhaar",
+    "ledger",
+    "pwa",
+    "offline-first",
+    "hindi",
+    "voice"
+  ],
   "license": "MIT"
 }

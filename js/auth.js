@@ -1,12 +1,9 @@
 /* ══════════════════════════════════════════════════════════
    Dukaan OS — accounts: sign up / log in / log out
-   Client-only PWA, so "server" auth isn't available — but this
-   is still real auth, not a toy: passwords are never stored in
-   plain text, only a per-account salt + PBKDF2-SHA256 hash
-   (150k iterations) via the browser's Web Crypto API. Each
-   account's shop data lives under its own storage key (see
-   core.js dataKey()), so accounts on the same device never see
-   each other's bills, stock or customers.
+   Local convenience login, not server-enforced authorization or encryption.
+   Passwords use salted PBKDF2-SHA256; shop records and staff PINs remain
+   in local browser storage. A person controlling that storage can bypass
+   the gate. Account namespaces prevent accidental mixing of shop records.
    ══════════════════════════════════════════════════════════ */
 (function (w) {
   'use strict';
@@ -20,9 +17,10 @@
 
   function loadAccounts() {
     try { return JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || '[]'); }
-    catch (e) { return []; }
+    catch (e) { throw new Error('Account data is unreadable. Preserve storage and restore a backup.'); }
   }
   function saveAccounts(list) {
+    App.assertWriter();
     try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list)); }
     catch (e) { console.error('Could not save accounts', e); throw new Error('Storage is full or unavailable'); }
   }
@@ -64,11 +62,14 @@
        working with the same bills and stock either way instead of
        suddenly staring at an empty till. */
     enableGate(accountId) {
+      App.assertWriter();
       const local = localStorage.getItem('dukaanos.v2.' + LOCAL_ID);
-      if (local) localStorage.setItem('dukaanos.v2.' + accountId, local);
+      if (local) { App.validateData(JSON.parse(local)); localStorage.setItem('dukaanos.v2.' + accountId, local); }
+      App.boot(accountId);
       localStorage.setItem(GATE_KEY, 'on');
     },
     disableGate() {
+      App.requirePermission('settings');
       const s = this.session();
       if (s && s.accountId) {
         const mine = localStorage.getItem('dukaanos.v2.' + s.accountId);
@@ -76,7 +77,7 @@
       }
       localStorage.setItem(GATE_KEY, 'off');
       localStorage.removeItem(SESSION_KEY);
-      App.accountId = null;
+      App.boot(LOCAL_ID);
     },
 
     session() {

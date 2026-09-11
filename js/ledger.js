@@ -98,7 +98,7 @@
       buttons: [
         c ? {
           label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => {
-            if (c.balance > 0.5) { App.toast('err', 'Settle ' + money(c.balance) + ' first'); return; }
+            if (Math.abs(c.balance) > 0.005) { App.toast('err', 'Settle ' + money(c.balance) + ' first'); return; }
             App.confirm(t('com.delete') + '?', c.name + ' will be removed. Past bills are kept.', { danger: true }).then((ok) => {
               if (!ok) return; c.deleted = true; App.save({ op: 'customer' }); App.toast('ok', 'Removed ' + c.name); api.close(); App.render();
             });
@@ -126,16 +126,16 @@
 
   App.customerDetail = function (id) {
     const c = App.customer(id);
-    const bills = App.bills().filter((b) => b.customerId === id).slice(0, 40);
-    const pays = App.payments().filter((p) => p.customerId === id).slice(0, 20);
+    const bills = App.bills().filter((b) => b.customerId === id);
+    const pays = App.payments().filter((p) => p.customerId === id);
     const feed = bills.map((b) => ({ t: b.at, kind: 'bill', b })).concat(pays.map((p) => ({ t: p.at, kind: 'pay', p })))
-      .sort((a, b) => b.t - a.t).slice(0, 40);
+      .sort((a, b) => b.t - a.t);
     const days = c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0;
 
     const body = App.el('<div>' +
       '<div class="grid g-3" style="margin-bottom:16px">' +
-      '<div class="stat ' + (c.balance > 0 ? 'bad' : 'good') + '"><div class="k">' + t('cus.balance') + '</div><div class="v" style="color:' + (c.balance > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(c.balance) + '</div>' +
-      (days ? '<div class="d down">' + t('cus.since', { n: days }) + '</div>' : '<div class="d up">✓ clear</div>') + '</div>' +
+      '<div class="stat ' + (c.balance > 0 ? 'bad' : 'good') + '"><div class="k">' + (c.balance < 0 ? 'Credit owed to customer' : t('cus.balance')) + '</div><div class="v" style="color:' + (c.balance > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(Math.abs(c.balance), true) + '</div>' +
+      (c.balance < 0 ? '<div class="d up">Available against future udhaar bills</div>' : days ? '<div class="d down">' + t('cus.since', { n: days }) + '</div>' : '<div class="d up">✓ clear</div>') + '</div>' +
       '<div class="stat"><div class="k">' + t('cus.spent', { amt: '' }).trim() + '</div><div class="v">' + App.short(c.spend || 0) + '</div><div class="d muted">' + t('cus.visits', { n: c.visits || 0 }) + '</div></div>' +
       '<div class="stat"><div class="k">★ ' + t('cus.points') + '</div><div class="v">' + Math.floor(c.points || 0) + '</div><div class="d muted">= ' + money(Math.floor(c.points || 0) * (App.DB().settings.loyaltyValue || 1)) + '</div></div>' +
       '</div>' +
@@ -145,15 +145,15 @@
       '<button class="btn ghost" id="dEdit">✏️ ' + t('com.edit') + '</button>' +
       '<button class="btn ghost" id="dCsv">📤 ' + t('com.export') + '</button></div>' +
       '<div class="sec-title">' + t('cus.history') + '</div>' +
-      (feed.length ? feed.map((f) => f.kind === 'bill' ?
+      (feed.length ? feed.slice(0, 40).map((f) => f.kind === 'bill' ?
         '<div class="list-row"><span class="rank" style="background:' + (f.b.void ? 'var(--line)' : f.b.credit ? 'var(--bad-bg)' : 'var(--ok-bg)') + ';color:' + (f.b.credit ? 'var(--bad)' : 'var(--ok)') + '">' + (f.b.credit ? '📒' : '🧾') + '</span>' +
         '<span style="flex:1;min-width:0"><b' + (f.b.void ? ' style="text-decoration:line-through;opacity:.5"' : '') + '>#' + f.b.no + ' · ' + esc(f.b.lines.map((l) => l.name).join(', ').slice(0, 44)) + '</b>' +
-        '<br><small class="muted">' + App.fmtDT(f.b.at) + ' · ' + String(f.b.mode).toUpperCase() + '</small></span>' +
+        '<br><small class="muted">' + App.fmtDT(f.b.at) + ' · ' + esc(String(f.b.mode).toUpperCase()) + '</small></span>' +
         '<b class="num">' + money(f.b.total) + '</b>' +
         '<button class="btn xs ghost" data-rebill="' + f.b.id + '">👁️</button></div>'
         :
         '<div class="list-row"><span class="rank" style="background:var(--ok-bg);color:var(--ok)">💰</span>' +
-        '<span style="flex:1"><b>Payment received</b><br><small class="muted">' + App.fmtDT(f.p.at) + ' · ' + String(f.p.mode).toUpperCase() + '</small></span>' +
+        '<span style="flex:1"><b>Payment received</b><br><small class="muted">' + App.fmtDT(f.p.at) + ' · ' + esc(String(f.p.mode).toUpperCase()) + '</small></span>' +
         '<b class="num" style="color:var(--ok)">− ' + money(f.p.amount) + '</b></div>').join('')
         : App.emptyState('🧾', 'No purchases yet', '')) +
       '</div>');
@@ -168,7 +168,7 @@
       if (e.target.closest('#dCsv')) {
         const rows = [['Date', 'Type', 'Ref', 'Items', 'Amount', 'Mode']];
         feed.forEach((f) => f.kind === 'bill'
-          ? rows.push([App.fmtDT(f.b.at), f.b.credit ? 'Udhaar' : 'Sale', '#' + f.b.no, f.b.lines.map((l) => l.name + '×' + l.qty).join('; '), f.b.total, f.b.mode])
+          ? rows.push([App.fmtDT(f.b.at), f.b.void ? 'Cancelled' : f.b.credit ? 'Udhaar' : 'Sale', '#' + f.b.no, f.b.lines.map((l) => l.name + '×' + l.qty).join('; '), f.b.total, f.b.mode])
           : rows.push([App.fmtDT(f.p.at), 'Payment', '', '', -f.p.amount, f.p.mode]));
         App.download(App.toCSV(rows), 'ledger-' + c.name.replace(/\s+/g, '-') + '.csv', 'text/csv');
       }
@@ -198,7 +198,7 @@
       '<button class="btn pri" id="addCust">➕ ' + t('cus.add') + '</button></div>' +
 
       (bdays.length ? '<div class="alert ok" style="margin-bottom:14px"><span class="ai">🎂</span><span>' +
-        bdays.map((c) => t('cus.bdayToday', { name: c.name })).join(' · ') +
+        bdays.map((c) => esc(t('cus.bdayToday', { name: c.name }))).join(' · ') +
         ' <button class="btn xs" data-bday="' + bdays[0].id + '" style="margin-left:8px">💬 Wish them</button></span></div>' : '') +
 
       '<div class="grid g-3" style="margin-bottom:18px">' +
@@ -232,7 +232,7 @@
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
       '<th>' + t('com.name') + '</th><th>' + t('com.phone') + '</th><th class="r">Spent</th><th class="r">★</th><th class="r">Last seen</th><th></th></tr></thead><tbody>' +
       (rest.length ? rest.map((c, i) => '<tr>' +
-        '<td><div style="display:flex;align-items:center;gap:10px">' + App.avatarFor(c.name, i) + '<b>' + esc(c.name) + '</b></div></td>' +
+        '<td><div style="display:flex;align-items:center;gap:10px">' + App.avatarFor(c.name, i) + '<div><b>' + esc(c.name) + '</b>' + (c.balance < 0 ? '<br><small>Credit owed: ' + money(-c.balance, true) + '</small>' : '') + '</div></div></td>' +
         '<td class="num muted">' + esc(c.phone || '—') + '</td>' +
         '<td class="r num">' + money(c.spend || 0) + '</td>' +
         '<td class="r num">' + Math.floor(c.points || 0) + '</td>' +
@@ -283,6 +283,7 @@
 
   /* ═════════ suppliers ═════════ */
   App.editSupplier = function (id, done) {
+    App.requirePermission('settings');
     const s = id ? App.supplier(id) : null;
     const d = Object.assign({ name: '', phone: '', supplies: '', dueDate: '' }, s || {});
     const body = App.el('<div>' +
@@ -309,6 +310,7 @@
   };
 
   App.purchaseModal = function (supplierId) {
+    App.requirePermission('purchase');
     const sups = App.suppliers();
     if (!sups.length) { App.toast('warn', t('sup.noSup'), t('sup.add')); return App.editSupplier(null, () => App.render()); }
     const lines = [];
@@ -325,7 +327,7 @@
       '<div class="field"><label>' + t('inv.expiry') + ' <span class="muted">(' + t('com.optional') + ')</span></label><input class="inp" id="p_e" type="date"></div>' +
       '<div id="p_list" style="margin:10px 0"></div>' +
       '<div class="kv" style="font-size:17px"><b>' + t('com.total') + '</b><b id="p_tot" class="num">₹0</b></div>' +
-      '<div class="field" style="margin-top:12px"><label>Paid now ₹</label><input class="inp num" id="p_paid" type="number" inputmode="decimal" value="0"></div></div>');
+      '<div class="field" style="margin-top:12px"><label>Paid now ₹</label><input class="inp num" id="p_paid" type="number" inputmode="decimal" value="0"></div><div class="field"><label>Payment mode</label><select class="inp" id="p_mode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div></div>');
 
     const syncCost = () => {
       const it = App.item(App.$('#p_i', body).value);
@@ -334,7 +336,7 @@
     const paint = () => {
       App.$('#p_list', body).innerHTML = lines.length ? lines.map((l, i) => {
         const it = App.item(l.itemId);
-        return '<div class="list-row"><span style="font-size:17px">' + (it ? it.emoji : '📦') + '</span>' +
+        return '<div class="list-row"><span style="font-size:17px">' + esc(it ? it.emoji : '📦') + '</span>' +
           '<span style="flex:1"><b>' + esc(it ? App.itemName(it) : '?') + '</b><br><small class="muted">' + l.qty + ' × ' + money(l.cost) + (l.expiry ? ' · exp ' + l.expiry : '') + '</small></span>' +
           '<b class="num">' + money(l.qty * l.cost) + '</b>' +
           '<button class="btn xs danger" data-del="' + i + '">✕</button></div>';
@@ -351,7 +353,7 @@
         label: t('com.save'), cls: 'pri', fn: () => {
           if (!lines.length) { App.toast('err', 'Add at least one item'); return false; }
           const sid = App.$('#p_s', body).value;
-          const po = App.actions.recordPurchase(sid, lines, parseFloat(App.$('#p_paid', body).value) || 0);
+          const po = App.actions.recordPurchase(sid, lines, Number(App.$('#p_paid', body).value), '', App.$('#p_mode', body).value);
           App.toast('ok', t('sup.stockIn'), lines.length + ' items · ' + money(po.total, true));
           App.confetti({ count: 40, colors: ['#16A34A', '#4ADE80', '#F5A524'] });
         }
@@ -363,8 +365,9 @@
       if (e.target.closest('#p_add')) {
         const itemId = App.$('#p_i', body).value;
         const qty = parseFloat(App.$('#p_q', body).value) || 0;
-        const cost = parseFloat(App.$('#p_c', body).value) || 0;
+        const cost = Number(App.$('#p_c', body).value);
         if (!itemId || qty <= 0) { App.toast('err', 'Enter a quantity'); return; }
+        App.number(cost, 'Purchase cost');
         lines.push({ itemId, qty, cost, expiry: App.$('#p_e', body).value });
         paint();
         return;
@@ -375,6 +378,7 @@
   };
 
   App.views.suppliers = function (main) {
+    App.requirePermission('settings');
     const sups = App.suppliers().sort((a, b) => (b.balance || 0) - (a.balance || 0));
     const owed = App.stats.totalOwed();
     const pos = App.purchases().slice(0, 25);

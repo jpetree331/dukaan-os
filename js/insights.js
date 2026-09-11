@@ -62,7 +62,7 @@
     expiry() {
       return App.expiringBatches(14).slice(0, 4).map((e) => ({
         kind: 'expiry', item: e.item, days: e.days,
-        text: t('ai.expiry', { name: App.itemName(e.item), d: Math.max(0, e.days) }),
+        text: e.days < 0 ? App.itemName(e.item) + ' has expired stock. Set it aside; it cannot be sold.' : t('ai.expiry', { name: App.itemName(e.item), d: e.days }),
         weight: 70 - e.days * 2
       }));
     },
@@ -75,10 +75,9 @@
     /* end-of-day / morning summary in plain Hindi or English */
     summary(dayTs) {
       const s = App.startOfDay(dayTs || Date.now()).getTime();
-      const r = App.stats.range(s, s + App.DAY - 1);
+      const r = App.stats.range(s, s + App.DAY);
       const hi = App.lang() === 'hi';
-      const top = App.stats.topItems(3, 1).length ? App.stats.topItems(3, 1)
-        : (() => { const m = {}; r.bills.forEach((b) => b.lines.forEach((l) => { m[l.name] = (m[l.name] || 0) + l.qty; })); return Object.keys(m).sort((a, b) => m[b] - m[a]).slice(0, 3).map((n) => ({ name: n, qty: m[n] })); })();
+      const top = App.stats.topItems(3, null, s, s + App.DAY);
       const dues = App.stats.dues();
       const cash = App.stats.cashExpected(s);
       const isToday = App.isToday(s);
@@ -152,13 +151,12 @@
         });
       });
       /* strip question filler before trying to read a product name out of it */
-      const FILLER = ['how', 'much', 'many', 'did', 'does', 'do', 'i', 'me', 'my', 'is', 'was', 'sold', 'sell', 'sale',
+      const FILLER = ['stock', 'of', 'left', 'have', 'है', 'स्टॉक', 'how', 'much', 'many', 'did', 'does', 'do', 'i', 'me', 'my', 'is', 'was', 'sold', 'sell', 'sale',
         'this', 'last', 'month', 'week', 'today', 'yesterday', 'total', 'what', 'whats',
         'kitna', 'kitne', 'kitni', 'ka', 'ki', 'ke', 'bika', 'bike', 'aaj', 'kal', 'hai', 'hua', 'hui',
         'कितना', 'कितने', 'कितनी', 'का', 'की', 'के', 'बिका', 'बिके', 'आज', 'कल', 'है', 'हुआ', 'हुई',
         'इस', 'महीने', 'हफ्ते', 'सबसे', 'ज़्यादा', 'ज्यादा', 'क्या', 'रहा', 'रहे', 'हो'];
-      let residual = q;
-      FILLER.forEach((f) => { residual = residual.split(f).join(' '); });
+      const residual = q.split(/[\s?!.,]+/).filter((word) => !FILLER.includes(word)).join(' ');
       const itemHit = App.matchItem(residual.replace(/\s+/g, ' ').trim(), App.items());
       const item = itemHit && itemHit.score >= 34 ? itemHit.item : null;
 
@@ -194,6 +192,7 @@
       }
 
       /* ── item questions ── */
+      if (item && wantsStock) return { headline: App.sellableStock(item) + (hi ? ' नग' : ' units'), text: App.itemName(item) + ': ' + App.sellableStock(item) + ' available to sell (' + App.itemStock(item) + ' physically in stock).' };
       if (item && !wantsSales && !wantsBest && !wantsStock && !wantsDue && !wantsProfit) {
         let qty = 0, amt = 0;
         R.bills.forEach((b) => b.lines.forEach((l) => { if (l.itemId === item.id) { qty += l.qty; amt += l.gross; } }));
@@ -211,8 +210,7 @@
 
       /* ── aggregate questions ── */
       if (wantsBest) {
-        const days = from ? Math.max(1, Math.round((Date.now() - from) / App.DAY)) : 3650;
-        const top = App.stats.topItems(5, days);
+        const top = App.stats.topItems(5, null, from, to);
         if (!top.length) return { headline: '—', text: hi ? 'इस अवधि में कुछ नहीं बिका।' : 'Nothing sold in that period.' };
         return {
           headline: top[0].name,
@@ -295,7 +293,7 @@
 
     const body = App.el('<div>' +
       '<div class="ai-card"><div class="ai-h">✨ ' + (force ? t('rep.eod') : t('dash.yesterday')) + '</div>' +
-      lines.map((l) => '<p style="font-size:14.5px;line-height:1.65;margin-bottom:9px">' + l.replace(/\*(.+?)\*/g, '<b>$1</b>') + '</p>').join('') +
+      lines.map((l) => '<p style="font-size:14.5px;line-height:1.65;margin-bottom:9px">' + esc(l).replace(/\*(.+?)\*/g, '<b>$1</b>') + '</p>').join('') +
       '</div></div>');
     App.modal({
       title: '🌅 ' + (App.lang() === 'hi' ? 'नमस्ते!' : 'Good morning!'), body,
@@ -368,7 +366,7 @@
       '<div class="sec-title">🏆 ' + t('dash.topItems') + '</div>' +
       (top.length ? top.map((x, i) => '<div class="list-row" style="padding:8px 0">' +
         '<span class="rank ' + (i < 3 ? 'g' + (i + 1) : '') + '">' + (i + 1) + '</span>' +
-        '<span style="flex:1;min-width:0"><b style="font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (x.emoji || '') + ' ' + esc(x.name) + '</b></span>' +
+        '<span style="flex:1;min-width:0"><b style="font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(x.emoji || '') + ' ' + esc(x.name) + '</b></span>' +
         '<b class="num" style="font-size:13px">' + x.qty + '</b></div>').join('')
         : '<p class="muted" style="font-size:13px">No sales yet</p>') +
       '</div></div>' +
@@ -388,7 +386,7 @@
 
         '<div class="card"><div class="sec-title" style="margin-top:0">⚠️ ' + t('inv.low') + ' / ' + t('inv.out') + '</div>' +
         (outLow.length ? outLow.slice(0, 6).map((i) => '<div class="list-row" style="padding:8px 0">' +
-          '<span style="font-size:17px">' + (i.emoji || '📦') + '</span>' +
+          '<span style="font-size:17px">' + esc(i.emoji || '📦') + '</span>' +
           '<span style="flex:1;min-width:0"><b style="font-size:13.5px">' + esc(App.itemName(i)) + '</b></span>' +
           '<span class="chip ' + (App.stockState(i) === 'out' ? 'bad' : 'warn') + '">' + App.itemStock(i) + '</span>' +
           '<button class="btn xs" data-ai-restock="' + i.id + '">+</button></div>').join('')
@@ -437,6 +435,7 @@
 
   /* ═════════ reports ═════════ */
   App.views.reports = function (main) {
+    App.requirePermission('reports');
     const st = App.DB().settings;
     const series = App.stats.series(repRange);
     const R = App.stats.days(repRange);
@@ -444,16 +443,7 @@
     R.bills.forEach((b) => { const k = b.credit ? 'credit' : b.mode; modes[k] = App.round2((modes[k] || 0) + b.total); });
     const MC = { cash: '#16A34A', upi: '#6366F1', card: '#F5A524', credit: '#DC2626' };
     const cash = App.stats.cashExpected();
-    const gstRows = {};
-    if (st.gstEnabled) {
-      R.bills.forEach((b) => b.lines.forEach((l) => {
-        const rate = l.gst || 0;
-        gstRows[rate] = gstRows[rate] || { taxable: 0, tax: 0 };
-        const share = b.sub > 0 ? l.gross / b.sub : 0;
-        gstRows[rate].taxable = App.round2(gstRows[rate].taxable + l.gross - b.discount * share);
-        gstRows[rate].tax = App.round2(gstRows[rate].tax + b.tax * share);
-      }));
-    }
+    const gstRows = App.gstBreakdown(R.bills);
     const acts = App.activity().slice(0, 25);
 
     main.innerHTML =
