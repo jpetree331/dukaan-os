@@ -266,7 +266,7 @@
 
   /* ───────── stock helpers (FIFO across batches) ───────── */
   function itemStock(it) {
-    if (it.batches && it.batches.length) return it.batches.reduce((s, b) => s + (+b.qty || 0), 0);
+    if (it.batches && it.batches.length) return App.domain.quantity(it.batches.reduce((s, b) => s + (+b.qty || 0), 0));
     return +it.stock || 0;
   }
   App.sellableStock = (it) => it.batches && it.batches.length ? App.domain.quantity(it.batches.filter((b) => !b.quarantined&&(!b.expiry || b.expiry >= dayKey(Date.now()))).reduce((n, b) => n + b.qty, 0)) : itemStock(it);

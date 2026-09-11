@@ -10,6 +10,18 @@ test('BUILD-10: dispatch, partial receipt, retry and recall conserve stock and s
  await A.actions.switchStore(from);await A.actions.receiveTransfer({transferId:t.id,lines:[{lineId:t.lines[0].lineId,qty:4}],note:'Remaining units physically returned',recall:true});assert.equal(A.itemStock(A.item(i.id)),8);assert.equal(A.transferRemaining(t,t.lines[0]),0);
  assert.equal(A.DB().items.reduce((n,x)=>n+A.itemStock(x),0)+bill.lines[0].qty,10);assert.equal(A.purchaseReturnable(po)[0].qty,8);assert.equal(A.supplier(po.supplierId).balance,600);
 });
+test('VERIFY-10: imported expired dispatch and repeated source lines cannot bypass command rules',async()=>{
+ const {A,i}=await setup();const t=await A.actions.sendTransfer({toStoreId:'branch',lines:[{itemId:i.id,qty:2}],note:'Verified dispatch'});
+ let bad=JSON.parse(JSON.stringify(A.DB()));bad.stockTransfers[0].lines[0].allocations[0].expiry='2000-01-01';assert.throws(()=>A.validateData(bad),/expired/);
+ bad=JSON.parse(JSON.stringify(A.DB()));bad.stockTransfers[0].lines.push({...JSON.parse(JSON.stringify(bad.stockTransfers[0].lines[0])),lineId:'duplicate_source_line'});assert.throws(()=>A.validateData(bad),/source item/);
+ await A.actions.switchStore('branch');await A.actions.receiveTransfer({transferId:t.id,lines:[{lineId:t.lines[0].lineId,qty:1}],note:'First received unit'});bad=JSON.parse(JSON.stringify(A.DB()));bad.transferReceipts[0].lines[0].allocations[0].cost=1;assert.throws(()=>A.validateData(bad),/provenance/);
+});
+test('VERIFY-10: fractional multi-batch receipts conserve allocations and survive disposal then recall',async()=>{
+ const {A,i}=await setup(),from=A.S();await A.actions.restock(i.id,0.0003,'2099-01-01',90);const t=await A.actions.sendTransfer({toStoreId:'branch',lines:[{itemId:i.id,qty:10.0003}],note:'All mixed batches'});await A.actions.switchStore('branch');
+ await A.actions.receiveTransfer({transferId:t.id,lines:[{lineId:t.lines[0].lineId,qty:0.0001}],note:'First tiny receipt'});await A.actions.receiveTransfer({transferId:t.id,lines:[{lineId:t.lines[0].lineId,qty:0.0002}],note:'Second tiny receipt'});
+ assert.equal(A.itemStock(A.item(t.lines[0].targetItemId)),0.0003);assert.equal(A.transferRemaining(t,t.lines[0]),10);const target=A.item(t.lines[0].targetItemId);await A.actions.adjustStock({itemId:target.id,batchId:target.batches[0].id,count:0,reasonCode:'damaged',note:'Received pack damaged'});assert.equal(A.transferRemaining(t,t.lines[0]),10);
+ await A.actions.switchStore(from);await A.actions.receiveTransfer({transferId:t.id,lines:[{lineId:t.lines[0].lineId,qty:10}],note:'Unreceived goods back at source',recall:true});assert.equal(A.itemStock(A.item(i.id)),10);assert.equal(A.transferRemaining(t,t.lines[0]),0);assert.equal(A.DB().transferReceipts[0].lines[0].allocations[0].cost,90);
+});
 test('BUILD-10: failed dispatch/receipt, destination unit mismatch and over-receipt leave books intact',async()=>{
  const {A,i}=await setup();const request={toStoreId:'branch',lines:[{itemId:i.id,qty:3}],note:'Interrupted dispatch',operationId:'send_retry'},commit=A.storage.commit,before=JSON.stringify(A.DB());A.storage.commit=async()=>{throw new Error('Transfer disk failure');};await assert.rejects(()=>A.actions.sendTransfer(request),/disk/);assert.equal(JSON.stringify(A.DB()),before);A.storage.commit=commit;
  const t=await A.actions.sendTransfer(request);await A.actions.switchStore('branch');const receive={transferId:t.id,lines:[{lineId:t.lines[0].lineId,qty:2}],note:'Receipt interrupted',operationId:'receipt_retry'},prior=JSON.stringify(A.DB());A.storage.commit=async()=>{throw new Error('Receipt disk failure');};await assert.rejects(()=>A.actions.receiveTransfer(receive),/disk/);assert.equal(JSON.stringify(A.DB()),prior);A.storage.commit=commit;

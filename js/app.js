@@ -64,7 +64,7 @@
     $('#whoPill').title = me.name + ' · ' + t('set.' + me.role);
     const sp = $('#storePill');
     sp.textContent = '🏪 ' + (db.stores.find((s) => s.id === st.activeStore) || {}).name;
-    sp.hidden = !App.isOwner();
+    sp.hidden = !App.canStore(st.activeStore);
     $('#btnLock').hidden = !st.pinOn;
     const acc = App.auth.currentAccount();
     $('#btnLogout').hidden = !acc;               /* nothing to log out of while auth is off */
