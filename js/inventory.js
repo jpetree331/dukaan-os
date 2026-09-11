@@ -48,7 +48,7 @@
         it ? { label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => { removeItem(it.id).then((ok) => { if (ok) api.close(); }); } } : null,
         { label: t('com.cancel'), cls: 'ghost' },
         {
-          label: t('com.save'), cls: 'pri', fn: () => {
+          label: t('com.save'), cls: 'pri', fn: async () => {
             App.requirePermission('edit_inventory');
             const name = App.$('#i_name', body).value.trim();
             const price = parseFloat(App.$('#i_price', body).value);
@@ -72,7 +72,7 @@
             rec.fav = App.$('#i_fav', body).checked;
             if (!it) App.DB().items.push(rec);
             App.log(it ? 'item' : 'item', (it ? 'Updated ' : 'Added ') + rec.name);
-            App.save({ op: 'item' });
+            (await App.save({ op: 'item' }));
             App.toast('ok', t('inv.saved'), rec.name);
             done && done(rec);
           }
@@ -94,11 +94,11 @@
     App.requirePermission('edit_inventory');
     const it = App.item(id);
     return App.confirm(t('com.delete') + '?', it.name + ' will be hidden from billing. Past bills keep their record.', { danger: true, ok: t('com.delete') })
-      .then((ok) => {
+      .then(async (ok) => {
         if (!ok) return false;
         it.deleted = true;
         App.log('item', 'Removed ' + it.name);
-        App.save({ op: 'item' });
+        (await App.save({ op: 'item' }));
         App.toast('ok', t('inv.deleted'), it.name);
         return true;
       });
@@ -124,19 +124,19 @@
     const m = App.modal({
       title: '📦 ' + t('inv.restock'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-        label: t('com.save'), cls: 'ok', fn: () => {
+        label: t('com.save'), cls: 'ok', fn: async () => {
           const q = parseFloat(App.$('#r_q', body).value) || 0;
           if (q <= 0) return false;
-          App.actions.restock(it.id, q, App.$('#r_e', body).value, !App.isOwner() || App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value));
+          (await App.actions.restock(it.id, q, App.$('#r_e', body).value, !App.isOwner() || App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value)));
           App.toast('ok', t('inv.restocked', { name: App.itemName(it), n: q }));
         }
       }]
     });
-    body.addEventListener('click', (e) => {
+    body.addEventListener('click', async (e) => {
       const q = e.target.closest('[data-q]');
       if (q) {
         App.assertContext(context);
-        App.actions.restock(it.id, +q.dataset.q, App.$('#r_e', body).value, !App.isOwner() || App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value));
+        (await App.actions.restock(it.id, +q.dataset.q, App.$('#r_e', body).value, !App.isOwner() || App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value)));
         App.toast('ok', t('inv.restocked', { name: App.itemName(it), n: q.dataset.q }));
         m.close();
       }
@@ -144,7 +144,7 @@
   };
 
   // Validate every row before touching inventory; omitted numeric cells preserve existing data.
-  App.importItemRows = (rows) => {
+  App.importItemRows = async (rows) => {
     App.checkDataBounds(rows);
     App.requirePermission('edit_inventory');
     const staged = JSON.parse(JSON.stringify(App.DB().items));
@@ -172,7 +172,7 @@
     });
     App.DB().items = staged;
     App.log('import', added + ' items imported, ' + updated + ' updated');
-    App.save({ op: 'import' });
+    (await App.save({ op: 'import' }));
     return { added, updated };
   };
 
@@ -189,9 +189,9 @@
     const m = App.modal({
       title: '📥 ' + t('inv.import'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-        label: t('com.add'), cls: 'pri', fn: () => {
+        label: t('com.add'), cls: 'pri', fn: async () => {
           if (!rows || !rows.length) { App.toast('err', 'Pick a CSV first'); return false; }
-          const { added, updated } = App.importItemRows(rows);
+          const { added, updated } = (await App.importItemRows(rows));
           App.toast('ok', 'Import done', added + ' added · ' + updated + ' updated');
         }
       }]

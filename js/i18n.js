@@ -212,10 +212,10 @@
     if (vars) Object.keys(vars).forEach((k) => { s = s.split('{' + k + '}').join(vars[k]); });
     return s;
   };
-  App.setLang = function (l) {
+  App.setLang = async function (l) {
     App.DB().settings.lang = l === 'hi' ? 'hi' : 'en';
+    (await App.save({ sync: false }));
     document.documentElement.lang = App.DB().settings.lang;
-    App.save({ sync: false });
   };
   /* item display name follows the UI language when a Hindi name exists */
   App.itemName = (it) => (App.lang() === 'hi' && it && it.nameHi ? it.nameHi : (it ? it.name : ''));

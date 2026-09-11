@@ -11,6 +11,7 @@
   App.invalidateContext = () => { epoch++; App.emit('secureclear'); };
   App.setLocked = (value) => { locked = value; if (value) App.invalidateContext(); };
   App.requireAccess = () => {
+    if (App.isSaving && App.isSaving()) throw new Error('A save is already in progress. Wait for it to finish.');
     if (locked || (App.auth && App.auth.gateOn() && !App.auth.currentAccount())) throw new Error('Unlock or sign in to continue.');
     const staff = App.me();
     if (!staff || staff.active === false) throw new Error('This staff member is not active.');

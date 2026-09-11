@@ -477,7 +477,7 @@
       title, body,
       buttons: [{ label: App.t('com.cancel'), cls: 'ghost' }, {
         label: opts.ok || App.t('com.confirm'), cls: 'ok',
-        fn: () => { const n = parseFloat(val || '0') || 0; if (n <= 0 && !opts.allowZero) return false; onOk(n); }
+        fn: async () => { const n = parseFloat(val || '0') || 0; if (n <= 0 && !opts.allowZero) return false; return await onOk(n); }
       }]
     });
     body.addEventListener('click', (e) => {

@@ -23,7 +23,7 @@
     App.download(JSON.stringify(encrypted), 'dukaan-backup-' + App.dayKey(Date.now()) + '.json', 'application/json');
     App.DB().settings.lastBackup = Date.now();
     App.log('sys', 'Encrypted backup exported');
-    App.save({ sync: false, render: false });
+    (await App.save({ sync: false, render: false }));
     App.toast('ok', 'Encrypted backup saved', 'Keep the file and its password safe. Staff PINs are not included.');
   }
 
@@ -37,7 +37,7 @@
     App.customers().forEach(c => rows.push(['Customer', c.name, c.phone || '', c.balance || 0, Math.floor(c.points || 0), c.visits || 0, c.spend || 0, c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0]));
     App.suppliers().forEach(s => rows.push(['Supplier', s.name, s.phone || '', -(s.balance || 0), '', '', '', s.dueSince ? App.daysBetween(s.dueSince, Date.now()) : 0]));
     App.download(App.toCSV(rows), 'dukaan-ledger-' + App.dayKey(Date.now()) + '.csv', 'text/csv');
-    App.log('sys', 'Ledger CSV exported'); App.save({ sync: false });
+    App.log('sys', 'Ledger CSV exported'); (await App.save({ sync: false }));
   }
 
   async function importBackup(file) {
@@ -60,8 +60,8 @@
     if (!await App.confirm('Restore business records?', 'Replace this shop’s records with ' + data.items.length + ' items, ' + data.bills.length + ' bills and ' + data.customers.length +
       ' customers? Your current staff, PINs and UPI payment address will be kept. Check the backup date and totals: an old backup rolls the books back.', { danger: true, ok: 'Restore' })) return;
     if (!await App.auth.verifyOwner()) return;
-    App.assertContext(context); App.restoreBackup(data);
-    App.log('sys', 'Business records restored; current access and payment settings retained'); App.save({ sync: false });
+    App.assertContext(context); (await App.restoreBackup(data));
+    App.log('sys', 'Business records restored; current access and payment settings retained'); (await App.save({ sync: false }));
     App.toast('ok', 'Restored', 'Reloading…');
     setTimeout(() => location.reload(), 700);
   }
@@ -71,14 +71,14 @@
     App.requirePermission('settings');
     const context = App.context();
     if (!await App.auth.verifyOwner()) return;
-    App.prompt(t('set.setPin'), t('set.setPin'), { type: 'tel', placeholder: '••••' }).then((p) => {
+    App.prompt(t('set.setPin'), t('set.setPin'), { type: 'tel', placeholder: '••••' }).then(async (p) => {
       if (p == null) return;
       p = String(p).replace(/\D/g, '');
       if (p.length !== 4) { App.toast('err', 'PIN must be exactly 4 digits'); return; }
       App.assertContext(context); App.auth.requireFresh();
       App.DB().settings.pin = p;
       App.DB().settings.pinOn = true;
-      App.save({ sync: false });
+      (await App.save({ sync: false }));
       App.toast('ok', 'PIN set', 'You will be asked for it next time');
     });
   };
@@ -104,18 +104,18 @@
       buttons: [
         s && s.id !== 'sf_owner' ? {
           label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => {
-            App.confirm(t('com.delete') + '?', s.name + ' will lose access.', { danger: true }).then((ok) => {
+            App.confirm(t('com.delete') + '?', s.name + ' will lose access.', { danger: true }).then(async (ok) => {
               if (!ok) return;
               App.assertContext(context); App.auth.requireFresh();
               db.staff = db.staff.filter((x) => x.id !== s.id);
               if (db.session.staffId === s.id) db.session.staffId = db.staff[0].id;
-              App.save({ sync: false }); api.close();
+              (await App.save({ sync: false })); api.close();
             });
           }
         } : null,
         { label: t('com.cancel'), cls: 'ghost' },
         {
-          label: t('com.save'), cls: 'pri', fn: () => {
+          label: t('com.save'), cls: 'pri', fn: async () => {
             const n = App.$('#st_n', body).value.trim();
             if (!n) { App.toast('err', 'Name is required'); return false; }
             App.requirePermission('settings');
@@ -128,7 +128,7 @@
             rec.name = n; rec.role = App.$('#st_r', body).value;
             rec.pin = App.$('#st_p', body).value.replace(/\D/g, '').slice(0, 4);
             if (!s) db.staff.push(rec);
-            App.save({ sync: false });
+            (await App.save({ sync: false }));
             App.toast('ok', t('set.saved'), rec.name);
           }
         }]
@@ -144,7 +144,7 @@
       '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' · 🔒' : '') + '</small></span>' +
       (db.session.staffId === s.id ? '<span class="chip ok">✓</span>' : '') + '</button>').join('') + '</div>');
     const m = App.modal({ title: '👥 ' + t('set.switchStaff'), body, foot: false });
-    body.addEventListener('click', (e) => {
+    body.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-sw]'); if (!b) return;
       const s = db.staff.find((x) => x.id === b.dataset.sw);
       if (!s || s.active === false) return;
@@ -152,22 +152,22 @@
         App.toast('warn', 'Set an owner PIN first', 'Every owner needs a four-digit staff PIN before switching to a cashier.'); return;
       }
       if (!App.isOwner() && s.role === 'owner' && !s.pin) { App.toast('err', 'Owner PIN is required'); return; }
-      const go = () => {
+      const go = async () => {
         App.assertContext(context);
         if (s.active === false) throw new Error('Staff member is inactive.');
         App.invalidateContext();
         db.session.staffId = s.id;
         App.log('sys', 'Shift start: ' + s.name);
-        App.save({ sync: false });
+        (await App.save({ sync: false }));
         App.toast('ok', t('lock.welcome'), s.name);
         m.close(); App.go('billing');
       };
       if (s.pin) {
-        App.prompt('PIN for ' + s.name, 'Enter 4-digit PIN', { type: 'tel' }).then((p) => {
+        App.prompt('PIN for ' + s.name, 'Enter 4-digit PIN', { type: 'tel' }).then(async (p) => {
           if (p == null) return;
-          try { App.auth.checkPin(String(p), s.pin); go(); } catch (e) { App.reportError(e); }
+          try { App.auth.checkPin(String(p), s.pin); (await go()); } catch (e) { App.reportError(e); }
         });
-      } else go();
+      } else (await go());
     });
   };
 
@@ -187,17 +187,17 @@
       (db.stores.length > 1 ? '<div class="alert info" style="margin-top:12px"><span class="ai">🏢</span><span>Combined across all stores: <b>' +
         money(db.bills.filter((b) => !b.void && App.isToday(b.at)).reduce((x, b) => x + b.total, 0)) + '</b> today</span></div>' : '') + '</div>');
     const m = App.modal({ title: '🏪 ' + t('set.stores'), body, foot: false });
-    body.addEventListener('click', (e) => {
+    body.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-st]');
-      if (b) { App.requirePermission('settings'); App.invalidateContext(); db.settings.activeStore = b.dataset.st; App.save({ sync: false }); App.posClear(); m.close(); App.render(); App.toast('ok', 'Switched store'); return; }
+      if (b) { App.requirePermission('settings'); App.invalidateContext(); db.settings.activeStore = b.dataset.st; (await App.save({ sync: false })); App.posClear(); m.close(); App.render(); App.toast('ok', 'Switched store'); return; }
       if (e.target.closest('#addStore')) {
         App.requirePermission('settings');
-        App.prompt(t('set.addStore'), t('com.name'), { placeholder: 'Branch 2' }).then((n) => {
+        App.prompt(t('set.addStore'), t('com.name'), { placeholder: 'Branch 2' }).then(async (n) => {
           if (!n || !n.trim()) return;
           const st = { id: App.uid('st'), name: n.trim(), address: '' };
           App.requirePermission('settings');
           db.stores.push(st); db.settings.activeStore = st.id;
-          App.save({ sync: false }); App.posClear(); m.close(); App.render();
+          (await App.save({ sync: false })); App.posClear(); m.close(); App.render();
           App.toast('ok', 'Store added', n + ' — start by adding items');
         });
       }
@@ -323,7 +323,7 @@
         if (k === 'upiId' && !await App.auth.verifyOwner()) { inp.value = st[k]; return; }
         App.assertContext(context); App.requirePermission('settings');
         st[k] = v;
-        App.save({ sync: false, render: false });
+        (await App.save({ sync: false, render: false }));
         App.toast('ok', t('set.saved'));
         if (k === 'upiId' || k === 'shopName') App.render();
       });
@@ -336,24 +336,25 @@
         if (k === 'pinOn' && !inp.checked && !await App.auth.verifyOwner()) { inp.checked = st.pinOn; return; }
         App.assertContext(context); App.requirePermission('settings');
         if (k === 'pinOn' && inp.checked && !st.pin) { inp.checked = false; return App.setPin().catch(App.reportError); }
-        if (k === 'theme') { st.theme = inp.checked ? 'dark' : 'light'; App.applyTheme(); }
+        if (k === 'theme') { st.theme = inp.checked ? 'dark' : 'light'; }
         else st[k] = inp.checked;
-        App.save({ sync: false, render: false });
+        (await App.save({ sync: false, render: false }));
+        if (k === 'theme') App.applyTheme();
       });
     });
 
-    main.addEventListener('click', (e) => {
+    main.addEventListener('click', async (e) => {
       App.requirePermission('settings');
       const l = e.target.closest('[data-lang]'), rt = e.target.closest('[data-rt]'), sf = e.target.closest('[data-staff]');
-      if (l) { App.setLang(l.dataset.lang); App.render(); App.applyI18n(); return; }
-      if (rt) { st.receiptTheme = rt.dataset.rt; App.save({ sync: false }); return; }
+      if (l) { (await App.setLang(l.dataset.lang)); App.render(); App.applyI18n(); return; }
+      if (rt) { st.receiptTheme = rt.dataset.rt; (await App.save({ sync: false })); return; }
       if (sf) return editStaff(sf.dataset.staff).catch(App.reportError);
       if (e.target.closest('#addStaff')) return editStaff(null).catch(App.reportError);
       if (e.target.closest('#swStaff')) return App.switchStaff();
       if (e.target.closest('#mgStores')) return App.storePicker();
       if (e.target.closest('#setPin')) return App.setPin().catch(App.reportError);
-      if (e.target.closest('#expAll')) return exportAll().catch(App.reportError);
-      if (e.target.closest('#expLed')) return exportLedgerCSV().catch(App.reportError);
+      if (e.target.closest('#expAll')) return await exportAll().catch(App.reportError);
+      if (e.target.closest('#expLed')) return await exportLedgerCSV().catch(App.reportError);
       if (e.target.closest('#dlQr')) {
         const cv = document.createElement('canvas'); cv.width = 600; cv.height = 700;
         const c = cv.getContext('2d');
@@ -375,7 +376,7 @@
         App.confirm(t('set.reset'), t('set.resetWarn'), { danger: true, ok: t('set.reset') }).then((ok) => {
           if (!ok) return;
           App.prompt('Type ERASE to confirm', 'This cannot be undone').then(async (v) => {
-            if (String(v || '').trim().toUpperCase() === 'ERASE') { if (await App.auth.verifyOwner()) App.resetAll(); }
+            if (String(v || '').trim().toUpperCase() === 'ERASE') { if (await App.auth.verifyOwner()) (await App.resetAll()); }
             else App.toast('warn', 'Cancelled — nothing was deleted');
           });
         });
@@ -401,7 +402,7 @@
                   username: App.$('#g_user', body).value, password: App.$('#g_pass', body).value,
                   confirm: App.$('#g_pass2', body).value, shopName: st.shopName
                 });
-                App.auth.enableGate(acc.id);
+                (await App.auth.enableGate(acc.id));
                 api.close();
                 App.toast('ok', 'Login turned on', 'You will sign in as @' + acc.username + ' from now on.');
                 setTimeout(() => location.reload(), 800);
@@ -415,8 +416,8 @@
         App.confirm('Turn off login?', 'The shop will open without asking for a password. Your bills, stock and udhaar all stay exactly as they are.', { ok: 'Turn off login' })
           .then(async (ok) => {
             if (!ok || !await App.auth.verifyOwner()) return;
-            App.persistNow();
-            App.auth.disableGate();
+            (await App.persistNow());
+            (await App.auth.disableGate());
             App.toast('ok', 'Login turned off');
             setTimeout(() => location.reload(), 600);
           });
@@ -424,7 +425,7 @@
       }
       if (e.target.closest('#loadSample')) {
         App.confirm('Load sample data?', 'Adds 5 weeks of realistic demo sales, items and customers so you can explore the app. Only available while your shop is empty.', { ok: 'Load sample data' })
-          .then((ok) => { if (ok) { App.seed(); App.toast('ok', 'Sample data loaded', 'Explore freely — Erase everything to start clean later.'); App.render(); } });
+          .then(async (ok) => { if (ok) { (await App.seed()); App.toast('ok', 'Sample data loaded', 'Explore freely — Erase everything to start clean later.'); App.render(); } });
       }
       if (e.target.closest('#changePass')) {
         const acc = App.auth.currentAccount();
@@ -475,6 +476,6 @@
         });
       }
     });
-    App.$('#impFile', main).addEventListener('change', (e) => { if (e.target.files[0]) importBackup(e.target.files[0]).catch(App.reportError); });
+    App.$('#impFile', main).addEventListener('change', async (e) => { if (e.target.files[0]) await importBackup(e.target.files[0]).catch(App.reportError); });
   };
 })(window);

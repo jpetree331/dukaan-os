@@ -33,7 +33,7 @@
         if (Math.abs(dx) > TH && !fg.dataset.armed) { fg.dataset.armed = '1'; App.buzz(18); }
         if (Math.abs(dx) <= TH) delete fg.dataset.armed;
       };
-      const up = () => {
+      const up = async () => {
         if (!drag) return;
         drag = false;
         fg.classList.remove('dragging'); fg.classList.add('snap');
@@ -43,7 +43,7 @@
         delete fg.dataset.armed;
         try { fg.releasePointerCapture(pid); } catch (err) { }
         if (fired) {
-          if (dir > 0) settle(id); else remind(id);
+          if (dir > 0) settle(id); else (await remind(id));
         }
         dx = 0;
       };
@@ -58,8 +58,8 @@
   /* ═════════ customer actions ═════════ */
   function settle(id) {
     const c = App.customer(id); if (!c) return;
-    App.numpadModal('💰 ' + t('cus.logPayment'), c.balance ? String(App.round2(c.balance)) : '', (amt) => {
-      App.actions.takePayment(id, amt, 'cash');
+    App.numpadModal('💰 ' + t('cus.logPayment'), c.balance ? String(App.round2(c.balance)) : '', async (amt) => {
+      (await App.actions.takePayment(id, amt, 'cash'));
       const done = (c.balance || 0) <= 0.5;
       App.toast('ok', t('cus.received', { name: c.name, amt: money(amt, true) }), done ? t('cus.paidFull', { name: c.name }) : money(c.balance) + ' ' + t('com.pending').toLowerCase());
       if (done) App.confetti({ count: 60 });
@@ -68,7 +68,7 @@
   }
   App.settleCustomer = settle;
 
-  function remind(id) {
+  async function remind(id) {
     const c = App.customer(id); if (!c) return;
     const st = App.DB().settings;
     const days = c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0;
@@ -78,7 +78,7 @@
       : 'Namaste ' + c.name + ' 🙏\n\nA friendly reminder — *' + money(c.balance, true) + '* is pending at ' + st.shopName + (days ? ' (' + days + ' days)' : '') + '.\nPlease settle whenever convenient.' + (st.upiId ? '\n\nUPI: ' + st.upiId : '') + '\n\nThank you!';
     App.whatsapp(c.phone, msg);
     App.log('remind', 'Reminder sent to ' + c.name);
-    App.save({ render: false, sync: false });
+    (await App.save({ render: false, sync: false }));
     App.toast('ok', t('cus.remind'), c.name);
   }
   App.remindCustomer = remind;
@@ -99,14 +99,14 @@
         c ? {
           label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => {
             if (Math.abs(c.balance) > 0.005) { App.toast('err', 'Settle ' + money(c.balance) + ' first'); return; }
-            App.confirm(t('com.delete') + '?', c.name + ' will be removed. Past bills are kept.', { danger: true }).then((ok) => {
-              if (!ok) return; c.deleted = true; App.save({ op: 'customer' }); App.toast('ok', 'Removed ' + c.name); api.close(); App.render();
+            App.confirm(t('com.delete') + '?', c.name + ' will be removed. Past bills are kept.', { danger: true }).then(async (ok) => {
+              if (!ok) return; c.deleted = true; (await App.save({ op: 'customer' })); App.toast('ok', 'Removed ' + c.name); api.close(); App.render();
             });
           }
         } : null,
         { label: t('com.cancel'), cls: 'ghost' },
         {
-          label: t('com.save'), cls: 'pri', fn: () => {
+          label: t('com.save'), cls: 'pri', fn: async () => {
             const n = App.$('#c_n', body).value.trim();
             if (!n) { App.toast('err', 'Name is required'); return false; }
             const rec = c || { id: App.uid('cu'), storeId: App.S(), balance: 0, spend: 0, visits: 0, points: 0, dueSince: null, at: Date.now(), firstAt: Date.now() };
@@ -116,7 +116,7 @@
             rec.note = App.$('#c_note', body).value.trim();
             if (!c) App.DB().customers.push(rec);
             App.log('customer', (c ? 'Updated ' : 'Added ') + rec.name);
-            App.save({ op: 'customer' });
+            (await App.save({ op: 'customer' }));
             App.toast('ok', t('com.done'), rec.name);
             done && done(rec);
           }
@@ -159,9 +159,9 @@
       '</div>');
 
     const m = App.modal({ title: '👤 ' + esc(c.name) + (c.phone ? ' · ' + esc(c.phone) : ''), body, wide: true, foot: false });
-    body.addEventListener('click', (e) => {
+    body.addEventListener('click', async (e) => {
       if (e.target.closest('#dPay')) { m.close(); return settle(id); }
-      if (e.target.closest('#dRemind')) return remind(id);
+      if (e.target.closest('#dRemind')) return (await remind(id));
       if (e.target.closest('#dEdit')) { m.close(); return App.editCustomer(id, () => App.render()); }
       const rb = e.target.closest('[data-rebill]');
       if (rb) { const b = App.DB().bills.find((x) => x.id === rb.dataset.rebill); if (b) App.showReceipt(b); return; }
@@ -245,14 +245,14 @@
     const Q = App.$('#cusQ');
     Q.addEventListener('input', () => { cf.q = Q.value; App.render(); setTimeout(() => { const n = App.$('#cusQ'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 0); });
 
-    main.addEventListener('click', (e) => {
+    main.addEventListener('click', async (e) => {
       const od = e.target.closest('[data-od]'), so = e.target.closest('[data-sort]');
       const op = e.target.closest('[data-open]'), pay = e.target.closest('[data-pay]'), rem = e.target.closest('[data-rem]');
       const bd = e.target.closest('[data-bday]');
       if (od) { cf.overdue = +od.dataset.od; return App.render(); }
       if (so) { cf.sort = so.dataset.sort; return App.render(); }
       if (pay) return settle(pay.dataset.pay);
-      if (rem) return remind(rem.dataset.rem);
+      if (rem) return (await remind(rem.dataset.rem));
       if (op) return App.customerDetail(op.dataset.open);
       if (e.target.closest('#addCust')) return App.editCustomer(null, () => App.render());
       if (bd) {
@@ -294,14 +294,14 @@
     App.modal({
       title: s ? '✏️ ' + esc(s.name) : '➕ ' + t('sup.add'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-        label: t('com.save'), cls: 'pri', fn: () => {
+        label: t('com.save'), cls: 'pri', fn: async () => {
           const n = App.$('#s_n', body).value.trim();
           if (!n) { App.toast('err', 'Name is required'); return false; }
           const rec = s || { id: App.uid('sp'), storeId: App.S(), balance: 0, dueSince: null, at: Date.now() };
           rec.name = n; rec.phone = App.$('#s_p', body).value.trim();
           rec.supplies = App.$('#s_s', body).value.trim(); rec.dueDate = App.$('#s_d', body).value;
           if (!s) App.DB().suppliers.push(rec);
-          App.save({ op: 'supplier' });
+          (await App.save({ op: 'supplier' }));
           App.toast('ok', t('com.done'), rec.name);
           done && done(rec);
         }
@@ -350,10 +350,10 @@
     App.modal({
       title: '🚚 ' + t('sup.newPO'), body, wide: true,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-        label: t('com.save'), cls: 'pri', fn: () => {
+        label: t('com.save'), cls: 'pri', fn: async () => {
           if (!lines.length) { App.toast('err', 'Add at least one item'); return false; }
           const sid = App.$('#p_s', body).value;
-          const po = App.actions.recordPurchase(sid, lines, Number(App.$('#p_paid', body).value), '', App.$('#p_mode', body).value);
+          const po = (await App.actions.recordPurchase(sid, lines, Number(App.$('#p_paid', body).value), '', App.$('#p_mode', body).value));
           App.toast('ok', t('sup.stockIn'), lines.length + ' items · ' + money(po.total, true));
           App.confetti({ count: 40, colors: ['#16A34A', '#4ADE80', '#F5A524'] });
         }
@@ -436,8 +436,8 @@
       if (ed) return App.editSupplier(ed.dataset.sed, () => App.render());
       if (sp) {
         const s = App.supplier(sp.dataset.spay);
-        return App.numpadModal('💸 ' + t('sup.paySupplier'), String(App.round2(s.balance)), (amt) => {
-          App.actions.paySupplier(s.id, amt, 'cash');
+        return App.numpadModal('💸 ' + t('sup.paySupplier'), String(App.round2(s.balance)), async (amt) => {
+          (await App.actions.paySupplier(s.id, amt, 'cash'));
           App.toast('ok', t('com.done'), 'Paid ' + money(amt, true) + ' to ' + s.name);
           App.render();
         }, { sub: s.name + ' · ' + t('sup.owed') + ' ' + money(s.balance, true), quick: [500, 1000, 2000, App.round2(s.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });

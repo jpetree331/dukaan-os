@@ -177,18 +177,18 @@
   }
 
   /* ───────── checkout ───────── */
-  function checkout() {
-    if (!cart.lines.length) return;
+  async function checkout() {
+    if (!cart.lines.length || App.isSaving()) return;
     const T = totals();
     if (cart.mode === 'credit' && !cart.customerId) {
       App.toast('warn', t('pos.needCustomer'));
       pickCustomer();
       return;
     }
-    const bill = App.actions.checkout({
+    const bill = (await App.actions.checkout({
       storeId: cart.storeId, lines: cart.lines, discount: cart.discount,
       mode: cart.mode, customerId: cart.customerId, note: cart.note, redeem: cart.redeem
-    });
+    }));
     App.buzz(30);
 
     const r = App.$('#charge') ? App.$('#charge').getBoundingClientRect() : null;
@@ -201,9 +201,9 @@
 
     App.toast(bill.credit ? 'warn' : 'ok', t('pos.done'),
       t('pos.doneSub', { amt: money(bill.total, true), mode: bill.credit ? t('pos.credit') : t('pos.' + bill.mode) }),
-      { label: t('com.undo'), fn: () => { App.actions.voidBill(bill.id, 'undo'); App.toast('ok', t('com.undo'), 'Bill #' + bill.no + ' cancelled'); App.render(); } });
+      { label: t('com.undo'), fn: async () => { (await App.actions.voidBill(bill.id, 'undo')); App.toast('ok', t('com.undo'), 'Bill #' + bill.no + ' cancelled'); App.render(); } });
 
-    App.checkTarget();
+    await App.checkTarget().catch(() => App.toast('warn', 'Sale saved', 'The daily target preference could not be saved.'));
     showReceipt(bill);
   }
 
@@ -452,11 +452,11 @@
       if (e.target.closest('#showLast') && lastBill) return showReceipt(lastBill);
     });
 
-    App.$('#cartFoot').addEventListener('click', (e) => {
+    App.$('#cartFoot').addEventListener('click', async (e) => {
       const dec = e.target.closest('[data-dec]'), inc = e.target.closest('[data-inc]');
       if (e.target.closest('#pickCust')) return pickCustomer();
       if (e.target.closest('#clearCart')) return clearCart();
-      if (e.target.closest('#charge')) return checkout();
+      if (e.target.closest('#charge')) return (await checkout());
       if (e.target.closest('#discBtn')) {
         return App.numpadModal(t('pos.discount'), cart.discount || '', (n) => { cart.discount = n; paintCart(); },
           { allowZero: true, sub: t('pos.subtotal') + ': ' + money(subTotal(), true), quick: [5, 10, 20, 50] });

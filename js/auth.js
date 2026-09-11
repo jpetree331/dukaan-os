@@ -128,38 +128,43 @@
        "local" namespace and the account's own, so the shopkeeper keeps
        working with the same bills and stock either way instead of
        suddenly staring at an empty till. */
-    enableGate(accountId) {
+    async enableGate(accountId) {
       App.assertWriter();
       if (!this.currentAccount() || this.currentAccount().id !== accountId) throw new Error('Sign in first.');
-      const local = localStorage.getItem('dukaanos.v2.local');
+      const context = App.context();
+      const local = await App.storage.read('dukaanos.v2.local');
+      App.assertContext(context);
       if (local) {
         App.validateData(JSON.parse(local));
         localStorage.setItem('dukaanos.localOwner', accountId);
-        localStorage.setItem('dukaanos.v2.' + accountId, local);
-        if (localStorage.getItem('dukaanos.v2.' + accountId) !== local) throw new Error('Migration could not be verified.');
+        await App.storage.write('dukaanos.v2.' + accountId, local);
+        if (await App.storage.read('dukaanos.v2.' + accountId) !== local) throw new Error('Migration could not be verified.');
         for (const suffix of ['.before-restore']) {
-          const raw = localStorage.getItem('dukaanos.v2.local' + suffix);
-          if (raw) localStorage.setItem('dukaanos.v2.' + accountId + suffix, raw);
+          const raw = await App.storage.read('dukaanos.v2.local' + suffix);
+          if (raw) await App.storage.write('dukaanos.v2.' + accountId + suffix, raw);
         }
-        const queue = localStorage.getItem('dukaanos.syncq.local');
-        if (queue) localStorage.setItem('dukaanos.syncq.' + accountId, queue);
+        const queue = await App.storage.read('dukaanos.syncq.local');
+        if (queue) await App.storage.write('dukaanos.syncq.' + accountId, queue);
       }
-      App.boot(accountId);
+      App.assertContext(context);
+      (await App.boot(accountId));
       localStorage.setItem(GATE_KEY, 'on');
-      if (local) { App.wipeAccountData('local'); localStorage.removeItem('dukaanos.localOwner'); }
+      if (local) { (await App.wipeAccountData('local')); localStorage.removeItem('dukaanos.localOwner'); }
       grantFresh();
     },
-    disableGate() {
+    async disableGate() {
       this.requireFresh();
       const s = this.session();
-      const mine = s && localStorage.getItem('dukaanos.v2.' + s.accountId);
+      const context = App.context();
+      const mine = s && await App.storage.read('dukaanos.v2.' + s.accountId);
       if (!mine) throw new Error('Account data is unavailable.');
       localStorage.setItem('dukaanos.localOwner', s.accountId);
-      localStorage.setItem('dukaanos.v2.local', mine);
+      await App.storage.write('dukaanos.v2.local', mine);
+      App.assertContext(context); this.requireFresh();
       localStorage.setItem(GATE_KEY, 'off');
       localStorage.removeItem(SESSION_KEY);
       verified = null;
-      App.boot(LOCAL_ID);
+      (await App.boot(LOCAL_ID));
       App.invalidateContext();
     },
 
@@ -199,7 +204,7 @@
       };
       accounts.push(acc);
       saveAccounts(accounts);
-      App.initAccountData(acc.id, shopName);
+      (await App.initAccountData(acc.id, shopName));
       signedIn(acc);
       return acc;
     },
@@ -217,8 +222,9 @@
       return acc;
     },
 
-    logOut() {
-      try { App.persistNow && App.persistNow(); } catch (e) { /* best-effort flush before leaving */ }
+    async logOut() {
+      // Accepted commands already await persistence. Lock immediately; never
+      // flush a pending/abandoned draft under credentials being invalidated.
       localStorage.removeItem(SESSION_KEY);
       verified = null; freshUntil = 0; App.setLocked(true);
       App.accountId = null;
@@ -251,8 +257,8 @@
       if (!acc) throw new Error('Account not found');
       await checkPassword(acc, String(password || ''));
       App.assertContext(context);
-      App.wipeAccountData(accountId);
-      if (localStorage.getItem('dukaanos.localOwner') === accountId) { App.wipeAccountData('local'); localStorage.removeItem('dukaanos.localOwner'); }
+      (await App.wipeAccountData(accountId));
+      if (localStorage.getItem('dukaanos.localOwner') === accountId) { (await App.wipeAccountData('local')); localStorage.removeItem('dukaanos.localOwner'); }
       saveAccounts(accounts.filter((a) => a.id !== accountId));
       verified = null; freshUntil = 0; App.setLocked(true);
       const s = this.session();

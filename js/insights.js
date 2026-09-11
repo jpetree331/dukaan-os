@@ -266,14 +266,14 @@
   };
 
   /* ═════════ daily target celebration ═════════ */
-  App.checkTarget = function () {
+  App.checkTarget = async function () {
     const st = App.DB().settings;
     if (!st.dailyTarget) return;
     const today = App.stats.today().sales;
     const key = App.dayKey(Date.now());
     if (today >= st.dailyTarget && st.celebratedOn !== key) {
       st.celebratedOn = key;
-      App.save({ sync: false, render: false });
+      (await App.save({ sync: false, render: false }));
       setTimeout(() => {
         App.confetti({ count: 170, y: innerHeight * 0.3 });
         App.toast('ok', '🎯 ' + t('dash.targetHit'), money(today, true) + ' / ' + money(st.dailyTarget));
@@ -282,7 +282,7 @@
   };
 
   /* ═════════ morning summary ═════════ */
-  App.morningBrief = function (force) {
+  App.morningBrief = async function (force) {
     if (!App.can('reports')) return;
     const st = App.DB().settings;
     const key = App.dayKey(Date.now());
@@ -290,7 +290,7 @@
     const y = Date.now() - App.DAY;
     const lines = AI.summary(force ? Date.now() : y);
     st.seenSummaryOn = key;
-    App.save({ sync: false, render: false });
+    (await App.save({ sync: false, render: false }));
 
     const body = App.el('<div>' +
       '<div class="ai-card"><div class="ai-h">✨ ' + (force ? t('rep.eod') : t('dash.yesterday')) + '</div>' +
@@ -414,11 +414,11 @@
 
     if (w.innerWidth <= 1000) App.$('#dashRow').style.gridTemplateColumns = '1fr';
 
-    main.addEventListener('click', (e) => {
+    main.addEventListener('click', async (e) => {
       const r = e.target.closest('[data-ai-restock]'), p = e.target.closest('[data-ai-pay]');
       const vb = e.target.closest('[data-view-bill]'), ab = e.target.closest('[data-ai-bill]'), vo = e.target.closest('[data-void]');
       if (e.target.closest('#goBill')) return App.go('billing');
-      if (e.target.closest('#briefBtn')) return App.morningBrief(true);
+      if (e.target.closest('#briefBtn')) return (await App.morningBrief(true));
       if (r) return App.restockModal(r.dataset.aiRestock);
       if (p) return App.settleCustomer(p.dataset.aiPay);
       if (vb || ab) {
@@ -430,7 +430,7 @@
       if (vo) {
         const b = App.DB().bills.find((x) => x.id === vo.dataset.void);
         App.confirm('Cancel bill #' + b.no + '?', 'Stock goes back and any udhaar is reversed.', { danger: true, ok: 'Cancel bill' })
-          .then((ok) => { if (ok) { App.actions.voidBill(b.id, 'manual'); App.toast('ok', 'Bill #' + b.no + ' cancelled'); } });
+          .then(async (ok) => { if (ok) { (await App.actions.voidBill(b.id, 'manual')); App.toast('ok', 'Bill #' + b.no + ' cancelled'); } });
       }
     });
   };
@@ -530,7 +530,7 @@
       }, 260);
     };
 
-    main.addEventListener('click', (e) => {
+    main.addEventListener('click', async (e) => {
       const rr = e.target.closest('[data-rr]'), qa = e.target.closest('[data-ask]');
       if (rr) { repRange = +rr.dataset.rr; return App.render(); }
       if (qa) { App.$('#askQ').value = qa.dataset.ask; return runAsk(qa.dataset.ask); }
@@ -553,13 +553,14 @@
         const o = App.$('#reconOut');
         if (isNaN(counted)) { o.innerHTML = '<div class="alert warn"><span class="ai">✋</span><span>Enter the counted amount</span></div>'; return; }
         const d = App.round2(counted - cash.net);
-        o.innerHTML = Math.abs(d) < 1
+        const resultHTML = Math.abs(d) < 1
           ? '<div class="alert ok"><span class="ai">✅</span><span>' + t('rep.match') + '</span></div>'
           : '<div class="alert ' + (d < 0 ? 'bad' : 'warn') + '"><span class="ai">' + (d < 0 ? '⚠️' : '💡') + '</span><span>' +
           (d < 0 ? t('rep.short', { amt: money(-d, true) }) : t('rep.over', { amt: money(d, true) })) + '</span></div>';
-        if (Math.abs(d) < 1) App.confetti({ count: 45 });
         App.log('cash', 'Cash counted ' + money(counted, true) + ' vs expected ' + money(cash.net, true));
-        App.save({ render: false });
+        (await App.save({ render: false }));
+        o.innerHTML = resultHTML;
+        if (Math.abs(d) < 1) App.confetti({ count: 45 });
         return;
       }
       if (e.target.closest('#repCsv')) {

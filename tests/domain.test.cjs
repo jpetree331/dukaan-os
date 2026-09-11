@@ -9,14 +9,14 @@ test('BUILD-01 M01: independently calculated mixed-tax discount and redemption',
   const rice=item(A,{price:80,gst:5}),soap=item(A,{price:50,gst:18});
   const c=customer(A,{points:20});
   const input={lines:[{itemId:rice.id,price:80,qty:1.25},{itemId:soap.id,price:50,qty:2}],discount:10,redeem:10,customerId:c.id,mode:'credit'};
-  const b=A.actions.checkout(input);
+  const b=(await A.actions.checkout(input));
   assert.deepEqual([b.sub,b.discount,b.tax,b.total,c.balance,c.points],[200,20,20.7,200.7,200.7,12]);
   assert.deepEqual(Array.from(b.lines,l=>[l.taxable,l.tax]),[[90,4.5],[90,16.2]]);
   assert.equal(b.calculationVersion,D.CALCULATION_VERSION);
   assert.equal(b.command.storeId,'st_main');assert.equal(b.command.actorId,'sf_owner');
   const snapshot=D.snapshot(b);
   rice.price=99;rice.gst=0;A.DB().settings.loyaltyValue=3;
-  A.actions.voidBill(b.id);
+  (await A.actions.voidBill(b.id));
   assert.deepEqual([rice.stock,soap.stock,c.balance,c.points],[10,10,0,20]);
   assert.equal(b.voidCommand.corrects,b.command.id);
   assert.equal(snapshot.void,false);assert.equal(snapshot.lines[0].price,80);
@@ -34,14 +34,14 @@ test('BUILD-01 M02: paise rounding and tiny-line nonnegative allocations',()=>{
 
 test('BUILD-01 Q01: four-decimal quantity sale, batched sale, restock and void',async()=>{
   const {A}=await create();const i=item(A,{stock:1,price:10000});
-  const b=A.actions.checkout(cart(i,{lines:[{itemId:i.id,price:10000,qty:0.0001}]}));
+  const b=(await A.actions.checkout(cart(i,{lines:[{itemId:i.id,price:10000,qty:0.0001}]})));
   assert.equal(i.stock,0.9999);assert.equal(b.total,1);
-  A.actions.voidBill(b.id);assert.equal(i.stock,1);
-  const batched=A.actions.checkout(cart(i,{lines:[{itemId:i.id,price:10000,qty:0.0001}]}));
-  assert.equal(A.itemStock(i),0.9999);A.actions.voidBill(batched.id);assert.equal(A.itemStock(i),1);
-  A.actions.restock(i.id,0.0001);assert.equal(i.stock,1.0001);
+  (await A.actions.voidBill(b.id));assert.equal(i.stock,1);
+  const batched=(await A.actions.checkout(cart(i,{lines:[{itemId:i.id,price:10000,qty:0.0001}]})));
+  assert.equal(A.itemStock(i),0.9999);(await A.actions.voidBill(batched.id));assert.equal(A.itemStock(i),1);
+  (await A.actions.restock(i.id,0.0001));assert.equal(i.stock,1.0001);
   A.posAdd(i.id,0.0001);A.posAdd(i.id,0.0001);assert.equal(A.cart.lines[0].qty,0.0002);
-  assert.throws(()=>A.actions.checkout(cart(i,{lines:[{itemId:i.id,price:10000,qty:0.00011}]})),/four decimal/);
+  (await assert.rejects(async ()=>(await A.actions.checkout(cart(i,{lines:[{itemId:i.id,price:10000,qty:0.00011}]}))),/four decimal/));
 });
 
 test('BUILD-01: pure calculations reject nonfinite, overprecision and unsafe totals',()=>{
@@ -55,8 +55,8 @@ test('BUILD-01: pure calculations reject nonfinite, overprecision and unsafe tot
 
 test('BUILD-01: quota failure restores a book containing prior command metadata',async()=>{
   const {A,ctx}=await create();const i=item(A);
-  A.actions.checkout(cart(i));const before=JSON.stringify(A.DB());
+  (await A.actions.checkout(cart(i)));const before=JSON.stringify(A.DB());
   ctx.localStorage.setItem=()=>{throw new Error('Synthetic quota');};
-  assert.throws(()=>A.actions.checkout(cart(i)),/Synthetic quota/);
+  (await assert.rejects(async ()=>(await A.actions.checkout(cart(i))),/Synthetic quota/));
   assert.equal(JSON.stringify(A.DB()),before);
 });

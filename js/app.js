@@ -19,7 +19,7 @@
   /* ───────── routing ───────── */
   App.go = function (v) {
     if (!App.views[v]) v = 'dashboard';
-    if (!booted || App.isLocked()) return;
+    if (!booted || App.isLocked() || App.isSaving()) return;
     if (!App.isOwner() && ['dashboard', 'settings', 'reports', 'suppliers'].includes(v)) v = 'billing';
     view = v;
     location.hash = '#' + v;
@@ -31,7 +31,7 @@
   };
 
   App.render = function () {
-    if (!booted || App.isLocked()) return;
+    if (!booted || App.isLocked() || App.isSaving()) return;
     if (!App.isOwner() && ['dashboard', 'settings', 'reports', 'suppliers'].includes(view)) { view = 'billing'; location.hash = '#billing'; }
     const old = $('#main');
     if (!old) return;
@@ -91,6 +91,14 @@
     pill.title = 'Cloud sync is not available. Export backups from Settings.';
   }
   App.on('net', paintNet);
+  App.on('saving', busy => {
+    $('#shell').inert = busy || App.isLocked();
+    $('#modalRoot').inert = busy;
+    $('#shell').setAttribute('aria-busy', String(busy));
+    const status = $('#netPill span');
+    if (busy && status) status.textContent = 'Saving on this device…';
+    else if (booted && !App.isLocked()) paintNet();
+  });
 
   let wasOffline = !navigator.onLine;
   w.addEventListener('offline', () => {
@@ -126,10 +134,10 @@
   function paintPin() {
     $('#pinDots').innerHTML = [0, 1, 2, 3].map((i) => '<i class="' + (i < pinBuf.length ? 'f' : '') + '"></i>').join('');
   }
-  App.lock = function (after) {
+  App.lock = async function (after) {
     const st = App.DB().settings;
     if (!st.pinOn || !st.pin) {
-      if (App.auth.gateOn()) { doLogout(); return; }
+      if (App.auth.gateOn()) { (await doLogout()); return; }
       after && after(); return;
     }
     App.setLocked(true);
@@ -153,12 +161,12 @@
     if (pinBuf.length === 4) {
       pinBusy = true;
       const lockEpoch = App.context().epoch;
-      setTimeout(() => {
+      setTimeout(async () => {
         if (lockEpoch !== App.context().epoch) return;
         pinBusy = false;
         try {
           App.auth.checkPin(pinBuf, st.pin);
-          if (App.auth.gateOn() && !App.auth.currentAccount()) { doLogout(); return; }
+          if (App.auth.gateOn() && !App.auth.currentAccount()) { (await doLogout()); return; }
           App.setLocked(false);
           $('#shell').inert = false;
           $('#lockScreen').hidden = true;
@@ -187,45 +195,45 @@
   $$('.nav-item, .tab').forEach((b) => b.addEventListener('click', () => App.go(b.dataset.view)));
   $('#btnMenu').onclick = () => { $('#sidenav').classList.add('open'); $('#scrim').classList.add('on'); };
   $('#scrim').onclick = () => { $('#sidenav').classList.remove('open'); $('#scrim').classList.remove('on'); };
-  $('#btnTheme').onclick = () => {
+  $('#btnTheme').onclick = async () => {
     const st = App.DB().settings;
     st.theme = st.theme === 'dark' ? 'light' : 'dark';
+    (await App.save({ sync: false, render: false }));
     App.applyTheme();
-    App.save({ sync: false, render: false });
   };
-  $('#btnLang').onclick = () => {
-    App.setLang(App.lang() === 'hi' ? 'en' : 'hi');
+  $('#btnLang').onclick = async () => {
+    (await App.setLang(App.lang() === 'hi' ? 'en' : 'hi'));
     App.render();
     App.toast('ok', App.lang() === 'hi' ? 'भाषा: हिन्दी' : 'Language: English');
   };
-  $('#btnLock').onclick = () => App.lock(() => App.render());
+  $('#btnLock').onclick = async () => (await App.lock(() => App.render()));
   $('#whoPill').onclick = () => App.switchStaff();
   $('#storePill').onclick = () => App.storePicker();
   $('#btnLogout').onclick = () => {
     App.confirm('Log out?', 'Your data stays saved on this device — log back in any time with your username and password.')
-      .then((ok) => { if (ok) doLogout(); });
+      .then(async (ok) => { if (ok) (await doLogout()); });
   };
-  function doLogout() {
-    App.auth.logOut();
+  async function doLogout() {
+    (await App.auth.logOut());
     booted = false;
     location.hash = '';
     location.reload();
   }
   App.logout = doLogout;
   let idleTimer;
-  function suspend() {
+  async function suspend() {
     if (!booted || App.isLocked()) return;
     App.invalidateContext();
-    if (App.auth.gateOn() || App.DB().settings.pinOn) App.lock(() => App.render());
+    if (App.auth.gateOn() || App.DB().settings.pinOn) (await App.lock(() => App.render()));
   }
-  function activity() {
+  async function activity() {
     clearTimeout(idleTimer);
-    if (booted && App.auth.gateOn() && !App.auth.currentAccount()) { suspend(); return; }
+    if (booted && App.auth.gateOn() && !App.auth.currentAccount()) { (await suspend()); return; }
     idleTimer = setTimeout(suspend, 5 * 60 * 1000);
   }
   ['pointerdown', 'keydown', 'touchstart'].forEach(e => document.addEventListener(e, activity, { passive: true }));
-  document.addEventListener('visibilitychange', () => { if (document.hidden) suspend(); else activity(); });
-  activity();
+  document.addEventListener('visibilitychange', async () => { if (document.hidden) (await suspend()); else (await activity()); });
+  activity().catch(App.reportError);
 
   /* keyboard shortcuts for a desktop counter */
   document.addEventListener('keydown', (e) => {
@@ -285,7 +293,7 @@
         acc = await App.auth.logIn({ username: $('#a_user').value, password: $('#a_pass').value });
         App.toast('ok', 'Welcome back', acc.shopName);
       }
-      enterShell(acc.id);
+      (await enterShell(acc.id));
       $('#authScreen').hidden = true;
       $('#a_pass').value = ''; $('#a_pass2').value = '';
     } catch (err) {
@@ -296,8 +304,8 @@
   });
 
   /* ───────── boot ───────── */
-  function enterShell(accountId) {
-    App.boot(accountId);
+  async function enterShell(accountId) {
+    (await App.boot(accountId));
     App.setLocked(false);
     $('#shell').inert = false;
     App.applyTheme();
@@ -315,17 +323,17 @@
       App.render();
       setTimeout(() => { $('#boot').hidden = true; }, 450);
       /* morning brief once a day, after the UI has settled */
-      setTimeout(() => {
-        if (!App.isLocked() && App.isOwner() && !document.querySelector('.modal-back')) App.morningBrief(false);
+      setTimeout(async () => {
+        if (!App.isLocked() && App.isOwner() && !document.querySelector('.modal-back')) (await App.morningBrief(false));
       }, 1100);
       if (navigator.onLine) App.sync.drain();
     };
 
     /* honour the skeleton for a beat so the first paint never flashes empty */
-    setTimeout(() => {
+    setTimeout(async () => {
       if (App.DB().settings.pinOn && App.DB().settings.pin) {
         $('#boot').hidden = true;
-        App.lock(() => { $('#shell').hidden = false; booted = true; App.render(); if (navigator.onLine) App.sync.drain(); });
+        (await App.lock(() => { $('#shell').hidden = false; booted = true; App.render(); if (navigator.onLine) App.sync.drain(); }));
       } else run();
     }, 320);
   }
@@ -344,7 +352,7 @@
       document.documentElement.lang = 'en';
       $('#authScreen').hidden = true;
 
-      if (!App.auth.gateOn()) { enterShell(LOCAL_ACCOUNT_ID); return; }
+      if (!App.auth.gateOn()) { (await enterShell(LOCAL_ACCOUNT_ID)); return; }
 
       setAuthMode('login');
       const acc = App.auth.currentAccount();
@@ -357,7 +365,7 @@
         $('#authScreen').hidden = false;
         return;
       }
-      enterShell(acc.id);
+      (await enterShell(acc.id));
     } catch (e) {
       $('#boot').hidden = true;
       $('#shell').hidden = true;

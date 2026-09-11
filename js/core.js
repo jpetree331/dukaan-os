@@ -128,8 +128,8 @@
   App.DB = () => DB;
 
   const committed = new Map();
-  function load() {
-    const raw = localStorage.getItem(dataKey());
+  async function load() {
+    const raw = await App.storage.read(dataKey());
     if (raw !== null) {
       const parsed = App.validateData(JSON.parse(raw));
       DB = Object.assign(blank(), parsed);
@@ -159,29 +159,47 @@
       } else target[k] = v;
     });
   }
-  function persist() {
+  let pendingWrite = false;
+  App.isSaving = () => pendingWrite;
+  async function persist(requireAccess = false) {
+    if (pendingWrite) throw new Error('A save is already in progress. Wait for it to finish.');
     const key = dataKey(), previous = committed.has(key) ? committed.get(key) : null;
-    try {
+    let context = App.context();
+    const draft = DB;
+    const guard = () => {
       App.assertWriter();
-      if (localStorage.getItem(key) !== previous) throw new Error('Shop data changed in another tab. Reload before saving; your cart has been kept.');
+      if (dataKey() !== key || App.context().epoch !== context.epoch) throw new Error('The counter changed before the save completed.');
+      if (requireAccess && (!App.contextValid(context) || !App.me() || App.me().active === false || (App.auth.gateOn() && !App.auth.currentAccount()))) throw new Error('The counter changed or locked before the save completed.');
+    };
+    try {
+      guard();
       const raw = JSON.stringify(App.validateData(DB));
-      localStorage.setItem(key, raw);
+      // Expose only the committed book while the repository is awaiting I/O.
+      DB = previous ? JSON.parse(previous) : blank();
+      context = App.context();
+      pendingWrite = true; App.emit('saving', true);
+      await App.storage.commit({key, expected:previous, value:raw, guard});
       committed.set(key, raw);
+      restore(draft, JSON.parse(raw));
+      DB = draft;
     } catch (e) {
-      if (previous) restore(DB, JSON.parse(previous));
-      else restore(DB, blank());
+      if (previous) restore(draft, JSON.parse(previous));
+      else restore(draft, blank());
+      DB = draft;
       throw e;
+    } finally {
+      pendingWrite = false; App.emit('saving', false);
     }
   }
-  function save(opts) {
+  async function save(opts) {
     App.requireAccess();
-    persist(); // Success UI is permitted only after this atomic write succeeds.
+    await persist(true); // Success UI is permitted only after durable completion.
     if (opts && opts.sync !== false) queueSync(opts.op);
     if (!opts || opts.render !== false) App.emit('change');
   }
   App.save = save;
   App.persistNow = persist;
-  App.restoreBackup = (data) => {
+  App.restoreBackup = async (data) => {
     App.requirePermission('settings');
     App.auth.requireFresh();
     const valid = App.validateData(data);
@@ -190,10 +208,12 @@
     valid.session = { staffId: DB.session.staffId };
     for (const key of ['pin', 'pinOn', 'upiId']) valid.settings[key] = DB.settings[key];
     // Keep the prior snapshot for recovery, before replacing the live key.
-    const previous = localStorage.getItem(dataKey());
-    if (previous) localStorage.setItem(dataKey() + '.before-restore', previous);
+    const context = App.context();
+    const previous = await App.storage.read(dataKey());
+    if (previous) await App.storage.write(dataKey() + '.before-restore', previous);
+    App.assertContext(context); App.auth.requireFresh();
     restore(DB, valid);
-    save({ sync: false });
+    (await save({ sync: false }));
     App.invalidateContext();
     if (App.posClear) App.posClear();
   };
@@ -323,7 +343,7 @@
   }
   App.actions = {
     /* Commit a cart into a bill. Deducts stock, moves credit, awards loyalty. */
-    checkout(cart) {
+    async checkout(cart) {
       App.requirePermission('bill');
       if (!cart.lines || !cart.lines.length) throw new Error('The cart is empty.');
       if (cart.storeId && cart.storeId !== S()) throw new Error('The cart belongs to a different store. Clear it and try again.');
@@ -380,11 +400,11 @@
 
       DB.bills.unshift(bill);
       log('bill', `Bill #${bill.no} · ${money(total)} · ${bill.customerName}`, { billId: bill.id });
-      save({ op: 'bill' });
+      (await save({ op: 'bill' }));
       return bill;
     },
 
-    voidBill(id, reason) {
+    async voidBill(id, reason) {
       App.requirePermission('void_bill');
       const b = App.bills().find((x) => x.id === id);
       if (!b || b.void) return null;
@@ -406,11 +426,11 @@
         if (c.balance <= 0) c.dueSince = null; // Negative balance is credit owed to this customer.
       }
       log('void', `Cancelled bill #${b.no} · ${money(b.total)}`, { billId: b.id });
-      save({ op: 'void' });
+      (await save({ op: 'void' }));
       return b;
     },
 
-    takePayment(customerId, amount, mode, note) {
+    async takePayment(customerId, amount, mode, note) {
       App.requirePermission('take_payment');
       const c = App.customer(customerId); if (!c) throw new Error('Customer not found.');
       if (!['cash', 'upi', 'card'].includes(mode || 'cash')) throw new Error('Invalid payment mode.');
@@ -421,11 +441,11 @@
       c.balance = round2(Math.max(0, (c.balance || 0) - amt));
       if (c.balance <= 0) c.dueSince = null;
       log('payment', `${c.name} paid ${money(amt)}`, { customerId });
-      save({ op: 'payment' });
+      (await save({ op: 'payment' }));
       return p;
     },
 
-    recordPurchase(supplierId, lines, paidNow, note, mode = 'cash') {
+    async recordPurchase(supplierId, lines, paidNow, note, mode = 'cash') {
       App.requirePermission('purchase');
       if (!['cash', 'upi', 'card'].includes(mode)) throw new Error('Invalid payment mode.');
       if (!lines.length) throw new Error('Add purchase items first.');
@@ -455,11 +475,11 @@
         if (sup.balance > 0 && !sup.dueSince) sup.dueSince = Date.now();
       }
       log('purchase', `Stock in from ${po.supplierName} · ${money(total)}`, { poId: po.id });
-      save({ op: 'purchase' });
+      (await save({ op: 'purchase' }));
       return po;
     },
 
-    paySupplier(supplierId, amount, mode) {
+    async paySupplier(supplierId, amount, mode) {
       App.requirePermission('pay_supplier');
       const s = App.supplier(supplierId); if (!s) throw new Error('Supplier not found.');
       if (!['cash', 'upi', 'card'].includes(mode || 'cash')) throw new Error('Invalid payment mode.');
@@ -469,11 +489,11 @@
       s.balance = round2(Math.max(0, (s.balance || 0) - amt));
       if (s.balance <= 0) s.dueSince = null;
       log('spay', `Paid ${s.name} ${money(amt)}`, { supplierId });
-      save({ op: 'spay' });
+      (await save({ op: 'spay' }));
       return true;
     },
 
-    restock(itemId, qty, expiry, cost) {
+    async restock(itemId, qty, expiry, cost) {
       App.requirePermission('restock');
       const it = App.item(itemId); if (!it) throw new Error('Item not found.');
       App.number(qty, 'Quantity', 0.0001);
@@ -482,7 +502,7 @@
       giveStock(it, +qty, expiry || '', cost);
       if (cost != null) it.cost = cost;
       log('restock', `${it.name} +${qty}`, { itemId });
-      save({ op: 'restock' });
+      (await save({ op: 'restock' }));
     }
   };
 
@@ -577,7 +597,7 @@
   };
 
   /* ───────── seeding ───────── */
-  function seed() {
+  async function seed() {
     App.requirePermission('settings');
     App.requirePermission('settings');
     if (!App.isBlankAccount()) throw new Error('Sample data is only available in an empty shop.');
@@ -665,7 +685,7 @@
 
     DB.activity.push({ id: uid('a'), type: 'sys', text: 'Shop set up on Dukaan OS', staffId: 'sf_owner', storeId: 'st_main', at: now - 35 * DAY });
     DB.settings.demo = true;
-    persist();
+    (await persist());
   }
   /* Sample data is opt-in only (Settings → Load sample data on a brand-new
      shop). Nothing seeds itself automatically — a fresh account boots with
@@ -673,10 +693,10 @@
   App.seed = seed;
   App.isBlankAccount = () => !DB.items.length && !DB.customers.length && !DB.bills.length && !DB.suppliers.length;
 
-  App.resetAll = function () {
+  App.resetAll = async function () {
     App.requirePermission('settings');
     App.auth.requireFresh();
-    App.wipeAccountData(App.accountId);
+    (await App.wipeAccountData(App.accountId));
     committed.set(dataKey(), null);
     App.setLocked(true);
     location.reload();
@@ -685,31 +705,34 @@
   /* Called once by js/auth.js right after a brand-new account is created,
      so the very first thing ever written for that account is an empty
      shop — no demo items, no demo bills, no demo customers. */
-  App.initAccountData = function (accountId, shopName) {
+  App.initAccountData = async function (accountId, shopName) {
+    if (pendingWrite) throw new Error('Wait for the current save before changing accounts.');
     App.accountId = accountId;
     loadQueue();
-    committed.set(dataKey(), localStorage.getItem(dataKey()));
+    committed.set(dataKey(), await App.storage.read(dataKey()));
     DB = blank();
     if (shopName) DB.settings.shopName = shopName;
-    persist();
+    (await persist());
     return DB;
   };
 
   /* Permanently erases one account's shop data — used when an account is
      deleted. Takes an explicit id because the account being removed is not
      always the one currently signed in. */
-  App.wipeAccountData = function (accountId) {
+  App.wipeAccountData = async function (accountId) {
     App.assertWriter();
     if (!/^[A-Za-z0-9_-]{1,100}$/.test(accountId)) throw new Error('Invalid account ID.');
-    for (const key of ['dukaanos.v2.' + accountId + '.before-restore', 'dukaanos.syncq.' + accountId, 'dukaanos.v2.' + accountId]) localStorage.removeItem(key);
+    if (pendingWrite) throw new Error('Wait for the current save before deleting an account.');
+    for (const key of ['dukaanos.v2.' + accountId + '.before-restore', 'dukaanos.syncq.' + accountId, 'dukaanos.v2.' + accountId]) await App.storage.remove(key);
   };
 
-  App.boot = function (accountId) {
+  App.boot = async function (accountId) {
     App.assertWriter();
+    if (pendingWrite) throw new Error('Wait for the current save before opening another account.');
     App.accountId = accountId || App.accountId;
     loadQueue();
-    const had = load();
-    if (!had) { DB = blank(); persist(); }
+    const had = (await load());
+    if (!had) { DB = blank(); (await persist()); }
     if (!DB.stores.some((s) => s.id === DB.settings.activeStore)) DB.settings.activeStore = DB.stores[0].id;
     return DB;
   };

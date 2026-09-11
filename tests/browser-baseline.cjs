@@ -36,10 +36,10 @@ async function main() {
     const p = await context.newPage();
     const errors=[];p.on('pageerror',e=>errors.push(e.message));
     await p.goto(url);await ready(p);await dismiss(p);
-    await p.evaluate(() => {
+    await p.evaluate(async () => {
       const A=App,d=A.DB();
       d.items.push({id:'test_rice',storeId:A.S(),name:'Synthetic rice',price:100,cost:60,stock:10,batches:[],gst:5});
-      d.settings.seenSummaryOn=A.dayKey(Date.now());A.save();
+      d.settings.seenSummaryOn=A.dayKey(Date.now());(await A.save());
     });
     await p.locator('#sidenav [data-view="billing"]').click();
     await p.locator('[data-add="test_rice"]').first().click();
@@ -60,10 +60,10 @@ async function main() {
     assert.equal(await second.locator('a[download]').count(),0);await second.close();
     passed('second tab denied writer access without recovery download');
 
-    await p.evaluate(()=>{App.DB().staff.push({id:'test_cashier',name:'Synthetic cashier',role:'cashier',active:true,pin:''});App.DB().session.staffId='test_cashier';App.save();App.go('settings');});
+    await p.evaluate(async ()=>{App.DB().staff.push({id:'test_cashier',name:'Synthetic cashier',role:'cashier',active:true,pin:''});App.DB().session.staffId='test_cashier';(await App.save());App.go('settings');});
     assert.equal(await p.locator('#sidenav [data-view="settings"]').isVisible(),false);
-    assert.match(await p.evaluate(()=>{try{App.actions.voidBill(App.DB().bills[0].id);return '';}catch(e){return e.message;}}),/Owner/);
-    await p.evaluate(()=>{App.DB().session.staffId='sf_owner';App.save();App.go('settings');});
+    assert.match(await p.evaluate(async ()=>{try{(await App.actions.voidBill(App.DB().bills[0].id));return '';}catch(e){return e.message;}}),/Owner/);
+    await p.evaluate(async ()=>{App.DB().session.staffId='sf_owner';(await App.save());App.go('settings');});
     passed('cashier navigation and direct void action denied');
 
     await p.locator('#expAll').click();
@@ -99,14 +99,14 @@ async function main() {
     assert.equal(await r.evaluate(()=>JSON.stringify(App.DB())),before);
     passed('malformed imported file leaves records unchanged');
 
-    await p.evaluate(()=>{App.DB().settings.pin='1234';App.DB().settings.pinOn=true;App.save();App.lock(()=>App.render());});
+    await p.evaluate(async ()=>{App.DB().settings.pin='1234';App.DB().settings.pinOn=true;(await App.save());(await App.lock(()=>App.render()));});
     for(const n of '1111') await p.locator('#pinPad [data-k="'+n+'"]').click();
     await p.locator('#pinErr').getByText('Incorrect PIN',{exact:true}).waitFor();
     assert.equal(await p.locator('#shell').isVisible(),false);
     for(const n of '1234') await p.locator('#pinPad [data-k="'+n+'"]').click();
     await ready(p);passed('wrong and correct PIN through real lock screen');
 
-    await p.evaluate(async()=>{const a=await App.auth.signUp({username:'synthetic_owner',password:'Synthetic-owner-2026',confirm:'Synthetic-owner-2026',shopName:'Synthetic shop'});App.auth.enableGate(a.id);});
+    await p.evaluate(async()=>{const a=await App.auth.signUp({username:'synthetic_owner',password:'Synthetic-owner-2026',confirm:'Synthetic-owner-2026',shopName:'Synthetic shop'});(await App.auth.enableGate(a.id));});
     await p.reload();await p.locator('#authScreen').waitFor({state:'visible'});
     await p.locator('#a_user').fill('synthetic_owner');await p.locator('#a_pass').fill('Wrong-owner-password');await p.locator('#authSubmit').click();
     await p.locator('#authErr').getByText('Incorrect username or password',{exact:true}).waitFor();
@@ -115,6 +115,26 @@ async function main() {
     for(const n of '1234') await p.locator('#pinPad [data-k="'+n+'"]').click();
     await ready(p);assert.equal(await p.evaluate(()=>App.DB().items[0].stock),10);
     passed('account migration retains shop; reload requires password and PIN');
+
+    await p.locator('#sidenav [data-view="billing"]').click();
+    await p.locator('[data-add="test_rice"]').first().click();
+    await p.evaluate(()=>{
+      const base=App.storage.commit.bind(App.storage);
+      let release;const gate=new Promise(r=>{release=r;});window.releaseSyntheticSave=release;
+      App.storage.commit=async args=>{await gate;return base(args);};
+    });
+    await p.locator('#charge').click();
+    await p.waitForFunction(()=>App.isSaving());
+    assert.deepEqual(await p.evaluate(()=>[App.DB().bills.length,App.DB().items[0].stock]),[1,10]);
+    assert.equal(await p.locator('.receipt-prev').count(),0);
+    assert.equal(await p.locator('#shell').getAttribute('aria-busy'),'true');
+    await p.evaluate(()=>{document.querySelector('#charge').click();App.go('inventory');});
+    assert.equal(await p.evaluate(()=>location.hash),'#billing');
+    await p.evaluate(()=>window.releaseSyntheticSave());
+    await p.waitForFunction(()=>App.DB().bills.length===2 && !App.isSaving());
+    await p.locator('.receipt-prev').waitFor();
+    assert.equal(await p.evaluate(()=>App.DB().items[0].stock),9);
+    passed('delayed UI sale shows no receipt/draft, ignores duplicate click and defers navigation until durable');
 
     const faults=await browser.newContext(),f=await faults.newPage();await f.goto(url);await ready(f);
     await f.evaluate(()=>localStorage.setItem('dukaanos.v2.local','{broken-synthetic'));
