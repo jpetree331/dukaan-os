@@ -337,10 +337,11 @@
       ],
       "recovery": "Record actor, reason, batch and prior/new count; reverse by linked adjustment instead of restoring an old database.",
       "optional": false,
-      "status": "built-unverified",
+      "status": "passed",
       "codeCommit": "166fc454df8fa3ef709417406fa95abb8b46d9ce",
       "evidence": [
-        "reports/BUILD-09.md"
+        "reports/BUILD-09.md",
+        "reports/VERIFY-09.md"
       ]
     },
     {

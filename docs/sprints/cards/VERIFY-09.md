@@ -1,6 +1,6 @@
 # VERIFY-09 — Verify stock adjustments and expiry write-offs
 
-Status: **planned**. Build under review: [BUILD-09](BUILD-09.md).
+Status: **passed**. Build under review: [BUILD-09](BUILD-09.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope
