@@ -82,7 +82,7 @@
     const id = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(x) && !['__proto__', 'constructor', 'prototype'].includes(x);
     const date = (x) => !x || (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && new Date(x).toISOString().slice(0, 10) === x);
     const collections = ['stores', 'staff', 'items', 'customers', 'suppliers', 'bills', 'payments', 'purchases', 'supplierPayments', 'activity', 'shifts'];
-    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', 'returns', 'refunds', 'supplierLedgerVersion','supplierReturns','supplierRefunds', ...collections]);
+    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', 'returns', 'refunds', 'supplierLedgerVersion','supplierReturns','supplierRefunds','stockAdjustments', ...collections]);
     for (const key of Object.keys(d)) if (!rootKeys.has(key)) fail('unknown field: ' + key);
     for (const key of collections) {
       if (!Array.isArray(d[key])) fail(key + ' must be an array');
@@ -308,6 +308,23 @@
       if(!r||!['cash','upi'].includes(f.mode)||typeof f.reference!=='string'||f.reference.trim().length<3||f.amount<=0)fail('invalid supplier refund');
       if(d.supplierRefunds.filter(x=>x.returnId===r.id).reduce((n,x)=>n+x.amount,0)>r.refundable+0.00001)fail('supplier refunds exceed credit');
       if(!d.suppliers.find(s=>s.id===r.supplierId)?.ledger?.some(e=>e.kind==='refund'&&e.refundId===f.id))fail('supplier refund movement missing');
+    }
+    if(d.stockAdjustments!==undefined){
+      if(!Array.isArray(d.stockAdjustments))fail('stock adjustments must be an array');const ids=new Set(),reversed=new Set(),prior=[];
+      for(const r of d.stockAdjustments){
+        if(!obj(r)||!id(r.id)||ids.has(r.id)||!id(r.staffId)||!d.items.some(it=>it.id===r.itemId&&it.storeId===r.storeId)||!['count','found','expired','damaged','reversal'].includes(r.reasonCode)||typeof r.note!=='string'||r.note.trim().length<3)fail('invalid stock adjustment');ids.add(r.id);
+        App.number(r.at,'adjustment date',0,8640000000000000);App.number(r.delta,'adjustment delta',-1e9);App.domain.quantityUnits(Math.abs(r.delta));if(!r.delta)fail('empty adjustment');
+        for(const k of ['beforeBatch','afterBatch']){App.number(r[k],k);App.domain.quantityUnits(r[k]);}
+        if(App.domain.quantity(r.beforeBatch+r.delta)!==r.afterBatch||!obj(r.batch)||!id(r.batch.id)||!date(r.batch.expiry))fail('adjustment batch/count differs');App.number(r.batch.cost,'adjustment cost');
+        if(r.batch.quarantined!==undefined&&typeof r.batch.quarantined!=='boolean')fail('adjustment quarantine invalid');
+        if(r.value!==App.round2(r.delta*r.batch.cost))fail('adjustment cost value differs');
+        for(const v of [r.before,r.after]){if(!obj(v))fail('adjustment summary missing');for(const k of ['physical','sellable','quarantine','expired']){App.number(v[k],k);App.domain.quantityUnits(v[k]);}if(App.domain.quantity(v.sellable+v.quarantine+v.expired)!==v.physical)fail('adjustment stock summary differs');}
+        if(App.domain.quantity(r.before.physical+r.delta)!==r.after.physical||App.domain.quantity(r.before.quarantine+(r.batch.quarantined?r.delta:0))!==r.after.quarantine)fail('adjustment movement differs');
+        const expired=!r.batch.quarantined&&r.batch.expiry&&r.batch.expiry<App.dayKey(r.at);if(App.domain.quantity(r.before.expired+(expired?r.delta:0))!==r.after.expired||(r.reasonCode==='expired'&&!expired&&!r.batch.quarantined))fail('adjustment expiry movement differs');
+        if((['expired','damaged'].includes(r.reasonCode)&&r.delta>0)||(r.reasonCode==='found'&&r.delta<0))fail('adjustment reason/sign differs');
+        if(r.reasonCode==='reversal'){const original=prior.find(x=>x.id===r.reverses&&x.storeId===r.storeId&&x.itemId===r.itemId);if(!original||reversed.has(r.reverses)||r.delta!==-original.delta||['id','cost','expiry','quarantined','purchaseId','purchaseLineId'].some(k=>(r.batch[k] ?? null)!==(original.batch[k] ?? null)))fail('invalid adjustment reversal');reversed.add(r.reverses);}else if(r.reverses)fail('unexpected adjustment reversal link');
+        prior.push(r);
+      }
     }
     // Reject objects where display code expects a primitive, including prototype-bearing input.
     const walk = (x) => {

@@ -26,7 +26,7 @@
       '<div class="field"><label>🎙️ Voice aliases</label><input class="inp" id="i_alias" value="' + esc(d.alias) + '" placeholder="lej, chips, aloo"></div></div>' +
       '<div class="row"><div class="field"><label>' + t('com.price') + ' * ₹</label><input class="inp num" id="i_price" type="number" inputmode="decimal" step="0.5" value="' + esc(d.price) + '"></div>' +
       '<div class="field"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="i_cost" type="number" inputmode="decimal" step="0.5" value="' + esc(d.cost) + '"></div></div>' +
-      '<div class="row"><div class="field"><label>' + t('com.stock') + '</label><input class="inp num" id="i_stock" type="number" inputmode="decimal" value="' + esc(d.stock) + '" ' + (it && it.batches && it.batches.length ? 'disabled title="Managed by batches"' : '') + '></div>' +
+      '<div class="row"><div class="field"><label>' + t('com.stock') + '</label><input class="inp num" id="i_stock" type="number" inputmode="decimal" value="' + esc(d.stock) + '" ' + (it ? 'disabled title="Use Count / dispose to record stock changes"' : '') + '></div>' +
       '<div class="field"><label>' + t('inv.threshold') + '</label><input class="inp num" id="i_th" type="number" inputmode="numeric" value="' + esc(d.threshold == null ? '' : d.threshold) + '" placeholder="' + App.DB().settings.lowStock + '"></div></div>' +
       '<div class="row"><div class="field"><label>' + t('com.category') + '</label><input class="inp" id="i_cat" list="catlist" value="' + esc(d.category) + '" placeholder="Snacks">' +
       '<datalist id="catlist">' + cats.map((c) => '<option value="' + esc(c) + '">').join('') + '</datalist></div>' +
@@ -54,7 +54,7 @@
             const price = parseFloat(App.$('#i_price', body).value);
             if (!name) { App.toast('err', 'Name is required'); return false; }
             if (!(price >= 0)) { App.toast('err', 'Price is required'); return false; }
-            const stock = it && it.batches && it.batches.length ? null : parseFloat(App.$('#i_stock', body).value) || 0;
+            const stock = it ? null : parseFloat(App.$('#i_stock', body).value) || 0;
             if (stock !== null) App.domain.quantityUnits(stock);
             const rec = it || { id: App.uid('it'), storeId: App.S(), batches: [], at: Date.now() };
             rec.name = name;
@@ -147,7 +147,7 @@
   App.importItemRows = async (rows) => {
     App.checkDataBounds(rows);
     App.requirePermission('edit_inventory');
-    const staged = JSON.parse(JSON.stringify(App.DB().items));
+    const staged = JSON.parse(JSON.stringify(App.DB().items)),counts=[];
     let added = 0, updated = 0;
     rows.forEach((r, index) => {
       if (!r.name || !r.name.trim()) throw new Error('CSV row ' + (index + 2) + ': name is required.');
@@ -158,7 +158,10 @@
       if (matches.length > 1) throw new Error('CSV row ' + (index + 2) + ': barcode and name identify different items.');
       const ex = matches[0];
       if (ex) {
-        if (r.stock != null && ex.batches.length && r.stock !== App.itemStock(ex)) throw new Error('Use Restock to change dated stock for ' + ex.name + '.');
+        if (r.stock != null && r.stock !== App.itemStock(ex)) {
+          if(ex.batches.length)throw new Error('Use Restock or Count / dispose to change batch stock for ' + ex.name + '.');
+          counts.push(App.stageImportedStockCount(ex,r.stock));
+        }
         for (const k of ['price', 'cost', 'stock', 'gst']) if (r[k] != null) ex[k] = k === 'stock' ? r[k] : App.round2(r[k]);
         for (const k of ['nameHi', 'category', 'barcode', 'emoji', 'alias']) if (r[k]) ex[k] = r[k];
         updated++;
@@ -171,6 +174,7 @@
       }
     });
     App.DB().items = staged;
+    if(counts.length)(App.DB().stockAdjustments ||= []).push(...counts);
     App.log('import', added + ' items imported, ' + updated + ' updated');
     (await App.save({ op: 'import' }));
     return { added, updated };
@@ -264,6 +268,7 @@
       '<div class="spacer"></div>' +
       '<div class="btn-row"><button class="btn sm" id="impCsv">📥 ' + t('inv.import') + '</button>' +
       '<button class="btn sm" id="expCsv">📤 CSV</button>' +
+      (App.isOwner()?'<button class="btn sm" id="adjustHistory">Stock adjustments</button>':'')+
       '<button class="btn pri" id="addItem">➕ ' + t('inv.addItem') + '</button></div></div>' +
 
       ((out.length || low.length || exp.length) ?
@@ -309,6 +314,7 @@
           '<td class="r" style="min-width:110px"><b class="num" style="color:' + (state === 'out' ? 'var(--bad)' : state === 'low' ? 'var(--warn)' : 'inherit') + '">' + s + '</b>' +
           '<div class="pbar" style="margin-top:5px"><i class="' + (state === 'out' ? 'r' : state === 'low' ? '' : 'g') + '" style="width:' + pct + '%"></i></div></td>' +
           '<td class="r" style="white-space:nowrap"><button class="btn xs" data-restock="' + i.id + '">+ ' + t('inv.restock') + '</button> ' +
+          (App.isOwner()?'<button class="btn xs" data-adjust="'+i.id+'">Count / dispose</button> ':'')+
           '<button class="btn xs ghost" data-edit="' + i.id + '">✏️</button></td></tr>';
       }).join('') : '<tr><td colspan="6">' + App.emptyState('📦', 'No items here', 'Add your first item or import a CSV') + '</td></tr>') +
       '</tbody></table></div></div>';
@@ -318,6 +324,8 @@
     Q.addEventListener('input', () => { f.q = Q.value; App.render(); setTimeout(() => { const n = App.$('#invQ'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 0); });
 
     main.addEventListener('click', (e) => {
+      const adjust=e.target.closest('[data-adjust]');if(adjust)return App.stockAdjustmentDialog(adjust.dataset.adjust);
+      if(e.target.closest('#adjustHistory'))return App.stockAdjustmentHistory();
       const v = e.target.closest('[data-v]'), c = e.target.closest('[data-ic]');
       const r = e.target.closest('[data-restock]'), ed = e.target.closest('[data-edit]');
       if (v) { f.view = v.dataset.v; return App.render(); }
