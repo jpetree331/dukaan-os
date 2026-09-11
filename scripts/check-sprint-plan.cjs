@@ -64,7 +64,7 @@ function walk(dir) {
   }
 }
 walk(directory);
-const matrix=fs.readFileSync(path.join(directory,'SEAM-MATRIX.md'),'utf8');
+const matrix=fs.readFileSync(path.join(directory,'SEAM-MATRIX.md'),'utf8').replace(/\r\n/g,'\n');
 assert.equal((matrix.match(/^\| SEAM-/gm)||[]).length,pairs.length,'Readable matrix row count drifted');
 for(const p of pairs) {
   const row=matrix.split('\n').find(line=>line.startsWith('| '+p.id+' '));
