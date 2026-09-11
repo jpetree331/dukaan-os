@@ -70,6 +70,24 @@ async function main(){
       await repo.remove(key);check(await repo.read(key)===null&&await repo.rebuild(key)===null,'Tombstone parity failed');
       await repo.write(key,actual);check(await repo.rebuild(key)===actual,'Recreate after tombstone failed');
       results.push('tombstone and explicit recreation keep journal continuity');
+
+      const left=JSON.parse(actual),right=JSON.parse(actual);left.settings.shopName='Synthetic left';right.settings.shopName='Synthetic right';
+      const contenders=await Promise.allSettled([
+        repo.commit({key,expected:actual,value:JSON.stringify(left),operationId:'race_left',guard:()=>A.assertWriter()}),
+        repo.commit({key,expected:actual,value:JSON.stringify(right),operationId:'race_right',guard:()=>A.assertWriter()})
+      ]);
+      check(contenders.filter(x=>x.status==='fulfilled').length===1,'Concurrent snapshots both won or both failed');
+      const winner=await repo.read(key);check(await repo.rebuild(key)===winner,'Race left mixed journal/projection');
+      results.push('concurrent expected-version commits accept exactly one whole book');
+      await fails(()=>repo.commit({key,expected:winner,value:actual,operationId:'denied_guard',guard:()=>{throw new Error('Synthetic revoked context');}}),/revoked/);
+      check(await repo.read(key)===winner&&await repo.rebuild(key)===winner,'Revoked guard altered data');
+      await repo.write('dukaanos.v2.other',opening);await repo.remove('dukaanos.v2.other');
+      check(await repo.read(key)===winner,'Other key affected current book');
+      results.push('revoked commit guard and unrelated-key tombstone preserve current book');
+      repo.close();await fails(()=>repo.read(key),/closed/);
+      repo=await A.repositories.openIndexedDB({name,allowPrototype:true});
+      check(await repo.read(key)===winner,'Closed-connection rejection lost the winner');
+      results.push('closed connection rejects writes/reads without erasing persisted state');
       repo.close();A.storage=original;await A.boot('local');
       return results;
     });

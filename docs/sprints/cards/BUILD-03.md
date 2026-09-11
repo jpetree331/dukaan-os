@@ -1,6 +1,6 @@
 # BUILD-03 — Transactional IndexedDB repository
 
-Status: **built-unverified**. See [build report](../reports/BUILD-03.md). Track: Foundation.
+Status: **passed (self-verified, disabled prototype)**. See [verification](../reports/VERIFY-03.md). See [build report](../reports/BUILD-03.md). Track: Foundation.
 Sizing target: 1–2 focused engineering days; split this card before exceeding 3. This is a slice budget, not a promised date.
 
 ## Why

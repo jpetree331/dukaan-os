@@ -21,11 +21,12 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "f89d5f602de069f3d3f2e0c531d72f7c6cfbee4a",
+      "testedCodeCommit": "32c199b047dfa1abe9ab0d01a2ea87716cbf7186",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-02.md"
+        "reports/VERIFY-02.md",
+        "reports/VERIFY-03.md"
       ]
     },
     {
@@ -48,11 +49,13 @@
         "AUTH",
         "SCHEMA"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "32c199b047dfa1abe9ab0d01a2ea87716cbf7186",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-03.md"
+      ]
     },
     {
       "id": "SEAM-02-03",
@@ -74,11 +77,13 @@
         "AUTH",
         "STORE"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "32c199b047dfa1abe9ab0d01a2ea87716cbf7186",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-03.md"
+      ]
     },
     {
       "id": "SEAM-01-04",

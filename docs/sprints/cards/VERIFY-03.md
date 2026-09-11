@@ -1,6 +1,6 @@
 # VERIFY-03 — Verify transactional indexeddb repository
 
-Status: **planned**. Build under review: [BUILD-03](BUILD-03.md).
+Status: **passed (self-verified, disabled prototype)**. See [verification](../reports/VERIFY-03.md). Build under review: [BUILD-03](BUILD-03.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope
