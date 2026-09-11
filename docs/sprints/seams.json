@@ -20,11 +20,13 @@
         "STOCK",
         "AUTH"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "f89d5f602de069f3d3f2e0c531d72f7c6cfbee4a",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-02.md"
+      ]
     },
     {
       "id": "SEAM-01-03",

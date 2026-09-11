@@ -6,7 +6,7 @@ The default gate is shown below. If tracks are reordered, update the actual gate
 
 | Pair | Earlier build | Later build | Gate | Recipes | Status |
 | --- | --- | --- | --- | --- | --- |
-| SEAM-01-02 | [BUILD-01](cards/BUILD-01.md) | [BUILD-02](cards/BUILD-02.md) | [VERIFY-02](cards/VERIFY-02.md) | BASE, MONEY, STOCK, AUTH | planned |
+| SEAM-01-02 | [BUILD-01](cards/BUILD-01.md) | [BUILD-02](cards/BUILD-02.md) | [VERIFY-02](cards/VERIFY-02.md) | BASE, MONEY, STOCK, AUTH | passed |
 | SEAM-01-03 | [BUILD-01](cards/BUILD-01.md) | [BUILD-03](cards/BUILD-03.md) | [VERIFY-03](cards/VERIFY-03.md) | BASE, MONEY, STOCK, AUTH, SCHEMA | planned |
 | SEAM-02-03 | [BUILD-02](cards/BUILD-02.md) | [BUILD-03](cards/BUILD-03.md) | [VERIFY-03](cards/VERIFY-03.md) | BASE, MONEY, STOCK, AUTH, STORE | planned |
 | SEAM-01-04 | [BUILD-01](cards/BUILD-01.md) | [BUILD-04](cards/BUILD-04.md) | [VERIFY-04](cards/VERIFY-04.md) | BASE, MONEY, STOCK, AUTH, SCHEMA | planned |

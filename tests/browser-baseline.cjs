@@ -136,6 +136,25 @@ async function main() {
     assert.equal(await p.evaluate(()=>App.DB().items[0].stock),9);
     passed('delayed UI sale shows no receipt/draft, ignores duplicate click and defers navigation until durable');
 
+    await p.keyboard.press('Escape');await p.locator('#modalRoot > *').waitFor({state:'detached'});
+    await p.evaluate(async()=>{
+      App.DB().customers.push({id:'test_collection',storeId:App.S(),name:'Synthetic collection',balance:100,points:0,spend:0,visits:0});
+      await App.save();
+      const base=App.storage.commit.bind(App.storage);
+      let reject;const gate=new Promise((_,r)=>{reject=r;});window.rejectSyntheticCollection=()=>reject(new Error('Synthetic rejected collection'));
+      App.storage.commit=async args=>{await gate;return base(args);};
+      App.settleCustomer('test_collection');
+    });
+    await p.locator('.modal-foot .ok').click();await p.waitForFunction(()=>App.isSaving());
+    assert.equal(await p.evaluate(()=>App.customer('test_collection').balance),100);
+    assert.equal(await p.locator('.modal').count(),1);
+    await p.evaluate(()=>window.rejectSyntheticCollection());
+    await p.getByText('Synthetic rejected collection',{exact:true}).waitFor();
+    assert.equal(await p.evaluate(()=>App.customer('test_collection').balance),100);
+    assert.equal(await p.locator('.modal').count(),1);
+    assert.equal(await p.locator('.modal-foot .ok').isEnabled(),true);
+    passed('rejected delayed collection preserves balance and keeps keypad open for retry');
+
     const faults=await browser.newContext(),f=await faults.newPage();await f.goto(url);await ready(f);
     await f.evaluate(()=>localStorage.setItem('dukaanos.v2.local','{broken-synthetic'));
     await f.reload();await f.getByText(/could not open|could not start|cannot open/i).first().waitFor();

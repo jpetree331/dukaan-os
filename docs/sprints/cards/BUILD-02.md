@@ -1,6 +1,6 @@
 # BUILD-02 — Awaitable commands and storage boundary
 
-Status: **built-unverified**. See [build report](../reports/BUILD-02.md). Track: Foundation.
+Status: **passed (self-verified)**. See [verification](../reports/VERIFY-02.md). See [build report](../reports/BUILD-02.md). Track: Foundation.
 Sizing target: 1–2 focused engineering days; split this card before exceeding 3. This is a slice budget, not a promised date.
 
 ## Why

@@ -1,6 +1,6 @@
 # VERIFY-02 — Verify awaitable commands and storage boundary
 
-Status: **planned**. Build under review: [BUILD-02](BUILD-02.md).
+Status: **passed (self-verified)**. See [verification](../reports/VERIFY-02.md). Build under review: [BUILD-02](BUILD-02.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope
