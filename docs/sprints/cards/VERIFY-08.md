@@ -1,6 +1,6 @@
 # VERIFY-08 — Verify supplier corrections and credit notes
 
-Status: **planned**. Build under review: [BUILD-08](BUILD-08.md).
+Status: **passed**. Build under review: [BUILD-08](BUILD-08.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

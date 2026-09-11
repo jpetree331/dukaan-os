@@ -27,13 +27,13 @@ The default gate is shown below. If tracks are reordered, update the actual gate
 | SEAM-04-07 | [BUILD-04](cards/BUILD-04.md) | [BUILD-07](cards/BUILD-07.md) | [VERIFY-07](cards/VERIFY-07.md) | BASE, MONEY, STOCK, STORE | passed |
 | SEAM-05-07 | [BUILD-05](cards/BUILD-05.md) | [BUILD-07](cards/BUILD-07.md) | [VERIFY-07](cards/VERIFY-07.md) | BASE, MONEY, STOCK, STORE, RECEIPT | passed |
 | SEAM-06-07 | [BUILD-06](cards/BUILD-06.md) | [BUILD-07](cards/BUILD-07.md) | [VERIFY-07](cards/VERIFY-07.md) | BASE, MONEY, STORE, REPORT | passed |
-| SEAM-01-08 | [BUILD-01](cards/BUILD-01.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK | planned |
-| SEAM-02-08 | [BUILD-02](cards/BUILD-02.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE | planned |
-| SEAM-03-08 | [BUILD-03](cards/BUILD-03.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE | planned |
-| SEAM-04-08 | [BUILD-04](cards/BUILD-04.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE | planned |
-| SEAM-05-08 | [BUILD-05](cards/BUILD-05.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE | planned |
-| SEAM-06-08 | [BUILD-06](cards/BUILD-06.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STORE, REPORT | planned |
-| SEAM-07-08 | [BUILD-07](cards/BUILD-07.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE, REPORT | planned |
+| SEAM-01-08 | [BUILD-01](cards/BUILD-01.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK | passed |
+| SEAM-02-08 | [BUILD-02](cards/BUILD-02.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE | passed |
+| SEAM-03-08 | [BUILD-03](cards/BUILD-03.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE | passed |
+| SEAM-04-08 | [BUILD-04](cards/BUILD-04.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE | passed |
+| SEAM-05-08 | [BUILD-05](cards/BUILD-05.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE | passed |
+| SEAM-06-08 | [BUILD-06](cards/BUILD-06.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STORE, REPORT | passed |
+| SEAM-07-08 | [BUILD-07](cards/BUILD-07.md) | [BUILD-08](cards/BUILD-08.md) | [VERIFY-08](cards/VERIFY-08.md) | BASE, MONEY, STOCK, STORE, REPORT | passed |
 | SEAM-01-09 | [BUILD-01](cards/BUILD-01.md) | [BUILD-09](cards/BUILD-09.md) | [VERIFY-09](cards/VERIFY-09.md) | BASE, MONEY, STOCK, AUTH | planned |
 | SEAM-02-09 | [BUILD-02](cards/BUILD-02.md) | [BUILD-09](cards/BUILD-09.md) | [VERIFY-09](cards/VERIFY-09.md) | BASE, MONEY, STOCK, AUTH, STORE | planned |
 | SEAM-03-09 | [BUILD-03](cards/BUILD-03.md) | [BUILD-09](cards/BUILD-09.md) | [VERIFY-09](cards/VERIFY-09.md) | BASE, MONEY, STOCK, STORE, AUTH | planned |
