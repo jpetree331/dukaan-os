@@ -204,21 +204,21 @@
       opts = opts || {};
       const W = 700, H = opts.height || 220, pl = 44, pr = 8, pt = 14, pb = 26;
       const iw = W - pl - pr, ih = H - pt - pb;
-      const max = Math.max(1, ...data.map((d) => d.value));
+      const min=Math.min(0,...data.map(d=>d.value)),max=Math.max(0,...data.map(d=>d.value)),span=max-min || 1,zero=pt+ih*max/span;
       const bw = iw / data.length, gap = Math.min(10, bw * 0.28);
       let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">' + CDEF;
       for (let i = 0; i <= 4; i++) {
         const y = pt + ih - (ih * i / 4);
         s += '<line class="c-grid" x1="' + pl + '" y1="' + y + '" x2="' + (W - pr) + '" y2="' + y + '" stroke-dasharray="' + (i ? '3 5' : '0') + '"/>';
-        s += '<text class="c-lbl" x="' + (pl - 7) + '" y="' + (y + 3.5) + '" text-anchor="end">' + App.short(max * i / 4) + '</text>';
+        s += '<text class="c-lbl" x="' + (pl - 7) + '" y="' + (y + 3.5) + '" text-anchor="end">' + App.short(min+span * i / 4) + '</text>';
       }
       data.forEach((d, i) => {
-        const h = Math.max(d.value > 0 ? 3 : 0, ih * (d.value / max));
-        const x = pl + i * bw + gap / 2, y = pt + ih - h;
+        const h = ih*Math.abs(d.value)/span;
+        const x = pl + i * bw + gap / 2, y = d.value>=0?zero-h:zero;
         s += '<rect class="c-bar" x="' + x + '" y="' + y + '" width="' + (bw - gap) + '" height="' + h + '" rx="5">' +
           '<title>' + esc(d.label) + ': ' + money(d.value) + '</title>' +
           '<animate attributeName="height" from="0" to="' + h + '" dur="0.6s" fill="freeze" calcMode="spline" keySplines=".22 1 .36 1"/>' +
-          '<animate attributeName="y" from="' + (pt + ih) + '" to="' + y + '" dur="0.6s" fill="freeze" calcMode="spline" keySplines=".22 1 .36 1"/></rect>';
+          '<animate attributeName="y" from="' + zero + '" to="' + y + '" dur="0.6s" fill="freeze" calcMode="spline" keySplines=".22 1 .36 1"/></rect>';
         const step = Math.ceil(data.length / 12);
         if (i % step === 0 || i === data.length - 1)
           s += '<text class="c-lbl" x="' + (x + (bw - gap) / 2) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(d.short || d.label) + '</text>';
@@ -230,9 +230,9 @@
       opts = opts || {};
       const W = 700, H = opts.height || 230, pl = 46, pr = 10, pt = 16, pb = 26;
       const iw = W - pl - pr, ih = H - pt - pb;
-      const max = Math.max(1, ...data.map((d) => d.value));
+      const min=Math.min(0,...data.map(d=>d.value)),max=Math.max(0,...data.map(d=>d.value)),span=max-min || 1;
       const X = (i) => pl + (data.length === 1 ? iw / 2 : iw * i / (data.length - 1));
-      const Y = (v) => pt + ih - ih * (v / max);
+      const Y = (v) => pt + ih - ih * ((v-min) / span);
       let d = '', area = '';
       data.forEach((p, i) => { d += (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(p.value).toFixed(1); });
       area = d + 'L' + X(data.length - 1).toFixed(1) + ',' + (pt + ih) + 'L' + X(0).toFixed(1) + ',' + (pt + ih) + 'Z';
@@ -240,7 +240,7 @@
       for (let i = 0; i <= 4; i++) {
         const y = pt + ih - (ih * i / 4);
         s += '<line class="c-grid" x1="' + pl + '" y1="' + y + '" x2="' + (W - pr) + '" y2="' + y + '" stroke-dasharray="' + (i ? '3 5' : '0') + '"/>' +
-          '<text class="c-lbl" x="' + (pl - 7) + '" y="' + (y + 3.5) + '" text-anchor="end">' + App.short(max * i / 4) + '</text>';
+          '<text class="c-lbl" x="' + (pl - 7) + '" y="' + (y + 3.5) + '" text-anchor="end">' + App.short(min+span * i / 4) + '</text>';
       }
       s += '<path class="c-area" d="' + area + '"/>';
       s += '<path class="c-line" d="' + d + '" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1">' +

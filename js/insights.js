@@ -445,7 +445,7 @@
     R.bills.forEach((b) => { const k = b.credit ? 'credit' : b.mode; modes[k] = App.round2((modes[k] || 0) + b.total); });
     const MC = { cash: '#16A34A', upi: '#6366F1', card: '#F5A524', credit: '#DC2626' };
     const cash = App.stats.cashExpected();
-    const gstRows = App.gstBreakdown(R.bills);
+    const gstRows = App.gstBreakdown(R.bills,R.returns);
     const acts = App.activity().slice(0, 25);
 
     main.innerHTML =
@@ -466,7 +466,7 @@
         .map((s) => '<button class="chip tap" data-ask="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div></div>' +
 
       '<div class="grid g-4" style="margin-bottom:16px">' +
-      '<div class="stat accent"><span class="em">💰</span><div class="k">' + t('rep.sales') + ' · ' + repRange + 'd</div><div class="v">' + money(R.sales) + '</div><div class="d">' + R.count + ' bills</div></div>' +
+      '<div class="stat accent"><span class="em">💰</span><div class="k">Net ' + t('rep.sales') + ' · ' + repRange + 'd</div><div class="v">' + money(R.sales) + '</div><div class="d">' + R.count + ' bills · returns '+money(R.returned,true)+'</div></div>' +
       '<div class="stat"><span class="em">📈</span><div class="k">' + t('rep.profit') + '</div><div class="v">' + money(R.profit) + '</div>' +
       '<div class="d up">' + (R.sales ? Math.round(R.profit / R.sales * 100) : 0) + '% margin</div></div>' +
       '<div class="stat"><span class="em">🧾</span><div class="k">Avg bill</div><div class="v">' + money(R.avg) + '</div><div class="d muted">' + R.items + ' units</div></div>' +
@@ -477,7 +477,7 @@
       App.chart.bars(series.map((s) => ({ label: s.label, short: repRange > 30 ? '' : s.label.split(' ')[0], value: s.value })), { height: 240 }) + '</div>' +
 
       '<div class="grid g-2" style="margin-bottom:16px">' +
-      '<div class="card"><div class="sec-title" style="margin-top:0">💳 ' + t('rep.byMode') + '</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0">💳 Original bills by mode (before returns)</div>' +
       '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">' +
       App.chart.donut(Object.keys(modes).map((k) => ({ label: k, value: modes[k], color: MC[k] || '#999' })), { caption: repRange + ' days' }) +
       '<div style="flex:1;min-width:150px">' +
@@ -488,8 +488,9 @@
 
       '<div class="card"><div class="sec-title" style="margin-top:0">💵 ' + t('rep.cash') + '</div>' +
       '<div class="kv"><span>Bills paid in cash</span><b class="num">' + money(cash.billCash, true) + '</b></div>' +
-      '<div class="kv"><span>Udhaar collected in cash</span><b class="num">' + money(cash.payCash, true) + '</b></div>' +
-      '<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ' + money(cash.out, true) + '</b></div>' +
+      '<div class="kv"><span>Customer cash received (collections and advances)</span><b class="num">' + money(cash.payCash, true) + '</b></div>' +
+      '<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ' + money(cash.out-cash.refundCash, true) + '</b></div>' +
+      '<div class="kv"><span>Cash refunds paid</span><b class="num">− '+money(cash.refundCash,true)+'</b></div>' +
       '<div class="kv" style="font-size:16px"><b>' + t('rep.expected') + '</b><b class="num">' + money(cash.net, true) + '</b></div>' +
       '<div class="row" style="margin-top:12px"><input class="inp num" id="countedCash" type="number" inputmode="decimal" placeholder="' + t('rep.counted') + '">' +
       '<button class="btn pri" id="reconcile" style="flex:0 0 auto">' + t('com.confirm') + '</button></div>' +

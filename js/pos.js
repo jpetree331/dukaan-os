@@ -238,6 +238,7 @@
       title: t('pos.done') + '  #' + bill.no,
       body: wrap,
       buttons: [
+        App.can('void_bill')&&!bill.void?{label:'Return / refunds',cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
         { label: '💾 PNG', cls: 'ghost', keepOpen: true, fn: () => App.downloadCanvas(cv, 'bill-' + bill.no + '.png') },
         { label: '🖨️ ' + t('com.print'), cls: 'ghost', keepOpen: true, fn: () => printBill(bill) },
         {

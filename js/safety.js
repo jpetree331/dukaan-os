@@ -82,7 +82,7 @@
     const id = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(x) && !['__proto__', 'constructor', 'prototype'].includes(x);
     const date = (x) => !x || (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && new Date(x).toISOString().slice(0, 10) === x);
     const collections = ['stores', 'staff', 'items', 'customers', 'suppliers', 'bills', 'payments', 'purchases', 'supplierPayments', 'activity', 'shifts'];
-    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', ...collections]);
+    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', 'returns', 'refunds', ...collections]);
     for (const key of Object.keys(d)) if (!rootKeys.has(key)) fail('unknown field: ' + key);
     for (const key of collections) {
       if (!Array.isArray(d[key])) fail(key + ' must be an array');
@@ -139,6 +139,7 @@
         if (!obj(b) || !id(b.id) || ids.has(b.id)) fail('invalid batch ID');
         ids.add(b.id);
         App.number(b.qty, 'batch quantity'); App.number(b.cost, 'batch cost');
+        if(b.quarantined!==undefined&&typeof b.quarantined!=='boolean')fail('invalid quarantine status');
         if (!date(b.expiry)) fail('invalid expiry');
       }
     }
@@ -153,7 +154,7 @@
       if(!Array.isArray(c.ledger)||!c.ledger.length||c.ledger[0].kind!=='opening')fail('customer ledger needs an opening checkpoint');
       let balance=0;
       for(const [index,e] of c.ledger.entries()){
-        if(!obj(e)||!id(e.id)||ledgerIds.has(e.id)||e.storeId!==c.storeId||!['opening','sale','void','collection','advance','correction'].includes(e.kind)||(index>0&&e.kind==='opening'))fail('invalid customer ledger entry');
+        if(!obj(e)||!id(e.id)||ledgerIds.has(e.id)||e.storeId!==c.storeId||!['opening','sale','void','collection','advance','correction','return','refund'].includes(e.kind)||(index>0&&e.kind==='opening'))fail('invalid customer ledger entry');
         ledgerIds.add(e.id);App.number(e.delta,'ledger delta',-1e9);App.number(e.at,'ledger date',0,8640000000000000);
         if(Math.abs(e.delta*100-Math.round(e.delta*100))>0.00001)fail('ledger amount has sub-paise precision');
         balance+=Math.round(e.delta*100);
@@ -168,6 +169,14 @@
           if(!payment||payment.kind!==e.kind||payment.mode!==e.mode||Math.abs(e.delta+payment.amount)>0.00001)fail('ledger entry differs from linked payment');
         }
         if(e.kind==='correction'&&(!e.delta||typeof e.note!=='string'||e.note.trim().length<3))fail('invalid customer correction');
+        if(e.kind==='return'){
+          const r=(d.returns || []).find(r=>r.id===e.returnId&&r.customerId===c.id&&r.storeId===c.storeId&&r.ledgerApplied);
+          if(!r||Math.abs(e.delta+r.amount)>0.00001)fail('ledger return link or amount differs');
+        }
+        if(e.kind==='refund'){
+          const f=(d.refunds || []).find(f=>f.id===e.refundId&&f.storeId===c.storeId),r=f&&(d.returns || []).find(r=>r.id===f.returnId&&r.customerId===c.id&&r.ledgerApplied);
+          if(!r||Math.abs(e.delta-f.amount)>0.00001)fail('ledger refund link or amount differs');
+        }
       }
       if(Math.abs(balance/100-c.balance)>0.00001)fail('customer balance differs from ledger projection');
     }
@@ -220,6 +229,29 @@
       if (!['cash', 'upi', 'card'].includes(p.mode)) fail('invalid payment mode');
       ref(p, key === 'payments' ? 'customerId' : 'supplierId', key === 'payments' ? 'customers' : 'suppliers');
       if(key==='payments'&&p.billId&&!d.bills.some(b=>b.id===p.billId&&b.customerId===p.customerId&&b.storeId===p.storeId&&b.credit))fail('invalid collection bill link');
+    }
+    const checkedReturns=[];
+    for(const key of ['returns','refunds'])if(d[key]!==undefined){
+      if(!Array.isArray(d[key]))fail(key+' must be an array');const ids=new Set();
+      for(const r of d[key]){if(!obj(r)||!id(r.id)||ids.has(r.id)||!exists('stores',r.storeId))fail('invalid '+key+' identity');ids.add(r.id);App.number(r.at,'return/refund date',0,8640000000000000);App.number(r.amount,'return/refund amount');}
+    }
+    for(const r of d.returns || []){
+      const bill=d.bills.find(b=>b.id===r.billId&&b.storeId===r.storeId);
+      if(!bill||r.customerId!==bill.customerId||r.originalCredit!==bill.credit||!['restock','quarantine'].includes(r.disposition)||!['refund','customer'].includes(r.destination)||typeof r.reason!=='string'||r.reason.trim().length<3)fail('invalid return link or policy');
+      if(r.ledgerApplied!==(!!bill.customerId&&(bill.credit||r.destination==='customer')))fail('invalid return ledger treatment');
+      if(!obj(r.request)||r.request.billId!==r.billId||r.request.destination!==r.destination||r.request.disposition!==r.disposition||r.request.reason!==r.reason)fail('return request differs');
+      const expected=App.returnMath.quote(bill,checkedReturns.filter(x=>x.billId===r.billId),r.request.lines);
+      for(const k of ['amount','tax','redeemedPoints','loyaltyReversed'])if(r[k]!==expected[k])fail('return allocation differs: '+k);
+      if(JSON.stringify(r.lines)!==JSON.stringify(expected.lines))fail('return line allocation differs');
+      App.number(r.refundable,'refundable amount',0,r.amount);
+      if(r.ledgerApplied&&!d.customers.find(c=>c.id===r.customerId)?.ledger?.some(e=>e.kind==='return'&&e.returnId===r.id))fail('return customer movement missing');
+      checkedReturns.push(r);
+    }
+    for(const f of d.refunds || []){
+      const r=(d.returns || []).find(r=>r.id===f.returnId&&r.storeId===f.storeId);
+      if(!r||!['cash','upi'].includes(f.mode)||typeof f.reference!=='string'||f.reference.trim().length<3||f.amount<=0)fail('invalid refund');
+      const total=d.refunds.filter(x=>x.returnId===r.id).reduce((n,x)=>n+x.amount,0);if(total>r.refundable+0.00001)fail('refunds exceed liability');
+      if(r.ledgerApplied&&!d.customers.find(c=>c.id===r.customerId)?.ledger?.some(e=>e.kind==='refund'&&e.refundId===f.id))fail('refund customer movement missing');
     }
     // Reject objects where display code expects a primitive, including prototype-bearing input.
     const walk = (x) => {

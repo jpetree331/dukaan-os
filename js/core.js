@@ -264,7 +264,7 @@
     if (it.batches && it.batches.length) return it.batches.reduce((s, b) => s + (+b.qty || 0), 0);
     return +it.stock || 0;
   }
-  App.sellableStock = (it) => it.batches && it.batches.length ? App.domain.quantity(it.batches.filter((b) => !b.expiry || b.expiry >= dayKey(Date.now())).reduce((n, b) => n + b.qty, 0)) : itemStock(it);
+  App.sellableStock = (it) => it.batches && it.batches.length ? App.domain.quantity(it.batches.filter((b) => !b.quarantined&&(!b.expiry || b.expiry >= dayKey(Date.now()))).reduce((n, b) => n + b.qty, 0)) : itemStock(it);
   function takeStock(it, qty) {
     App.number(qty, 'Quantity', 0.0001); App.domain.quantityUnits(qty);
     if (qty > App.sellableStock(it)) throw new Error('Insufficient stock for ' + it.name);
@@ -273,7 +273,7 @@
       let need = qty;
       it.batches.sort((a, b) => (a.expiry || '9999').localeCompare(b.expiry || '9999') || (a.at || 0) - (b.at || 0));
       for (const b of it.batches) {
-        if (b.expiry && b.expiry < dayKey(Date.now())) continue;
+        if (b.quarantined||(b.expiry && b.expiry < dayKey(Date.now()))) continue;
         if (need <= 0) break;
         const used = Math.min(b.qty, need);
         allocations.push({ ...b, qty: used });
@@ -295,7 +295,7 @@
         it.batches = [];
         if (it.stock > 0) it.batches.push({ id: uid('b'), qty: it.stock, expiry: '', cost: it.cost, at: Date.now() });
       }
-      const ex = it.batches.find((b) => original ? b.id === original.id : b.expiry === (expiry || '') && b.cost === cost);
+      const ex = it.batches.find((b) => original ? b.id === original.id : !b.quarantined&&b.expiry === (expiry || '') && b.cost === cost);
       if (ex) ex.qty = App.domain.quantity(ex.qty + qty);
       else it.batches.push({ id: uid('b'), at: Date.now(), ...original, qty: App.domain.quantity(qty), expiry: expiry || '', cost });
       it.stock = App.domain.quantity(it.batches.reduce((sum, b) => sum + b.qty, 0));
@@ -378,6 +378,7 @@
     c.balance=c.ledger.reduce((total,e)=>total+Math.round(e.delta*100),0)/100;
     if(c.balance<=0)c.dueSince=null;else if(!c.dueSince)c.dueSince=entry.at;
   }
+  App.postCustomerMovement=(c,entry)=>{App.requirePermission('void_bill');customerEntry(c,entry);};
   App.customerStatement = id => {
     const c=App.customer(id);if(!c)throw new Error('Customer not found.');
     let balance=0;
@@ -475,6 +476,7 @@
       App.requirePermission('void_bill');
       const b = App.bills().find((x) => x.id === id);
       if (!b || b.void) return null;
+      if((DB.returns || []).some(r=>r.billId===id))throw new Error('This sale already has returns. Return the remaining items instead of voiding it.');
       const correction = command('void_sale', b.command ? b.command.id : b.id);
       b.voidCommand = {...correction};
       b.void = true; b.voidAt = correction.at; b.voidReason = reason || '';
@@ -605,7 +607,7 @@
   };
 
   /* ───────── analytics ───────── */
-  App.gstBreakdown = (bills) => {
+  App.gstBreakdown = (bills, returns=[]) => {
     const rows = Object.create(null);
     bills.forEach((b) => {
       const bases = b.lines.map((l) => l.taxable != null ? l.taxable : round2(l.gross * (b.sub ? (b.sub - b.discount) / b.sub : 0)));
@@ -621,16 +623,18 @@
         row.taxable = round2(row.taxable + bases[i]); row.tax = round2(row.tax + tax);
       });
     });
+    returns.forEach(r=>r.lines.forEach(l=>{const row=rows[l.gst || 0]=rows[l.gst || 0] || {taxable:0,tax:0};row.taxable=round2(row.taxable-l.taxable);row.tax=round2(row.tax-l.tax);}));
     return rows;
   };
   App.stats = {
     range(fromTs, toTs) {
       const bs = App.liveBills().filter((b) => b.at >= fromTs && b.at < toTs);
-      const sales = round2(bs.reduce((s, b) => s + b.total, 0));
-      const cost = round2(bs.reduce((s, b) => s + b.lines.reduce((x, l) => x + (l.cost || 0) * l.qty, 0), 0));
-      const credit = round2(bs.filter((b) => b.credit).reduce((s, b) => s + b.total, 0));
-      const items = bs.reduce((s, b) => s + b.lines.reduce((x, l) => x + l.qty, 0), 0);
-      return { bills: bs, count: bs.length, sales, cost, profit: round2(sales - bs.reduce((n, b) => n + (b.tax || 0), 0) - cost), credit, items, avg: bs.length ? round2(sales / bs.length) : 0 };
+      const returns=mine(DB.returns || []).filter(r=>r.at>=fromTs&&r.at<toTs),returned=round2(returns.reduce((n,r)=>n+r.amount,0)),returnedTax=round2(returns.reduce((n,r)=>n+r.tax,0));
+      const sales = round2(bs.reduce((s, b) => s + b.total, 0)-returned);
+      const cost = round2(bs.reduce((s, b) => s + b.lines.reduce((x, l) => x + (l.cost || 0) * l.qty, 0), 0)-returns.reduce((n,r)=>n+r.lines.reduce((v,l)=>v+l.cost*l.qty,0),0));
+      const credit = round2(bs.filter((b) => b.credit).reduce((s, b) => s + b.total, 0)-returns.filter(r=>r.originalCredit).reduce((n,r)=>n+r.amount,0));
+      const items = bs.reduce((s, b) => s + b.lines.reduce((x, l) => x + l.qty, 0), 0)-returns.reduce((n,r)=>n+r.lines.reduce((v,l)=>v+l.qty,0),0);
+      return { bills: bs, returns,returned,count: bs.length, sales, cost, profit: round2(sales - bs.reduce((n, b) => n + (b.tax || 0), 0)+returnedTax - cost), credit, items, avg: bs.length ? round2(sales / bs.length) : 0 };
     },
     today() { const s = startOfDay(Date.now()).getTime(); return this.range(s, s + DAY); },
     days(n) { const s = startOfDay(Date.now() - (n - 1) * DAY).getTime(); return this.range(s, Date.now() + 1); },
@@ -653,6 +657,7 @@
         m[k] = m[k] || { id: l.itemId, name: l.name, emoji: l.emoji, qty: 0, amt: 0 };
         m[k].qty += l.qty; m[k].amt = round2(m[k].amt + l.gross);
       }));
+      mine(DB.returns || []).filter(r=>r.at>=from&&r.at<to).forEach(r=>r.lines.forEach(l=>{const k=l.itemId;m[k]=m[k] || {id:l.itemId,name:l.name,qty:0,amt:0};m[k].qty=App.domain.quantity(m[k].qty-l.qty);m[k].amt=round2(m[k].amt-l.gross);}));
       return Object.values(m).sort((a, b) => b.qty - a.qty).slice(0, n || 5);
     },
     dues() {
@@ -669,6 +674,7 @@
       const from = startOfDay(Date.now() - (days - 1) * DAY).getTime();
       let q = 0;
       App.liveBills().filter((b) => b.at >= from).forEach((b) => b.lines.forEach((l) => { if (l.itemId === itemId) q += l.qty; }));
+      mine(DB.returns || []).filter(r=>r.at>=from).forEach(r=>r.lines.forEach(l=>{if(l.itemId===itemId)q-=l.qty;}));
       return q / days;
     },
     cashExpected(dayTs) {
@@ -676,8 +682,9 @@
       const billCash = App.liveBills().filter((b) => b.at >= s && b.at < e && b.mode === 'cash').reduce((x, b) => x + b.total, 0);
       const payCash = App.payments().filter((p) => p.at >= s && p.at < e && p.mode === 'cash').reduce((x, p) => x + p.amount, 0);
       const purchaseCash = App.purchases().filter((p) => p.at >= s && p.at < e && (p.mode || 'cash') === 'cash').reduce((x, p) => x + p.paid, 0);
-      const out = purchaseCash + mine(DB.supplierPayments).filter((p) => p.at >= s && p.at < e && p.mode === 'cash').reduce((x, p) => x + p.amount, 0);
-      return { in: round2(billCash + payCash), out: round2(out), net: round2(billCash + payCash - out), billCash: round2(billCash), payCash: round2(payCash) };
+      const refundCash=mine(DB.refunds || []).filter(r=>r.at>=s&&r.at<e&&r.mode==='cash').reduce((n,r)=>n+r.amount,0);
+      const out = purchaseCash + mine(DB.supplierPayments).filter((p) => p.at >= s && p.at < e && p.mode === 'cash').reduce((x, p) => x + p.amount, 0)+refundCash;
+      return { in: round2(billCash + payCash), out: round2(out), net: round2(billCash + payCash - out), billCash: round2(billCash), payCash: round2(payCash),refundCash:round2(refundCash) };
     },
     /* 0-100 friendly composite of stock health, dues and sales trend */
     health() {
