@@ -453,7 +453,7 @@
       '<div class="spacer"></div>' +
       '<div class="btn-row">' +
       [7, 14, 30, 90].map((n) => '<button class="chip tap ' + (repRange === n ? 'sel' : '') + '" data-rr="' + n + '">' + n + 'd</button>').join('') +
-      '<button class="btn sm" id="repCsv">📤 ' + t('rep.exportCsv') + '</button></div></div>' +
+      '<button class="btn sm" id="repCsv">📤 ' + t('rep.exportCsv') + '</button><button class="btn sm" id="cashShifts">Cash shifts</button></div></div>' +
 
       '<div class="ai-card" style="margin-bottom:18px">' +
       '<div class="ai-h">💬 ' + t('rep.ask') + '</div>' +
@@ -486,16 +486,17 @@
         '<b class="num">' + money(modes[k]) + '</b></div>').join('') : '<p class="muted" style="font-size:13px">No bills yet</p>') +
       '</div></div></div>' +
 
-      '<div class="card"><div class="sec-title" style="margin-top:0">💵 ' + t('rep.cash') + '</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0">💵 ' + (cash.businessDate?'Cash movements · '+cash.businessDate:t('rep.cash')) + '</div>' +
       '<div class="kv"><span>Bills paid in cash</span><b class="num">' + money(cash.billCash, true) + '</b></div>' +
       '<div class="kv"><span>Customer cash received (collections and advances)</span><b class="num">' + money(cash.payCash, true) + '</b></div>' +
-      '<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ' + money(cash.out-cash.refundCash, true) + '</b></div>' +
+      '<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ' + money(cash.supplierOut ?? cash.out-cash.refundCash, true) + '</b></div>' +
       '<div class="kv"><span>Cash refunds paid</span><b class="num">− '+money(cash.refundCash,true)+'</b></div>' +
       '<div class="kv"><span>Supplier cash refunds received</span><b class="num">'+money(cash.supplierRefundCash,true)+'</b></div>' +
-      '<div class="kv" style="font-size:16px"><b>' + t('rep.expected') + '</b><b class="num">' + money(cash.net, true) + '</b></div>' +
-      '<div class="row" style="margin-top:12px"><input class="inp num" id="countedCash" type="number" inputmode="decimal" placeholder="' + t('rep.counted') + '">' +
+      (cash.manualNet!==undefined?'<div class="kv"><span>Expenses, withdrawals and linked corrections</span><b class="num">'+money(cash.manualNet,true)+'</b></div>':'')+
+      '<div class="kv" style="font-size:16px"><b>' + (cash.businessDate?'Net cash movements (excluding opening float)':t('rep.expected')) + '</b><b class="num">' + money(cash.net, true) + '</b></div>' +
+      (cash.businessDate?'<p>Use Cash shifts to review opening float, counted cash and closing variance.</p>':'<div class="row" style="margin-top:12px"><input class="inp num" id="countedCash" type="number" inputmode="decimal" placeholder="' + t('rep.counted') + '">' +
       '<button class="btn pri" id="reconcile" style="flex:0 0 auto">' + t('com.confirm') + '</button></div>' +
-      '<div id="reconOut" style="margin-top:10px"></div></div></div>' +
+      '<div id="reconOut" style="margin-top:10px"></div>')+'</div></div>' +
 
       (st.gstEnabled ?
         '<div class="card" style="margin-bottom:16px"><div class="sec-title" style="margin-top:0">🧾 ' + t('rep.gst') + ' · ' + repRange + 'd</div>' +
@@ -534,6 +535,7 @@
 
     main.addEventListener('click', async (e) => {
       const rr = e.target.closest('[data-rr]'), qa = e.target.closest('[data-ask]');
+      if(e.target.closest('#cashShifts'))return App.cashDashboard();
       if (rr) { repRange = +rr.dataset.rr; return App.render(); }
       if (qa) { App.$('#askQ').value = qa.dataset.ask; return runAsk(qa.dataset.ask); }
       if (e.target.closest('#askGo')) return runAsk(App.$('#askQ').value);

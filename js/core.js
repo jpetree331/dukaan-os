@@ -173,6 +173,7 @@
     };
     try {
       guard();
+      if(App.captureCashMovements)App.captureCashMovements();
       const raw = JSON.stringify(App.validateData(DB));
       // Expose only the committed book while the repository is awaiting I/O.
       DB = previous ? JSON.parse(previous) : blank();
@@ -710,6 +711,7 @@
       return q / days;
     },
     cashExpected(dayTs) {
+      if(DB.cashVersion===1)return App.cashDaySummary(dayTs);
       const s = startOfDay(dayTs || Date.now()).getTime(), e = s + DAY;
       const billCash = App.liveBills().filter((b) => b.at >= s && b.at < e && b.mode === 'cash').reduce((x, b) => x + b.total, 0);
       const payCash = App.payments().filter((p) => p.at >= s && p.at < e && p.mode === 'cash').reduce((x, p) => x + p.amount, 0);
