@@ -126,22 +126,22 @@ The default gate is shown below. If tracks are reordered, update the actual gate
 | SEAM-13-16 | [BUILD-13](cards/BUILD-13.md) | [BUILD-16](cards/BUILD-16.md) | [VERIFY-16](cards/VERIFY-16.md) | BASE, UI, LOCALE, RECEIPT | passed |
 | SEAM-14-16 | [BUILD-14](cards/BUILD-14.md) | [BUILD-16](cards/BUILD-16.md) | [VERIFY-16](cards/VERIFY-16.md) | BASE, UI, LOCALE, MONEY, STOCK | passed |
 | SEAM-15-16 | [BUILD-15](cards/BUILD-15.md) | [BUILD-16](cards/BUILD-16.md) | [VERIFY-16](cards/VERIFY-16.md) | BASE, UI, LOCALE, STOCK, MONEY | passed |
-| SEAM-01-17 | [BUILD-01](cards/BUILD-01.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | planned |
-| SEAM-02-17 | [BUILD-02](cards/BUILD-02.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH, UI | planned |
-| SEAM-03-17 | [BUILD-03](cards/BUILD-03.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | planned |
-| SEAM-04-17 | [BUILD-04](cards/BUILD-04.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH, RELEASE | planned |
-| SEAM-05-17 | [BUILD-05](cards/BUILD-05.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH, RECEIPT, UI | planned |
-| SEAM-06-17 | [BUILD-06](cards/BUILD-06.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | planned |
-| SEAM-07-17 | [BUILD-07](cards/BUILD-07.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, RECEIPT | planned |
-| SEAM-08-17 | [BUILD-08](cards/BUILD-08.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE | planned |
-| SEAM-09-17 | [BUILD-09](cards/BUILD-09.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | planned |
-| SEAM-10-17 | [BUILD-10](cards/BUILD-10.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH, RECEIPT | planned |
-| SEAM-11-17 | [BUILD-11](cards/BUILD-11.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | planned |
-| SEAM-12-17 | [BUILD-12](cards/BUILD-12.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, RECEIPT, LOCALE | planned |
-| SEAM-13-17 | [BUILD-13](cards/BUILD-13.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, UI, LOCALE, AUTH, RECEIPT | planned |
-| SEAM-14-17 | [BUILD-14](cards/BUILD-14.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, UI, LOCALE | planned |
-| SEAM-15-17 | [BUILD-15](cards/BUILD-15.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, UI, LOCALE, AUTH | planned |
-| SEAM-16-17 | [BUILD-16](cards/BUILD-16.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, RECEIPT, LOCALE, UI | planned |
+| SEAM-01-17 | [BUILD-01](cards/BUILD-01.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | blocked |
+| SEAM-02-17 | [BUILD-02](cards/BUILD-02.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH, UI | blocked |
+| SEAM-03-17 | [BUILD-03](cards/BUILD-03.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | blocked |
+| SEAM-04-17 | [BUILD-04](cards/BUILD-04.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH, RELEASE | blocked |
+| SEAM-05-17 | [BUILD-05](cards/BUILD-05.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH, RECEIPT, UI | blocked |
+| SEAM-06-17 | [BUILD-06](cards/BUILD-06.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | blocked |
+| SEAM-07-17 | [BUILD-07](cards/BUILD-07.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, RECEIPT | blocked |
+| SEAM-08-17 | [BUILD-08](cards/BUILD-08.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE | blocked |
+| SEAM-09-17 | [BUILD-09](cards/BUILD-09.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | blocked |
+| SEAM-10-17 | [BUILD-10](cards/BUILD-10.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH, RECEIPT | blocked |
+| SEAM-11-17 | [BUILD-11](cards/BUILD-11.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, AUTH | blocked |
+| SEAM-12-17 | [BUILD-12](cards/BUILD-12.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, RECEIPT, LOCALE | blocked |
+| SEAM-13-17 | [BUILD-13](cards/BUILD-13.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, UI, LOCALE, AUTH, RECEIPT | blocked |
+| SEAM-14-17 | [BUILD-14](cards/BUILD-14.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, UI, LOCALE | blocked |
+| SEAM-15-17 | [BUILD-15](cards/BUILD-15.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, UI, LOCALE, AUTH | blocked |
+| SEAM-16-17 | [BUILD-16](cards/BUILD-16.md) | [BUILD-17](cards/BUILD-17.md) | [VERIFY-17](cards/VERIFY-17.md) | BASE, RECEIPT, LOCALE, UI | blocked |
 | SEAM-01-18 | [BUILD-01](cards/BUILD-01.md) | [BUILD-18](cards/BUILD-18.md) | [VERIFY-18](cards/VERIFY-18.md) | BASE, MONEY, STOCK, AUTH | planned |
 | SEAM-02-18 | [BUILD-02](cards/BUILD-02.md) | [BUILD-18](cards/BUILD-18.md) | [VERIFY-18](cards/VERIFY-18.md) | BASE, MONEY, STOCK, AUTH, STORE, UI | planned |
 | SEAM-03-18 | [BUILD-03](cards/BUILD-03.md) | [BUILD-18](cards/BUILD-18.md) | [VERIFY-18](cards/VERIFY-18.md) | BASE, MONEY, STOCK, STORE, AUTH | planned |

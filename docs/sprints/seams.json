@@ -3680,11 +3680,14 @@
         "BASE",
         "AUTH"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-02-17",
@@ -3702,11 +3705,14 @@
         "AUTH",
         "UI"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-03-17",
@@ -3722,11 +3728,14 @@
         "BASE",
         "AUTH"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-04-17",
@@ -3744,11 +3753,14 @@
         "AUTH",
         "RELEASE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-05-17",
@@ -3768,11 +3780,14 @@
         "RECEIPT",
         "UI"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-06-17",
@@ -3788,11 +3803,14 @@
         "BASE",
         "AUTH"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-07-17",
@@ -3808,11 +3826,14 @@
         "BASE",
         "RECEIPT"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-08-17",
@@ -3825,11 +3846,14 @@
       "recipes": [
         "BASE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-09-17",
@@ -3845,11 +3869,14 @@
         "BASE",
         "AUTH"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-10-17",
@@ -3867,11 +3894,14 @@
         "AUTH",
         "RECEIPT"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-11-17",
@@ -3887,11 +3917,14 @@
         "BASE",
         "AUTH"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-12-17",
@@ -3909,11 +3942,14 @@
         "RECEIPT",
         "LOCALE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-13-17",
@@ -3935,11 +3971,14 @@
         "AUTH",
         "RECEIPT"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-14-17",
@@ -3957,11 +3996,14 @@
         "UI",
         "LOCALE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-15-17",
@@ -3981,11 +4023,14 @@
         "LOCALE",
         "AUTH"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-16-17",
@@ -4005,11 +4050,14 @@
         "LOCALE",
         "UI"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Named physical printer/transport and scan/disconnect/reconnect evidence are unavailable.",
+      "evidence": [
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
+      ]
     },
     {
       "id": "SEAM-01-18",

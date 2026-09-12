@@ -646,7 +646,8 @@
       "status": "blocked",
       "codeCommit": "7184d449efd612731aa479f528545306acecc741",
       "evidence": [
-        "reports/BUILD-17.md"
+        "reports/BUILD-17.md",
+        "reports/VERIFY-17.md"
       ]
     },
     {
