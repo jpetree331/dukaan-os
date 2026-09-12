@@ -27,5 +27,5 @@
   A.modal({title:A.uiText('58 mm receipt preview'),body,buttons:[{label:A.uiText('Download HTML'),cls:'ghost',keepOpen:true,fn:()=>{if(JSON.stringify(current(id,kind))!==JSON.stringify(r))throw Error('Receipt changed. Reopen the preview.');A.download(html(m),'receipt-58mm-'+kind+'-'+r.id+'.html','text/html');}},{label:A.uiText('Print'),cls:'pri',keepOpen:true,fn:()=>{const latest=current(id,kind);if(JSON.stringify(latest)!==JSON.stringify(r))throw Error('Receipt changed. Reopen the preview.');A.printNode('<style>@media print{'+css+'.print-sheet{padding:0;max-width:48mm}}</style>'+fragment(m));}},{label:A.uiText('Close'),cls:'ghost'}]});
  }
  A.thermal={model,fragment,html,preview,css};
- A.registerUIWords({'58 mm receipt preview':'58 मिमी रसीद का पूर्वावलोकन','Download HTML':'HTML डाउनलोड करें','Preview only. Select Print to open the browser print dialog. No sale or payment is created.':'केवल पूर्वावलोकन। ब्राउज़र का प्रिंट संवाद खोलने के लिए प्रिंट चुनें। कोई बिक्री या भुगतान नहीं बनता।'});
+ A.registerUIWords({'Print':'प्रिंट','58 mm receipt preview':'58 मिमी रसीद का पूर्वावलोकन','Download HTML':'HTML डाउनलोड करें','Preview only. Select Print to open the browser print dialog. No sale or payment is created.':'केवल पूर्वावलोकन। ब्राउज़र का प्रिंट संवाद खोलने के लिए प्रिंट चुनें। कोई बिक्री या भुगतान नहीं बनता।'});
 })(window);
