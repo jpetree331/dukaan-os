@@ -247,6 +247,7 @@
       body: wrap,
       buttons: [
         App.can('void_bill')&&!bill.void?{label:App.uiText('Return / refunds'),cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
+        {label:App.uiText('58 mm receipt preview'),cls:'ghost',keepOpen:true,fn:()=>App.thermal.preview(bill.id)},
         { label: '💾 PNG', cls: 'ghost', keepOpen: true, fn: () => App.downloadCanvas(cv, 'bill-' + bill.no + '.png') },
         { label: '🖨️ ' + t('com.print'), cls: 'ghost', keepOpen: true, fn: () => printBill(bill) },
         {
@@ -278,7 +279,7 @@
   App.shareBill = shareBill;
 
   function printBill(bill) {
-    const st = App.DB().settings;
+    const st = bill.receiptSettings || {shopName:'Shop'};
     let h = '<div style="text-align:center;font-family:sans-serif">' +
       '<h2 style="margin:0">' + esc(st.shopName) + '</h2>' +
       (st.address ? '<div style="font-size:11px">' + esc(st.address) + '</div>' : '') +
