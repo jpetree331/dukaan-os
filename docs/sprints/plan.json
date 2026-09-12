@@ -687,9 +687,11 @@
       ],
       "recovery": "Code completion and field acceptance are separate statuses; missing device/printer/participant evidence keeps the pilot release blocked.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "d74b80cb5e572c9f79838321c3b6a7946a70de75",
+      "evidence": [
+        "reports/BUILD-18.md"
+      ]
     },
     {
       "number": 19,
