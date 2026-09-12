@@ -1,5 +1,10 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {create,item,customer,cart}=require('./harness.cjs');
+test('VERIFY-12: draft, local signup migration and Hindi settings preserve statement identity and stock history',async()=>{
+ const {A}=await create();await A.boot('local');const i=item(A,{unit:'kg'});await A.save();await A.actions.startStockHistory();await A.posAdd(i.id,1.25);assert.equal(A.DB().stockBook.entries.length,0);
+ const account=await A.auth.signUp({username:'statement_owner',password:'Synthetic-owner-password',confirm:'Synthetic-owner-password',shopName:'Synthetic statements'});await A.auth.enableGate(account.id);const draft=A.drafts.current(),request={...JSON.parse(JSON.stringify(draft.cart)),draftId:draft.id};const bill=await A.actions.checkout(request);await A.actions.checkout(request);const receipt=A.billText(bill);assert.equal(A.DB().stockBook.entries.length,1);assert.equal(A.reconcileBook().stock[0].expected,8.75);assert.equal(A.salesStatement().sales,125);
+ A.DB().settings.lang='hi';await A.save();assert.equal(A.DB().stockBook.entries.length,1);assert.equal(A.billText(bill),receipt);assert.equal(A.statementRows('sales')[1][6],125);await A.auth.disableGate();assert.equal(A.reconcileBook().stock[0].expected,8.75);assert.equal(A.reconcileBook().differences.length,0);
+});
 test('VERIFY-12: reconciliation exposes invoice and stock-unit disagreement instead of a clean result',async()=>{
  const {A}=await create(),i=item(A,{unit:'kg'});A.DB().settings.gstEnabled=true;await A.save();await A.actions.startStockHistory();const bill=await A.actions.checkout(cart(i));A.DB().bills[0].total+=0.01;
  assert.ok(A.reconcileBook().differences.some(d=>d.domain==='invoice'&&d.id===bill.id));assert.ok(A.statementRows('reconciliation').some(row=>row[0]==='invoice'));A.DB().bills[0].total-=0.01;i.unit='bottle';assert.ok(A.reconcileBook().differences.some(d=>d.domain==='stock_unit'&&d.id===i.id));
