@@ -66,7 +66,7 @@
       modalClosers.delete(forceClose);
       document.removeEventListener('keydown', onk);
       m.classList.add('out'); back.style.opacity = 0;
-      setTimeout(() => { back.remove(); App.emit('modalclosed');if(!openModals&&App.contextValid(context)){const target=returnFocus?.isConnected?returnFocus:document.querySelector('#main');if(target){if(target.id==='main')target.setAttribute('tabindex','-1');target.focus();}} }, 240);
+      setTimeout(() => { back.remove(); App.emit('modalclosed');if(App.contextValid(context)){const target=returnFocus?.isConnected&&!returnFocus.closest('[hidden],[inert]')?returnFocus:document.querySelector('#modalRoot .modal:not(.out)')||document.querySelector('#main');if(target){if(target.id==='main')target.setAttribute('tabindex','-1');target.focus();}} }, 240);
       openModals--; if (!openModals) document.body.style.overflow = '';
       const shell=$('#shell');if(shell)shell.inert=!!openModals||App.isLocked()||App.isSaving();
       if (opts.onClose) opts.onClose();
@@ -77,6 +77,7 @@
       btn.onclick = async () => {
         if (busy || closed) return;
         btn.disabled = true;
+        const priorError=m.querySelector('.modal-error');if(priorError)priorError.remove();
         try {
           App.assertContext(context);
           // The callback may explicitly close its own modal after an awaited operation.
