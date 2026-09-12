@@ -8,7 +8,7 @@ Requested 12 September 2026 while BUILD-12 was in progress. This is an explicit 
 
 These accounts exist in this browser only. They are not email-verified online identities, cannot sign in to the same shop on another device and do not provide a trusted server authorization boundary. No online provider registration, email verification, password reset or social sign-in is currently integrated. Do not rename the existing local gate to imply those capabilities.
 
-Existing browser regression coverage creates an account through the application API, then uses the actual login/PIN screens and verifies retained shop data. API fixture creation is not end-to-end sign-up form coverage. That gap is now explicit in BUILD-13/VERIFY-13.
+Prior browser regression coverage created an account through the application API, then used the actual login/PIN screens. BUILD-13 adds `tests/browser-core-accessibility.cjs`: actual Settings registration, confirmation error, retained shop, front-door duplicate registration, Hindi login, logout/login and keyboard/PIN correction in both storage modes. Native-language and assistive-technology review remain separate.
 
 ## Accepted sprint scope
 

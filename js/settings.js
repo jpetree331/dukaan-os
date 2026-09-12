@@ -119,7 +119,7 @@
         {
           label: t('com.save'), cls: 'pri', fn: async () => {
             const n = App.$('#st_n', body).value.trim();
-            if (!n) { App.toast('err', 'Name is required'); return false; }
+            if (!n) { App.toast('err', App.uiText('Name is required')); return false; }
             App.requirePermission('settings');
             App.assertContext(context); App.auth.requireFresh();
             const role = App.$('#st_r', body).value, pin = App.$('#st_p', body).value.trim();
@@ -289,8 +289,8 @@
           '<p class="muted" style="font-size:11.5px;margin-top:6px">Permanently removes your login and every bill, item and customer. Cannot be undone.</p>' : '')
         :
         '<div class="alert info"><span class="ai">🔓</span><span>The app opens straight to your counter — no login needed.</span></div>' +
-        '<button class="btn pri block" id="gateOn" style="margin-top:12px">🔐 Turn on login</button>' +
-        '<p class="muted" style="font-size:11.5px;margin-top:6px">Adds a username &amp; password before the shop opens, to discourage casual access. Records remain unencrypted on this device; someone controlling its browser storage can bypass the login. Existing records are carried over.</p>'
+        '<button class="btn pri block" id="gateOn" style="margin-top:12px">🔐 <span data-core-text="Turn on login">Turn on login</span></button>' +
+        '<p class="muted" style="font-size:11.5px;margin-top:6px"><span data-core-text="A local login discourages casual access. Records remain unencrypted on this device; someone controlling browser storage can bypass it."></span><br><span data-core-text="This account works only in this browser. Online sign-in and password recovery are not available yet."></span></p>'
       ) +
       '</div>' +
 
@@ -390,17 +390,16 @@
       if (e.target.closest('#doLogout')) return App.logout && App.logout();
       if (e.target.closest('#gateOn')) {
         const body = App.el('<div>' +
-          '<p class="muted" style="font-size:13px;line-height:1.6;margin-bottom:14px">Create the owner login for <b>' + esc(st.shopName) + '</b>. Your ' +
-          db.bills.length + ' bills and ' + db.items.filter((i) => !i.deleted).length + ' items come with you.</p>' +
-          '<div class="field"><label>Username</label><input class="inp" id="g_user" placeholder="raj123" autocapitalize="off" spellcheck="false" autofocus></div>' +
-          '<div class="field"><label>Password</label><input class="inp" id="g_pass" type="password" placeholder="12 to 256 characters"></div>' +
-          '<div class="field"><label>Confirm password</label><input class="inp" id="g_pass2" type="password"></div>' +
-          '<div class="alert warn"><span class="ai">⚠️</span><span>There is no "forgot password" — this works offline, so nothing can reset it for you. Write it down somewhere safe.</span></div>' +
+          '<p class="muted" style="font-size:13px;line-height:1.6;margin-bottom:14px"><span data-core-text="Your existing bills and items will be kept."></span><br><b>' + esc(st.shopName) + '</b></p>' +
+          '<div class="field"><label data-core-text="Username">Username</label><input class="inp" autocomplete="username" id="g_user" placeholder="raj123" autocapitalize="off" spellcheck="false" autofocus></div>' +
+          '<div class="field"><label data-core-text="Password">Password</label><input class="inp" id="g_pass" autocomplete="new-password" type="password" placeholder="12 to 256 characters"></div>' +
+          '<div class="field"><label data-core-text="Confirm password">Confirm password</label><input class="inp" id="g_pass2" autocomplete="new-password" type="password"></div>' +
+          '<div class="alert warn"><span class="ai">⚠️</span><span><span data-core-text="This account works only in this browser. Online sign-in and password recovery are not available yet."></span></span></div>' +
           '<p class="auth-err" id="g_err"></p></div>');
         App.modal({
-          title: '🔐 Turn on login', body,
+          title: '🔐 '+App.uiText('Turn on login'), body,
           buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-            label: 'Create login', cls: 'pri', keepOpen: true, fn: async (api) => {
+            label: App.uiText('Create login'), cls: 'pri', keepOpen: true, fn: async (api) => {
               const errEl = App.$('#g_err', body);
               errEl.textContent = '';
               try {
@@ -410,9 +409,9 @@
                 });
                 (await App.auth.enableGate(acc.id));
                 api.close();
-                App.toast('ok', 'Login turned on', 'You will sign in as @' + acc.username + ' from now on.');
+                App.toast('ok', App.uiText('Login turned on'), 'You will sign in as @' + acc.username + ' from now on.');
                 setTimeout(() => location.reload(), 800);
-              } catch (err) { errEl.textContent = err.message || 'Something went wrong'; }
+              } catch (err) { errEl.textContent = err.message || App.uiText('Something went wrong'); errEl.focus(); }
             }
           }]
         });
@@ -453,7 +452,7 @@
                 await App.auth.changePassword(acc.id, App.$('#cp_old', body).value, n1);
                 App.toast('ok', 'Password changed');
                 api.close();
-              } catch (err) { errEl.textContent = err.message || 'Something went wrong'; }
+              } catch (err) { errEl.textContent = err.message || App.uiText('Something went wrong'); }
             }
           }]
         });
@@ -476,7 +475,7 @@
                 api.close();
                 App.toast('ok', 'Account deleted');
                 setTimeout(() => location.reload(), 500);
-              } catch (err) { errEl.textContent = err.message || 'Something went wrong'; }
+              } catch (err) { errEl.textContent = err.message || App.uiText('Something went wrong'); }
             }
           }]
         });

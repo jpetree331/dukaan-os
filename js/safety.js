@@ -62,7 +62,7 @@
     App.requireAccess();
     if (!App.can(permission)) throw new Error('Owner access required for this action.');
   };
-  App.reportError = (e) => App.toast && App.toast('err', 'Not saved', e.message || String(e));
+  App.reportError = (e) => App.toast && App.toast('err', App.uiText?App.uiText('Not saved'):'Not saved',App.uiText?App.uiText(e.message || String(e)):(e.message || String(e)));
   App.number = (value, name, min = 0, max = 1e9) => {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
       throw new Error(name + ' must be a number between ' + min + ' and ' + max + '.');

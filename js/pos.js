@@ -106,11 +106,14 @@
     box.innerHTML = list.length ? list.map(itemCard).join('')
       : App.emptyState('🔍', t('pos.noItems'), t('pos.quickHint'),
         App.can('edit_inventory') ? '<button class="btn pri sm" id="quickAdd">' + t('pos.addQuick') + '</button>' : '');
+    App.enhanceAccessibility(box);
   }
 
   /* ───────── cart panel ───────── */
   function paintCart(persist=true) {
     const box = App.$('#cartLines'); if (!box) return;
+    const focused=document.activeElement,focusControl=focused?.closest?.('#cartLines button,#cartFoot button');
+    const focusMatch=focusControl?{id:focusControl.id,inc:focusControl.dataset.inc,dec:focusControl.dataset.dec,mode:focusControl.dataset.mode}:null;
     const T = totals();
     const cust = cart.customerId ? App.customer(cart.customerId) : null;
 
@@ -148,12 +151,15 @@
       (cart.mode === 'credit' ? '📒 ' + t('pos.credit') : '✓ ' + t('pos.charge')) + ' · ' + money(T.total) + '</button></div>';
 
     const mob = App.$('#cartPanel');
+    App.enhanceAccessibility(box);App.enhanceAccessibility(f);
+    if(focusMatch){const target=[...box.querySelectorAll('button'),...f.querySelectorAll('button')].find(b=>(focusMatch.id&&b.id===focusMatch.id)||(focusMatch.inc&&b.dataset.inc===focusMatch.inc)||(focusMatch.dec&&b.dataset.dec===focusMatch.dec)||(focusMatch.mode&&b.dataset.mode===focusMatch.mode));(target||App.$('#pickCust')).focus();}
+    const grand=f.querySelector('.grand');if(grand){grand.setAttribute('role','status');grand.setAttribute('aria-label',App.uiText('Cart total {amount}',{amount:money(T.total,true)}));}
     if (mob && cart.lines.length && w.innerWidth <= 860) mob.classList.add('open');
     if(persist){
       const context=App.context();
       draftSave=App.drafts.save(cart).then(saved=>{if(App.contextValid(context)){cart.draftId=saved?.id || '';draftError=null;}}).catch(error=>{
         draftError=error;
-        App.toast('err','Cart could not be saved',error.message);
+        App.toast('err',App.uiText('Cart could not be saved'),error.message);
         if(App.contextValid(context)){loadedScope='';loadDraft();paintCart(false);}
       });
     }
@@ -222,7 +228,7 @@
       t('pos.doneSub', { amt: money(bill.total, true), mode: bill.credit ? t('pos.credit') : t('pos.' + bill.mode) }),
       { label: t('com.undo'), fn: async () => { (await App.actions.voidBill(bill.id, 'undo')); App.toast('ok', t('com.undo'), 'Bill #' + bill.no + ' cancelled'); App.render(); } });
 
-    await App.checkTarget().catch(() => App.toast('warn', 'Sale saved', 'The daily target preference could not be saved.'));
+    await App.checkTarget().catch(() => App.toast('warn', App.uiText('Sale saved'), App.uiText('The daily target preference could not be saved.')));
     showReceipt(bill);
   }
 
@@ -232,13 +238,14 @@
     const cust = bill.customerPhone!==undefined?{phone:bill.customerPhone}:(bill.customerId ? App.customer(bill.customerId) : null);
     const wrap = App.el('<div><div class="receipt-prev" id="rcp"></div></div>');
     const cv = App.receiptCanvas(bill);
+    cv.setAttribute('aria-hidden','true');const receiptText=document.createElement('pre');receiptText.className='sr-only';receiptText.textContent=App.billText(bill);wrap.appendChild(receiptText);
     wrap.querySelector('#rcp').appendChild(cv);
 
     App.modal({
       title: t('pos.done') + '  #' + bill.no,
       body: wrap,
       buttons: [
-        App.can('void_bill')&&!bill.void?{label:'Return / refunds',cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
+        App.can('void_bill')&&!bill.void?{label:App.uiText('Return / refunds'),cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
         { label: '💾 PNG', cls: 'ghost', keepOpen: true, fn: () => App.downloadCanvas(cv, 'bill-' + bill.no + '.png') },
         { label: '🖨️ ' + t('com.print'), cls: 'ghost', keepOpen: true, fn: () => printBill(bill) },
         {
@@ -363,7 +370,7 @@
       .then((code) => { if (code && App.contextValid(context)) onCode(code.trim()); });
 
     if (!('BarcodeDetector' in w)) {
-      App.toast('warn', 'Camera scanner needs Chrome on Android', 'Type the barcode instead');
+      App.toast('warn', App.uiText('Camera scanner needs Chrome on Android'), App.uiText('Type the barcode instead'));
       return manual();
     }
     let stream;
@@ -371,7 +378,7 @@
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     } catch (e) {
       if (!App.contextValid(context)) return;
-      App.toast('err', 'Camera blocked', 'Allow camera access, or type the code');
+      App.toast('err', App.uiText('Camera blocked'), App.uiText('Allow camera access, or type the code'));
       return manual();
     }
     if (!App.contextValid(context)) { stream.getTracks().forEach(tr => tr.stop()); return; }
@@ -383,7 +390,7 @@
     let stop = false;
     const m = App.modal({
       title: '📷 ' + t('pos.scan'), body,
-      buttons: [{ label: 'Type it instead', cls: 'ghost', fn: () => { stop = true; manual(); } }],
+      buttons: [{ label: App.uiText('Type it instead'), cls: 'ghost', fn: () => { stop = true; manual(); } }],
       onClose: () => { stop = true; stream.getTracks().forEach((tr) => tr.stop()); }
     });
     let det;
@@ -445,7 +452,7 @@
       '</div>' +
 
       '<div class="cart" id="cartPanel">' +
-      '<div class="cart-head" id="cartHead"><span style="font-size:18px">🛒</span><h3>' + t('pos.cart') + '</h3>' +
+      '<div class="cart-head" id="cartHead" role="button" tabindex="0" aria-controls="cartLines cartFoot"><span style="font-size:18px">🛒</span><h3>' + t('pos.cart') + '</h3>' +
       '<span class="cart-count" id="cartCount">0</span></div>' +
       '<div class="cart-lines" id="cartLines"></div>' +
       '<div class="cart-foot" id="cartFoot"></div>' +
@@ -502,6 +509,7 @@
       if (inc) setQty(inc.dataset.inc, (cart.lines.find((l) => l.itemId === inc.dataset.inc) || {}).qty + 1);
     });
 
+    App.$('#cartHead').addEventListener('keydown', e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();App.$('#cartHead').click();}});
     App.$('#cartHead').addEventListener('click', () => {
       if (w.innerWidth <= 860) App.$('#cartPanel').classList.toggle('open');
     });

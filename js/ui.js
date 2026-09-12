@@ -16,7 +16,7 @@
   App.toast = function (kind, title, sub, action) {
     const root = $('#toastRoot');
     const node = el(
-      '<div class="toast ' + (kind === 'err' ? 'err' : kind === 'warn' ? 'warn' : 'ok') + '">' +
+      '<div role="'+(kind==='err'?'alert':'status')+'" aria-atomic="true" class="toast ' + (kind === 'err' ? 'err' : kind === 'warn' ? 'warn' : 'ok') + '">' +
       '<span class="ti">' + (ICON[kind] || ICON.ok) + '</span>' +
       '<span class="tx"><b>' + esc(title) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>' +
       (action ? '<button class="undo">' + esc(action.label) + '</button>' : '') + '</div>');
@@ -31,6 +31,7 @@
 
   /* ───────── modal ───────── */
   let openModals = 0;
+  App.hasOpenModal=()=>openModals>0;
   const modalClosers = new Set();
   App.on('secureclear', () => {
     for (const close of [...modalClosers]) close();
@@ -43,11 +44,12 @@
   });
   App.modal = function (opts) {
     const context = App.context();
+    const returnFocus=document.activeElement,titleId=App.uid('dialog_title');
     const back = el('<div class="modal-back"></div>');
-    const m = el('<div class="modal' + (opts.wide ? ' wide' : '') + '"></div>');
+    const m = el('<div role="dialog" aria-modal="true" aria-labelledby="'+titleId+'" tabindex="-1" class="modal' + (opts.wide ? ' wide' : '') + '"></div>');
     m.innerHTML =
-      '<div class="modal-head"><h3>' + esc(opts.title || '') + '</h3>' +
-      '<button class="icon-btn" data-x>✕</button></div>' +
+      '<div class="modal-head"><h3 id="'+titleId+'">' + esc(opts.title || '') + '</h3>' +
+      '<button class="icon-btn" aria-label="'+esc(App.t('com.close'))+'" data-x>✕</button></div>' +
       '<div class="modal-body"></div>' +
       (opts.foot === false ? '' : '<div class="modal-foot"></div>');
     back.appendChild(m);
@@ -64,8 +66,9 @@
       modalClosers.delete(forceClose);
       document.removeEventListener('keydown', onk);
       m.classList.add('out'); back.style.opacity = 0;
-      setTimeout(() => { back.remove(); App.emit('modalclosed'); }, 240);
+      setTimeout(() => { back.remove(); App.emit('modalclosed');if(!openModals&&App.contextValid(context)){const target=returnFocus?.isConnected?returnFocus:document.querySelector('#main');if(target){if(target.id==='main')target.setAttribute('tabindex','-1');target.focus();}} }, 240);
       openModals--; if (!openModals) document.body.style.overflow = '';
+      const shell=$('#shell');if(shell)shell.inert=!!openModals||App.isLocked()||App.isSaving();
       if (opts.onClose) opts.onClose();
     }
     (opts.buttons || []).forEach((b) => {
@@ -81,7 +84,7 @@
           if (result && typeof result.then === 'function') { busy = true; result = await result; busy = false; }
           if (result === false) return;
           if (b.keepOpen !== true) close();
-        } catch (e) { App.reportError(e); }
+        } catch (e) { let error=m.querySelector('.modal-error');if(!error){error=el('<p class="auth-err modal-error" role="alert" tabindex="-1"></p>');body.appendChild(error);}error.textContent=App.uiText(e.message || 'Something went wrong');error.focus(); }
         finally { busy = false; btn.disabled = false; }
       };
       foot && foot.appendChild(btn);
@@ -90,11 +93,13 @@
     back.addEventListener('mousedown', (e) => { if (e.target === back && opts.dismissable !== false) close(); });
     function onk(e) {
       if (e.key === 'Escape' && $('#modalRoot').lastElementChild === back) close();
+      if(e.key==='Tab'&&$('#modalRoot').lastElementChild===back){const nodes=[...m.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex="0"]')].filter(n=>!n.closest('[hidden]')&&n.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(!first){e.preventDefault();m.focus();}else if(e.shiftKey&&(document.activeElement===first||!m.contains(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!m.contains(document.activeElement))){e.preventDefault();first.focus();}}
     }
     document.addEventListener('keydown', onk);
     $('#modalRoot').appendChild(back);
     openModals++; document.body.style.overflow = 'hidden';
-    setTimeout(() => { const f = m.querySelector('[autofocus],input,select'); if (!closed && f && w.innerWidth > 860) f.focus(); }, 120);
+    if($('#shell'))$('#shell').inert=true;App.enhanceAccessibility(m);
+    setTimeout(() => { const f = m.querySelector('[autofocus]') || m.querySelector('input:not([disabled]),select:not([disabled]),button:not([disabled])') || m; if (!closed&&$('#modalRoot').lastElementChild===back&&!m.contains(document.activeElement)) f.focus(); }, 120);
     if (opts.onReady) opts.onReady(api);
     return api;
   };

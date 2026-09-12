@@ -215,6 +215,7 @@
   App.setLang = async function (l) {
     App.DB().settings.lang = l === 'hi' ? 'hi' : 'en';
     (await App.save({ sync: false }));
+    localStorage.setItem('dukaanos.uiLanguage',App.DB().settings.lang);
     document.documentElement.lang = App.DB().settings.lang;
   };
   /* item display name follows the UI language when a Hindi name exists */
