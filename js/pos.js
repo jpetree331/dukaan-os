@@ -39,7 +39,7 @@
     const it = App.item(itemId);
     if (!it) return;
     qty = qty || 1;
-    App.number(qty, 'Quantity', 0.0001); App.domain.quantityUnits(qty);
+    App.number(qty, 'Quantity', 0.0001); App.units.assertQuantity(it,qty);
     const have = App.sellableStock(it);
     const inCart = (cart.lines.find((l) => l.itemId === itemId) || {}).qty || 0;
     if (have <= 0) { App.toast('err', App.itemName(it), t('pos.outOfStock')); return; }
@@ -62,6 +62,7 @@
     App.domain.quantityUnits(q);
     const l = cart.lines.find((x) => x.itemId === itemId); if (!l) return;
     const it = App.item(itemId);
+    if(it&&q>0)App.units.assertQuantity(it,q);
     const max = it ? App.sellableStock(it) : 999;
     if (q > max) { q = max; App.toast('warn', App.itemName(it), t('pos.onlyLeft', { n: max })); }
     if (q <= 0) {
@@ -288,7 +289,7 @@
       '<div style="font-size:12px;font-weight:700;margin:4px 0">' + esc(bill.customerName) + ' · ' + esc(String(bill.mode).toUpperCase()) + '</div><hr>' +
       '<table style="width:100%;font-size:11px;border-collapse:collapse">' +
       '<tr><th align="left">Item</th><th>Qty</th><th align="right">Rate</th><th align="right">Amt</th></tr>' +
-      bill.lines.map((l) => '<tr><td>' + esc(l.name) + '</td><td align="center">' + l.qty + '</td><td align="right">' + l.price + '</td><td align="right">' + l.gross.toFixed(2) + '</td></tr>').join('') +
+      bill.lines.map((l) => '<tr><td>' + esc(l.name) + (l.quantitySpec?'<br>'+esc(App.units.label(l)):'') + '</td><td align="center">' + l.qty + '</td><td align="right">' + l.price + '</td><td align="right">' + l.gross.toFixed(2) + '</td></tr>').join('') +
       '</table><hr>' +
       '<div style="font-size:11px;display:flex;justify-content:space-between"><span>Subtotal</span><span>' + bill.sub.toFixed(2) + '</span></div>' +
       (bill.discount ? '<div style="font-size:11px;display:flex;justify-content:space-between"><span>Discount</span><span>-' + bill.discount.toFixed(2) + '</span></div>' : '') +
@@ -357,7 +358,7 @@
       buttons: [{ label: t('com.cancel'), cls: 'ghost' },
       {
         label: t('com.add'), cls: 'pri',
-        fn: async () => {for(const l of res.lines){const it=App.item(l.item.id);if(!it||l.selectionVersion!==App.selectionVersion(it)||l.qty>App.sellableStock(it))throw Error('Voice selection changed. Review the item, unit and stock again.');App.units.assertQuantity(it,l.qty);}for(const l of res.lines){await add(l.item.id,l.qty);if(draftError)throw draftError;}App.toast('ok', t('voice.added', { n: res.lines.length })); }
+        fn: async () => {loadDraft();for(const l of res.lines){const it=App.item(l.item.id);if(!it||l.selectionVersion!==App.selectionVersion(it)||App.domain.quantity(l.qty+(cart.lines.find(x=>x.itemId===it.id)?.qty||0))>App.sellableStock(it))throw Error('Voice selection changed. Review the item, unit and stock again.');App.units.assertQuantity(it,l.qty);}for(const l of res.lines){await add(l.item.id,l.qty);if(draftError)throw draftError;}App.toast('ok', t('voice.added', { n: res.lines.length })); }
       }]
     });
   }
