@@ -62,11 +62,10 @@
     const c = App.customer(id); if (!c) return;
     const operationId=App.uid('collection');
     const bills=App.bills().filter(b=>b.customerId===id&&b.credit&&!b.void);
-    App.numpadModal('💰 ' + t('cus.logPayment'), c.balance ? String(App.round2(c.balance)) : '', async (amt,body) => {
+    App.numpadModal('' + t('cus.logPayment'), c.balance ? String(App.round2(c.balance)) : '', async (amt,body) => {
       (await App.actions.takePayment(id, amt, App.$('#collectionMode',body).value,'',{operationId,billId:App.$('#collectionBill',body).value}));
       const done = (c.balance || 0) <= 0.5;
       App.toast('ok', t('cus.received', { name: c.name, amt: money(amt, true) }), done ? t('cus.paidFull', { name: c.name }) : money(c.balance) + ' ' + t('com.pending').toLowerCase());
-      if (done) App.confetti({ count: 60 });
       App.render();
     }, { extra:window.App.moneyLiteral('<div class="field"><label for="collectionMode">Payment method</label><select class="inp" id="collectionMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div><div class="field"><label for="collectionBill">Apply to bill (optional)</label><select class="inp" id="collectionBill"><option value="">Customer balance</option>')+bills.map(b=>'<option value="'+b.id+'">Bill #'+b.no+'</option>').join('')+'</select></div>',sub: c.name + ' · ' + t('cus.balance') + ' ' + money(c.balance, true), ok: t('cus.logPayment'), quick: [100, 200, 500, App.round2(c.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });
   }
@@ -93,8 +92,8 @@
     const days = c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0;
     const hi = App.lang() === 'hi';
     const msg = hi
-      ? 'नमस्ते ' + c.name + ' जी 🙏\n\n' + st.shopName + ' में आपका *' + money(c.balance, true) + '* बाकी है' + (days ? ' (' + days + ' दिन से)' : '') + '।\nसुविधा हो तो चुका दीजिए।' + (st.upiId ? '\n\nUPI: ' + st.upiId : '') + '\n\nधन्यवाद!'
-      : 'Namaste ' + c.name + ' 🙏\n\nA friendly reminder — *' + money(c.balance, true) + '* is pending at ' + st.shopName + (days ? ' (' + days + ' days)' : '') + '.\nPlease settle whenever convenient.' + (st.upiId ? '\n\nUPI: ' + st.upiId : '') + '\n\nThank you!';
+      ? 'नमस्ते ' + c.name + ' जी \n\n' + st.shopName + ' में आपका *' + money(c.balance, true) + '* बाकी है' + (days ? ' (' + days + ' दिन से)' : '') + '।\nसुविधा हो तो चुका दीजिए।' + (st.upiId ? '\n\nUPI: ' + st.upiId : '') + '\n\nधन्यवाद!'
+      : 'Namaste ' + c.name + ' \n\nA friendly reminder — *' + money(c.balance, true) + '* is pending at ' + st.shopName + (days ? ' (' + days + ' days)' : '') + '.\nPlease settle whenever convenient.' + (st.upiId ? '\n\nUPI: ' + st.upiId : '') + '\n\nThank you!';
     App.whatsapp(c.phone, msg);
     App.log('remind', 'Reminder sent to ' + c.name);
     (await App.save({ render: false, sync: false }));
@@ -108,15 +107,15 @@
     const body = App.el('<div>' +
       '<div class="field"><label>' + t('com.name') + ' *</label><input class="inp" id="c_n" value="' + esc(d.name) + '" placeholder="Ramesh Kumar" autofocus></div>' +
       '<div class="row"><div class="field"><label>' + t('com.phone') + '</label><input class="inp num" id="c_p" type="tel" inputmode="tel" value="' + esc(d.phone) + '" placeholder="98123 45670"></div>' +
-      '<div class="field"><label>🎂 ' + t('cus.birthday') + ' <span class="muted">MM-DD</span></label><input class="inp" id="c_b" value="' + esc(d.birthday) + '" placeholder="08-14"></div></div>' +
+      '<div class="field"><label> ' + t('cus.birthday') + ' <span class="muted">MM-DD</span></label><input class="inp" id="c_b" value="' + esc(d.birthday) + '" placeholder="08-14"></div></div>' +
       window.App.moneyLiteral('<div class="field"><label>Note</label><input class="inp" id="c_note" value="') + esc(d.note || '') + '" placeholder="Lives above the chemist"></div>' +
-      (c ? '<div class="alert info"><span class="ai">📒</span><span>' + t('cus.balance') + ': <b>' + money(c.balance, true) + '</b> · ★ ' + Math.floor(c.points || 0) + ' ' + t('cus.points') + '</span></div>' : '') +
+      (c ? '<div class="alert info"><span class="ai"></span><span>' + t('cus.balance') + ': <b>' + money(c.balance, true) + '</b> ·  ' + Math.floor(c.points || 0) + ' ' + t('cus.points') + '</span></div>' : '') +
       '</div>');
     App.modal({
-      title: c ? '✏️ ' + esc(c.name) : '➕ ' + t('cus.add'), body,
+      title: c ? '' + esc(c.name) : '' + t('cus.add'), body,
       buttons: [
         c ? {
-          label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => {
+          label: 'Remove', cls: 'danger', keepOpen: true, fn: (api) => {
             if (Math.abs(c.balance) > 0.005) { App.toast('err', 'Settle ' + money(c.balance) + ' first'); return; }
             App.confirm(t('com.delete') + '?', c.name + ' will be removed. Past bills are kept.', { danger: true }).then(async (ok) => {
               if (!ok) return; c.deleted = true; (await App.save({ op: 'customer' })); App.toast('ok', 'Removed ' + c.name); api.close(); App.render();
@@ -160,27 +159,27 @@
       '<div class="stat"><div class="k">★ ' + t('cus.points') + '</div><div class="v">' + Math.floor(c.points || 0) + '</div><div class="d muted">= ' + money(Math.floor(c.points || 0) * (App.DB().settings.loyaltyValue || 1)) + '</div></div>' +
       '</div>' +
       '<div class="btn-row" style="margin-bottom:14px">' +
-      (c.balance > 0 ? '<button class="btn ok" id="dPay">💰 ' + t('cus.logPayment') + '</button>' : '') +
-      (c.phone && c.balance > 0 ? '<button class="btn" id="dRemind">💬 ' + t('cus.remind') + '</button>' : '') +
-      '<button class="btn ghost" id="dEdit">✏️ ' + t('com.edit') + '</button>' +
-      '<button class="btn ghost" id="dCsv">📤 ' + t('com.export') + window.App.moneyLiteral('</button><button class="btn ghost" id="dStatementCsv">Balance CSV</button></div>') +
+      (c.balance > 0 ? '<button class="btn ok" id="dPay"> ' + t('cus.logPayment') + '</button>' : '') +
+      (c.phone && c.balance > 0 ? '<button class="btn" id="dRemind"> ' + t('cus.remind') + '</button>' : '') +
+      '<button class="btn ghost" id="dEdit"> ' + t('com.edit') + '</button>' +
+      '<button class="btn ghost" id="dCsv"> ' + t('com.export') + window.App.moneyLiteral('</button><button class="btn ghost" id="dStatementCsv">Balance CSV</button></div>') +
       window.App.moneyLiteral('<div class="btn-row"><button class="btn" id="dAdvance">Record advance</button>')+(App.isOwner()?window.App.moneyLiteral('<button class="btn" id="dOpening">Opening balance</button><button class="btn" id="dCorrection">Correct balance</button>'):'')+'</div>'+
       window.App.moneyLiteral('<div class="sec-title">Balance entries (latest 40; CSV includes all)</div><div class="table-wrap"><table><thead><tr><th>Date / entry</th><th>Change</th><th>Balance</th></tr></thead><tbody>')+statement.entries.slice(-40).map(e=>'<tr><td>'+esc(App.fmtDT(e.at)+' · '+App.moneyCode(e.kind))+'<br><small>'+esc(e.note || '')+'</small></td><td>'+esc(money(e.delta,true))+'</td><td>'+esc(money(e.balance,true))+'</td></tr>').join('')+'</tbody></table></div>'+
       '<div class="sec-title">' + t('cus.history') + '</div>' +
       (feed.length ? feed.slice(0, 40).map((f) => f.kind === 'bill' ?
-        '<div class="list-row"><span class="rank" style="background:' + (f.b.void ? 'var(--line)' : f.b.credit ? 'var(--bad-bg)' : 'var(--ok-bg)') + ';color:' + (f.b.credit ? 'var(--bad)' : 'var(--ok)') + '">' + (f.b.credit ? '📒' : '🧾') + '</span>' +
+        '<div class="list-row"><span class="rank" style="background:' + (f.b.void ? 'var(--line)' : f.b.credit ? 'var(--bad-bg)' : 'var(--ok-bg)') + ';color:' + (f.b.credit ? 'var(--bad)' : 'var(--ok)') + '">' + (f.b.credit ? '' : '') + '</span>' +
         '<span style="flex:1;min-width:0"><b' + (f.b.void ? ' style="text-decoration:line-through;opacity:.5"' : '') + '>#' + f.b.no + ' · ' + esc(f.b.lines.map((l) => l.name).join(', ').slice(0, 44)) + '</b>' +
         '<br><small class="muted">' + App.fmtDT(f.b.at) + ' · ' + esc(String(f.b.mode).toUpperCase()) + '</small></span>' +
         '<b class="num">' + money(f.b.total) + '</b>' +
-        '<button class="btn xs ghost" data-rebill="' + f.b.id + '">👁️</button></div>'
+        '<button class="btn xs ghost" data-rebill="' + f.b.id + '">' + App.icon('eye',16) + '</button></div>'
         :
-        '<div class="list-row"><span class="rank" style="background:var(--ok-bg);color:var(--ok)">💰</span>' +
+        '<div class="list-row"><span class="rank" style="background:var(--ok-bg);color:var(--ok)"></span>' +
         window.App.moneyLiteral('<span style="flex:1"><b>Payment received</b><br><small class="muted">') + App.fmtDT(f.p.at) + ' · ' + esc(String(f.p.mode).toUpperCase()) + '</small></span>' +
         '<b class="num" style="color:var(--ok)">− ' + money(f.p.amount) + '</b></div>').join('')
-        : App.emptyState('🧾', 'No purchases yet', '')) +
+        : App.emptyState('', 'No purchases yet', '')) +
       '</div>');
 
-    const m = App.modal({ title: '👤 ' + esc(c.name) + (c.phone ? ' · ' + esc(c.phone) : ''), body, wide: true, foot: false });
+    const m = App.modal({ title: '' + esc(c.name) + (c.phone ? ' · ' + esc(c.phone) : ''), body, wide: true, foot: false });
     body.addEventListener('click', async (e) => {
       for(const [button,kind] of [['#dAdvance','advance'],['#dOpening','opening'],['#dCorrection','correction']])if(e.target.closest(button)){m.close();return App.customerEntryDialog(id,kind);}
       if (e.target.closest('#dPay')) { m.close(); return settle(id); }
@@ -218,27 +217,27 @@
     rest.sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0));
 
     main.innerHTML =
-      '<div class="page-head"><div><h1>🤝 ' + t('cus.title') + '</h1>' +
+      '<div class="page-head"><div><h1> ' + t('cus.title') + '</h1>' +
       '<div class="sub">' + t('cus.sub', { n: all.length, amt: money(totalDue) }) + '</div></div>' +
       '<div class="spacer"></div>' +
-      '<button class="btn pri" id="addCust">➕ ' + t('cus.add') + '</button></div>' +
+      '<button class="btn pri" id="addCust"> ' + t('cus.add') + '</button></div>' +
 
-      (bdays.length ? '<div class="alert ok" style="margin-bottom:14px"><span class="ai">🎂</span><span>' +
+      (bdays.length ? '<div class="alert ok" style="margin-bottom:14px"><span class="ai"></span><span>' +
         bdays.map((c) => esc(t('cus.bdayToday', { name: c.name }))).join(' · ') +
-        ' <button class="btn xs" data-bday="' + bdays[0].id + '" style="margin-left:8px">💬 Wish them</button></span></div>' : '') +
+        ' <button class="btn xs" data-bday="' + bdays[0].id + '" style="margin-left:8px"> Wish them</button></span></div>' : '') +
 
       '<div class="grid g-3" style="margin-bottom:18px">' +
-      '<div class="stat ' + (totalDue > 0 ? 'bad' : 'good') + '"><span class="em">📒</span><div class="k">' + t('dash.pendingDue') + '</div>' +
+      '<div class="stat ' + (totalDue > 0 ? 'bad' : 'good') + '"><span class="em"></span><div class="k">' + t('dash.pendingDue') + '</div>' +
       '<div class="v" style="color:' + (totalDue > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(totalDue) + '</div>' +
       '<div class="d muted">' + dues.length + ' customers</div></div>' +
-      '<div class="stat"><span class="em">⏰</span><div class="k">' + t('cus.overdue15') + '</div>' +
+      '<div class="stat"><span class="em"></span><div class="k">' + t('cus.overdue15') + '</div>' +
       '<div class="v">' + money(dues.filter((d) => d.days >= 15).reduce((s, d) => s + d.c.balance, 0)) + '</div>' +
       '<div class="d muted">' + dues.filter((d) => d.days >= 15).length + ' customers</div></div>' +
-      '<div class="stat"><span class="em">⭐</span><div class="k">' + t('cus.points') + '</div>' +
+      '<div class="stat"><span class="em"></span><div class="k">' + t('cus.points') + '</div>' +
       '<div class="v">' + Math.floor(all.reduce((s, c) => s + (c.points || 0), 0)) + '</div>' +
       '<div class="d muted">across all customers</div></div></div>' +
 
-      '<div class="pos-tools"><div class="search-wrap"><span class="mag">🔍</span>' +
+      '<div class="pos-tools"><div class="search-wrap"><span class="mag"></span>' +
       '<input class="inp" id="cusQ" placeholder="' + t('com.search') + '" value="' + esc(cf.q) + '"></div></div>' +
 
       '<div class="chip-row" style="margin-bottom:12px">' +
@@ -246,15 +245,15 @@
         .map((o) => '<button class="chip tap ' + (cf.overdue === o[0] ? 'sel' : '') + '" data-od="' + o[0] + '">' + o[1] + '</button>').join('') +
       '<span style="width:1px;background:var(--line);margin:0 4px"></span>' +
       '<button class="chip tap ' + (cf.sort === 'amount' ? 'sel' : '') + '" data-sort="amount">₹ ' + t('com.amount') + '</button>' +
-      '<button class="chip tap ' + (cf.sort === 'days' ? 'sel' : '') + '" data-sort="days">⏰ Days</button></div>' +
+      '<button class="chip tap ' + (cf.sort === 'days' ? 'sel' : '') + '" data-sort="days"> Days</button></div>' +
 
-      '<div class="sec-title">📒 ' + t('cus.due') + '</div>' +
+      '<div class="sec-title"> ' + t('cus.due') + '</div>' +
       (due.length
-        ? '<div class="hint-swipe">👉 ' + t('cus.swipeHint') + ' <i>→</i></div>' +
+        ? '<div class="hint-swipe"> ' + t('cus.swipeHint') + ' <i>→</i></div>' +
         due.map((d, i) => swipeCard(d.c, d.days, i)).join('')
-        : '<div class="card">' + App.emptyState('🎉', t('cus.noDue'), '') + '</div>') +
+        : '<div class="card">' + App.emptyState('', t('cus.noDue'), '') + '</div>') +
 
-      '<div class="sec-title">👥 ' + t('nav.customers') + ' (' + rest.length + ')</div>' +
+      '<div class="sec-title"> ' + t('nav.customers') + ' (' + rest.length + ')</div>' +
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
       '<th>' + t('com.name') + '</th><th>' + t('com.phone') + '</th><th class="r">Spent</th><th class="r">★</th><th class="r">Last seen</th><th></th></tr></thead><tbody>' +
       (rest.length ? rest.map((c, i) => '<tr>' +
@@ -264,7 +263,7 @@
         '<td class="r num">' + Math.floor(c.points || 0) + '</td>' +
         '<td class="r muted" style="font-size:12.5px">' + (c.lastAt ? App.timeAgo(c.lastAt) : '—') + '</td>' +
         '<td class="r"><button class="btn xs" data-open="' + c.id + '">' + t('com.more') + '</button></td></tr>').join('')
-        : '<tr><td colspan="6">' + App.emptyState('🤝', 'No customers yet', 'Add regulars so you can track their udhaar') + '</td></tr>') +
+        : '<tr><td colspan="6">' + App.emptyState('', 'No customers yet', 'Add regulars so you can track their udhaar') + '</td></tr>') +
       '</tbody></table></div></div>';
 
     wireSwipe(main);
@@ -283,8 +282,8 @@
       if (e.target.closest('#addCust')) return App.editCustomer(null, () => App.render());
       if (bd) {
         const c = App.customer(bd.dataset.bday);
-        App.whatsapp(c.phone, (App.lang() === 'hi' ? 'जन्मदिन मुबारक हो ' + c.name + ' जी! 🎂🎉\n\n' + App.DB().settings.shopName + ' की तरफ से शुभकामनाएँ।'
-          : 'Happy birthday ' + c.name + '! 🎂🎉\n\nWarm wishes from all of us at ' + App.DB().settings.shopName + '.'));
+        App.whatsapp(c.phone, (App.lang() === 'hi' ? 'जन्मदिन मुबारक हो ' + c.name + ' जी! \n\n' + App.DB().settings.shopName + ' की तरफ से शुभकामनाएँ।'
+          : 'Happy birthday ' + c.name + '! \n\nWarm wishes from all of us at ' + App.DB().settings.shopName + '.'));
         return;
       }
     });
@@ -293,17 +292,17 @@
   function swipeCard(c, days, i) {
     const tag = days >= 30 ? 'bad' : days >= 15 ? 'warn' : days >= 7 ? 'warn' : '';
     return '<div class="swipe" data-cid="' + c.id + '">' +
-      '<div class="swipe-bg"><span class="l">💰 ' + esc(t('cus.logPayment')) + '</span><span class="r">' + esc(t('cus.remind')) + ' 💬</span></div>' +
+      '<div class="swipe-bg"><span class="l"> ' + esc(t('cus.logPayment')) + '</span><span class="r">' + esc(t('cus.remind')) + ' </span></div>' +
       '<div class="swipe-fg">' + App.avatarFor(c.name, i) +
       '<span class="who-n"><b>' + esc(c.name) + '</b><span>' +
-      (c.phone ? '<span>📞 ' + esc(c.phone) + '</span>' : '') +
+      (c.phone ? '<span> ' + esc(c.phone) + '</span>' : '') +
       (days ? '<span class="chip ' + tag + '" style="padding:1px 7px;font-size:11px">' + t('cus.since', { n: days }) + '</span>' : '') +
       (c.points ? '<span>★ ' + Math.floor(c.points) + '</span>' : '') +
       '</span></span>' +
       '<span class="due"><b style="color:var(--bad)">' + money(c.balance) + '</b><small>' + t('cus.balance') + '</small></span>' +
-      '<button class="btn xs ok" data-pay="' + c.id + '">💰</button>' +
-      (c.phone ? '<button class="btn xs" data-rem="' + c.id + '">💬</button>' : '') +
-      '<button class="btn xs ghost" data-open="' + c.id + '">›</button>' +
+      '<button class="btn xs ok" data-pay="' + c.id + '">' + App.icon('cash',16) + '</button>' +
+      (c.phone ? '<button class="btn xs" data-rem="' + c.id + '">' + App.icon('message',16) + '</button>' : '') +
+      '<button class="btn xs ghost" data-open="' + c.id + '">' + App.icon('chevronRight',16) + '</button>' +
       '</div></div>';
   }
 
@@ -318,7 +317,7 @@
       '<div class="field"><label>' + t('sup.dueDate') + '</label><input class="inp" id="s_d" type="date" value="' + esc(d.dueDate || '') + '"></div></div>' +
       '<div class="field"><label>' + t('sup.supplies') + '</label><input class="inp" id="s_s" value="' + esc(d.supplies) + '" placeholder="Snacks, Biscuits"></div></div>');
     App.modal({
-      title: s ? '✏️ ' + esc(s.name) : '➕ ' + t('sup.add'), body,
+      title: s ? '' + esc(s.name) : '' + t('sup.add'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
         label: t('com.save'), cls: 'pri', fn: async () => {
           const n = App.$('#s_n', body).value.trim();
@@ -349,7 +348,7 @@
       App.items().map((i) => '<option value="' + i.id + '">' + esc(App.itemName(i)) + '</option>').join('') + '</select></div>' +
       '<div class="field" style="flex:.7"><label>' + t('com.qty') + '</label><input class="inp num" id="p_q" type="number" inputmode="numeric" value="10"></div>' +
       '<div class="field" style="flex:.9"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="p_c" type="number" inputmode="decimal"></div>' +
-      '<div class="field" style="flex:0 0 auto"><button class="btn pri" id="p_add">➕</button></div></div>' +
+      '<div class="field" style="flex:0 0 auto"><button class="btn pri" id="p_add">' + App.icon('plus',16) + '</button></div></div>' +
       '<div class="field"><label>' + t('inv.expiry') + ' <span class="muted">(' + t('com.optional') + ')</span></label><input class="inp" id="p_e" type="date"></div>' +
       '<div id="p_list" style="margin:10px 0"></div>' +
       '<div class="kv" style="font-size:17px"><b>' + t('com.total') + '</b><b id="p_tot" class="num">₹0</b></div>' +
@@ -362,10 +361,10 @@
     const paint = () => {
       App.$('#p_list', body).innerHTML = lines.length ? lines.map((l, i) => {
         const it = App.item(l.itemId);
-        return '<div class="list-row"><span style="font-size:17px">' + esc(it ? it.emoji : '📦') + '</span>' +
+        return '<div class="list-row">' + App.mark(it || '?') +
           '<span style="flex:1"><b>' + esc(it ? App.itemName(it) : '?') + '</b><br><small class="muted">' + l.qty + ' × ' + money(l.cost) + (l.expiry ? ' · exp ' + l.expiry : '') + '</small></span>' +
           '<b class="num">' + money(l.qty * l.cost) + '</b>' +
-          '<button class="btn xs danger" data-del="' + i + '">✕</button></div>';
+          '<button class="btn xs danger" data-del="' + i + '">' + App.icon('x',16) + '</button></div>';
       }).join('') : '<p class="muted" style="font-size:13px;text-align:center;padding:10px">Add the items you bought</p>';
       const tot = lines.reduce((s, l) => s + l.qty * l.cost, 0);
       App.$('#p_tot', body).textContent = money(tot, true);
@@ -374,14 +373,13 @@
     paint(); setTimeout(syncCost, 0);
 
     App.modal({
-      title: '🚚 ' + t('sup.newPO'), body, wide: true,
+      title: '' + t('sup.newPO'), body, wide: true,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
         label: t('com.save'), cls: 'pri', fn: async () => {
           if (!lines.length) { App.toast('err', 'Add at least one item'); return false; }
           const sid = App.$('#p_s', body).value;
           const po = (await App.actions.recordPurchase(sid, lines, Number(App.$('#p_paid', body).value), '', App.$('#p_mode', body).value,{operationId}));
           App.toast('ok', t('sup.stockIn'), lines.length + ' items · ' + money(po.total, true));
-          App.confetti({ count: 40, colors: ['#16A34A', '#4ADE80', '#F5A524'] });
         }
       }]
     });
@@ -411,40 +409,40 @@
     const today = App.dayKey(Date.now());
 
     main.innerHTML =
-      '<div class="page-head"><div><h1>🚚 ' + t('sup.title') + '</h1>' +
+      '<div class="page-head"><div><h1> ' + t('sup.title') + '</h1>' +
       '<div class="sub">' + t('sup.sub', { amt: money(owed), n: sups.filter((s) => s.balance > 0).length }) + '</div></div>' +
       '<div class="spacer"></div>' +
-      '<div class="btn-row"><button class="btn" id="addSup">➕ ' + t('sup.add') + '</button>' +
-      '<button class="btn pri" id="newPO">📦 ' + t('sup.newPO') + '</button></div></div>' +
+      '<div class="btn-row"><button class="btn" id="addSup"> ' + t('sup.add') + '</button>' +
+      '<button class="btn pri" id="newPO"> ' + t('sup.newPO') + '</button></div></div>' +
 
       '<div class="grid g-3" style="margin-bottom:18px">' +
-      '<div class="stat ' + (owed > 0 ? 'bad' : 'good') + '"><span class="em">🚚</span><div class="k">' + t('sup.owed') + '</div>' +
+      '<div class="stat ' + (owed > 0 ? 'bad' : 'good') + '"><span class="em"></span><div class="k">' + t('sup.owed') + '</div>' +
       '<div class="v" style="color:' + (owed > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(owed) + '</div></div>' +
-      '<div class="stat good"><span class="em">📒</span><div class="k">' + t('dash.pendingDue') + '</div>' +
+      '<div class="stat good"><span class="em"></span><div class="k">' + t('dash.pendingDue') + '</div>' +
       '<div class="v" style="color:var(--ok)">' + money(App.stats.totalDue()) + '</div></div>' +
-      '<div class="stat accent"><span class="em">⚖️</span><div class="k">Net position</div>' +
+      '<div class="stat accent"><span class="em"></span><div class="k">Net position</div>' +
       '<div class="v">' + money(App.stats.totalDue() - owed) + '</div>' +
       '<div class="d">' + (App.stats.totalDue() - owed >= 0 ? 'in your favour' : 'you owe more') + '</div></div></div>' +
 
-      '<div class="sec-title">🚚 ' + t('nav.suppliers') + '</div>' +
+      '<div class="sec-title"> ' + t('nav.suppliers') + '</div>' +
       (sups.length ? sups.map((s, i) => {
         const late = s.dueDate && s.dueDate < today && s.balance > 0;
         return '<div class="swipe"><div class="swipe-fg" style="cursor:default">' + App.avatarFor(s.name, i + 1) +
           '<span class="who-n"><b>' + esc(s.name) + '</b><span>' +
           (s.supplies ? '<span>' + esc(s.supplies) + '</span>' : '') +
-          (s.phone ? '<span>📞 ' + esc(s.phone) + '</span>' : '') +
+          (s.phone ? '<span> ' + esc(s.phone) + '</span>' : '') +
           (late ? '<span class="chip bad" style="padding:1px 7px;font-size:11px">' + t('sup.overdue') + '</span>'
             : s.dueDate && s.balance > 0 ? '<span class="chip warn" style="padding:1px 7px;font-size:11px">due ' + App.fmtD(new Date(s.dueDate + 'T00:00')) + '</span>' : '') +
           '</span></span>' +
           '<span class="due"><b style="color:' + (s.balance > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(s.balance || 0) + '</b><small>' + t('sup.owed') + '</small></span>' +
-          (s.balance > 0 ? '<button class="btn xs ok" data-spay="' + s.id + '">💸</button>' : '') +
-          '<button class="btn xs" data-spo="' + s.id + '">📦</button>' +
+          (s.balance > 0 ? '<button class="btn xs ok" data-spay="' + s.id + '">' + App.icon('cash',16) + '</button>' : '') +
+          '<button class="btn xs" data-spo="' + s.id + '">' + App.icon('box',16) + '</button>' +
           '<button class="btn xs" data-saccount="' + s.id + '">Account</button>' +
-          '<button class="btn xs ghost" data-sed="' + s.id + '">✏️</button>' +
+          '<button class="btn xs ghost" data-sed="' + s.id + '">' + App.icon('edit',16) + '</button>' +
           '</div></div>';
-      }).join('') : '<div class="card">' + App.emptyState('🚚', t('sup.noSup'), 'Add the distributors you buy stock from') + '</div>') +
+      }).join('') : '<div class="card">' + App.emptyState('', t('sup.noSup'), 'Add the distributors you buy stock from') + '</div>') +
 
-      '<div class="sec-title">📦 ' + t('sup.history') + '</div>' +
+      '<div class="sec-title"> ' + t('sup.history') + '</div>' +
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
       '<th>#</th><th>' + t('com.date') + '</th><th>' + t('nav.suppliers') + window.App.moneyLiteral('</th><th>Items</th><th class="r">') + t('com.total') + '</th><th class="r">Linked paid</th></tr></thead><tbody>' +
       (pos.length ? pos.map((p) => '<tr><td class="num">' + p.no + '</td><td class="muted" style="font-size:12.5px">' + App.fmtDT(p.at) + '</td>' +
@@ -452,7 +450,7 @@
         '<td class="muted" style="font-size:12.5px">' + esc(p.lines.map((l) => { const it = App.item(l.itemId); return (l.name || (it ? it.name : '?')) + '×' + l.qty; }).join(', ').slice(0, 52)) + (p.cancelled ? window.App.moneyLiteral(' · Cancelled') : '') + '</td>' +
         '<td class="r num"><b>' + money(p.total) + '</b></td>' +
         '<td class="r num" style="color:' + (App.purchasePaid(p) >= p.total ? 'var(--ok)' : 'var(--warn)') + '">' + money(App.purchasePaid(p)) + '</td></tr>').join('')
-        : '<tr><td colspan="6">' + App.emptyState('📦', 'No purchases recorded', 'Log what you buy so stock updates itself') + '</td></tr>') +
+        : '<tr><td colspan="6">' + App.emptyState('', 'No purchases recorded', 'Log what you buy so stock updates itself') + '</td></tr>') +
       '</tbody></table></div></div>';
 
     main.addEventListener('click', (e) => {

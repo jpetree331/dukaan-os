@@ -3,6 +3,7 @@
  'use strict';const A=w.App,D=A.domain;
  const ratio=(amount,num,den)=>Number((BigInt(amount)*BigInt(num)*2n+BigInt(den))/(2n*BigInt(den)));
  const lineId=(l,i)=>l.lineId || String(i);
+ A.returnable=bill=>!bill.void&&bill.calculationVersion===D.CALCULATION_VERSION&&bill.lines.every(l=>l.allocations&&l.taxable!==undefined&&l.tax!==undefined);
  function quote(bill,previous,requested){
   if(bill.void)throw new Error('A void sale cannot be returned.');
   if(bill.calculationVersion!==D.CALCULATION_VERSION||bill.lines.some(l=>!l.allocations||l.taxable===undefined||l.tax===undefined))throw new Error('Legacy sale lacks verified tax/batch allocations. Preserve it for owner reconciliation.');

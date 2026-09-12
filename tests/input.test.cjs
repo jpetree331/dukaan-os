@@ -18,7 +18,8 @@ test('B16: birthday, briefing and CSV icon HTML are rendered as text',async()=>{
   let html;A.el=s=>{html=s;return node('summary');};A.modal=()=>{};(await A.morningBrief(true));
   assert.ok(!html.includes(marker));assert.match(html,/&lt;img/);
   await csvImport(h,'name,price,emoji\nImported,100,"'+marker.replace(/"/g,'""')+'"');
-  A.views.inventory(node('main'));assert.ok(!node('main').innerHTML.includes(marker));assert.match(node('main').innerHTML,/&lt;img/);
+  // Inventory shows a monogram mark instead of the item's emoji field, so the marker must simply never reach the DOM unescaped.
+  A.views.inventory(node('main'));assert.ok(!node('main').innerHTML.includes(marker));assert.ok(!/<img/.test(node('main').innerHTML));
   A.views.billing(node('main'));assert.ok(!node('#itemGrid').innerHTML.includes(marker));
   h.ctx.matchMedia=()=>({matches:false});
   node('div').firstElementChild=node('fly');node('fly').animate=()=>({});

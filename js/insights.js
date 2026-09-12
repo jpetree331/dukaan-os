@@ -177,8 +177,8 @@
             text: cust.balance > 0.5
               ? (hi ? cust.name + ' पर ' + money(cust.balance, true) + ' बाकी है' + (days ? ', ' + days + ' दिन से' : '') + '।'
                 : cust.name + ' owes you ' + money(cust.balance, true) + (days ? ', pending for ' + days + ' days' : '') + '.')
-              : (hi ? cust.name + ' का पूरा हिसाब साफ है ✅' : cust.name + ' has no pending balance ✅'),
-            action: cust.balance > 0.5 ? { label: '💬 ' + t('cus.remind'), fn: () => App.remindCustomer(cust.id) } : null
+              : (hi ? cust.name + ' का पूरा हिसाब साफ है' : cust.name + ' has no pending balance'),
+            action: cust.balance > 0.5 ? { label: '' + t('cus.remind'), fn: () => App.remindCustomer(cust.id) } : null
           };
         }
         const bs = R.bills.filter((b) => b.customerId === cust.id);
@@ -187,7 +187,7 @@
           headline: money(spent, true),
           text: hi ? cust.name + ' ने ' + label + ' ' + bs.length + ' बार में ' + money(spent, true) + ' खर्च किया।' + (cust.balance > 0.5 ? ' (' + money(cust.balance) + ' अभी बाकी)' : '')
             : cust.name + ' spent ' + money(spent, true) + ' ' + label + ' across ' + bs.length + ' bills.' + (cust.balance > 0.5 ? ' ' + money(cust.balance) + ' still pending.' : ''),
-          action: { label: '👤 ' + cust.name, fn: () => App.customerDetail(cust.id) }
+          action: { label: '' + cust.name, fn: () => App.customerDetail(cust.id) }
         };
       }
 
@@ -204,7 +204,7 @@
             + (v > 0.05 ? ', लगभग ' + Math.max(1, Math.round(stock / v)) + ' दिन चलेगा।' : '।')
             : App.itemName(item) + ' sold ' + qty + ' units ' + label + ' (' + money(amt) + '). ' + stock + ' left in stock'
             + (v > 0.05 ? ' — about ' + Math.max(1, Math.round(stock / v)) + ' days of cover.' : '.'),
-          action: { label: '📦 ' + t('inv.restock'), fn: () => App.restockModal(item.id) }
+          action: { label: '' + t('inv.restock'), fn: () => App.restockModal(item.id) }
         };
       }
 
@@ -223,8 +223,8 @@
         return {
           headline: low.length + (hi ? ' सामान' : ' items'),
           text: low.length ? (hi ? 'कम या खत्म: ' : 'Low or out of stock: ') + low.slice(0, 8).map((i) => App.itemName(i) + ' (' + App.itemStock(i) + ')').join(', ')
-            : (hi ? 'सारा सामान भरपूर है ✅' : 'Everything is well stocked ✅'),
-          action: { label: '📦 ' + t('nav.inventory'), fn: () => App.go('inventory') }
+            : (hi ? 'सारा सामान भरपूर है' : 'Everything is well stocked'),
+          action: { label: '' + t('nav.inventory'), fn: () => App.go('inventory') }
         };
       }
       if (wantsDue) {
@@ -234,8 +234,8 @@
           text: dues.length ? (hi ? dues.length + ' ग्राहकों से ' + money(App.stats.totalDue(), true) + ' लेना है। सबसे ज़्यादा: '
             : dues.length + ' customers owe you ' + money(App.stats.totalDue(), true) + '. Biggest: ')
             + dues.slice(0, 4).map((d) => d.c.name + ' ' + money(d.c.balance)).join(', ')
-            : (hi ? 'किसी का उधार बाकी नहीं 🎉' : 'Nobody owes you anything 🎉'),
-          action: { label: '🤝 ' + t('nav.customers'), fn: () => App.go('customers') }
+            : (hi ? 'किसी का उधार बाकी नहीं' : 'Nobody owes you anything'),
+          action: { label: '' + t('nav.customers'), fn: () => App.go('customers') }
         };
       }
       if (wantsProfit) {
@@ -276,7 +276,7 @@
       (await App.save({ sync: false, render: false }));
       setTimeout(() => {
         App.confetti({ count: 170, y: innerHeight * 0.3 });
-        App.toast('ok', '🎯 ' + t('dash.targetHit'), money(today, true) + ' / ' + money(App.storeTarget()));
+        App.toast('ok', '' + t('dash.targetHit'), money(today, true) + ' / ' + money(App.storeTarget()));
       }, 700);
     }
   };
@@ -293,13 +293,13 @@
     (await App.save({ sync: false, render: false }));
 
     const body = App.el('<div>' +
-      '<div class="ai-card"><div class="ai-h">✨ ' + (force ? t('rep.eod') : t('dash.yesterday')) + '</div>' +
+      '<div class="ai-card"><div class="ai-h"> ' + (force ? t('rep.eod') : t('dash.yesterday')) + '</div>' +
       lines.map((l) => '<p style="font-size:14.5px;line-height:1.65;margin-bottom:9px">' + esc(l).replace(/\*(.+?)\*/g, '<b>$1</b>') + '</p>').join('') +
       '</div></div>');
     App.modal({
-      title: '🌅 ' + (App.lang() === 'hi' ? 'नमस्ते!' : 'Good morning!'), body,
+      title: '' + (App.lang() === 'hi' ? 'नमस्ते!' : 'Good morning!'), body,
       buttons: [
-        { label: '🔊', cls: 'ghost', keepOpen: true, fn: () => App.voice.speak(lines.join(' ').replace(/\*/g, '')) },
+        { label: 'Read aloud', cls: 'ghost', keepOpen: true, fn: () => App.voice.speak(lines.join(' ').replace(/\*/g, '')) },
         { label: t('com.done'), cls: 'pri' }
       ]
     });
@@ -324,92 +324,92 @@
     const greet = App.lang() === 'hi' ? 'नमस्ते' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
     main.innerHTML =
-      '<div class="page-head"><div><h1>' + greet + ', ' + esc((App.me() || {}).name || 'Boss') + ' 👋</h1>' +
+      '<div class="page-head"><div><div class="eyebrow">' + greet + ', ' + esc((App.me() || {}).name || 'Owner') + '</div><h1>' + esc(st.shopName) + '</h1>' +
       '<div class="sub">' + t('dash.sub', { shop: esc(st.shopName) }) + ' · ' + new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div></div>' +
       '<div class="spacer"></div>' +
-      '<div class="btn-row"><button class="btn sm" id="briefBtn">✨ ' + t('rep.eod') + '</button>' +
-      '<button class="btn pri" id="goBill">🧾 ' + t('pos.charge') + '</button></div></div>' +
+      '<div class="btn-row"><button class="btn sm" id="briefBtn"> ' + t('rep.eod') + '</button>' +
+      '<button class="btn pri" id="goBill"> ' + t('pos.charge') + '</button></div></div>' +
 
       '<div class="grid g-4" style="margin-bottom:16px">' +
-      '<div class="stat accent"><span class="em">💰</span><div class="k">' + t('dash.todaySales') + '</div>' +
+      '<div class="stat accent"><span class="em"></span><div class="k">' + t('dash.todaySales') + '</div>' +
       '<div class="v">' + money(today.sales) + '</div>' +
       '<div class="d">' + t('dash.bills', { n: today.count }) +
       (dPct != null ? ' · ' + (dPct >= 0 ? '▲ ' : '▼ ') + Math.abs(dPct) + '% vs ' + (App.lang() === 'hi' ? 'कल' : 'yest') : '') + '</div></div>' +
 
-      '<div class="stat"><span class="em">📅</span><div class="k">' + t('dash.weekSales') + '</div>' +
+      '<div class="stat"><span class="em"></span><div class="k">' + t('dash.weekSales') + '</div>' +
       '<div class="v">' + money(week.sales) + '</div><div class="d muted">' + t('dash.bills', { n: week.count }) + '</div></div>' +
 
-      '<div class="stat"><span class="em">📈</span><div class="k">' + t('dash.monthSales') + '</div>' +
+      '<div class="stat"><span class="em"></span><div class="k">' + t('dash.monthSales') + '</div>' +
       '<div class="v">' + money(month.sales) + '</div><div class="d up">' + t('dash.profit') + ' ' + money(month.profit) + '</div></div>' +
 
-      '<div class="stat ' + (due > 0 ? 'bad' : 'good') + '"><span class="em">📒</span><div class="k">' + t('dash.pendingDue') + '</div>' +
+      '<div class="stat ' + (due > 0 ? 'bad' : 'good') + '"><span class="em"></span><div class="k">' + t('dash.pendingDue') + '</div>' +
       '<div class="v" style="color:' + (due > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(due) + '</div>' +
       '<div class="d muted">' + t('dash.owed') + ' ' + money(owed) + '</div></div></div>' +
 
       '<div class="grid" style="grid-template-columns:1fr 320px;gap:14px;margin-bottom:16px" id="dashRow">' +
       '<div class="card">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
-      '<h3 style="font-size:15px">🎯 ' + t('dash.target') + '</h3><div class="spacer"></div>' +
+      '<h3 style="font-size:15px"> ' + t('dash.target') + '</h3><div class="spacer"></div>' +
       '<b class="num">' + money(today.sales) + ' / ' + money(App.storeTarget()) + '</b></div>' +
       '<div class="pbar" style="height:12px"><i class="' + (pct >= 100 ? 'g' : '') + '" style="width:' + pct + '%"></i></div>' +
       '<p style="font-size:12.5px;margin-top:8px;font-weight:650;color:' + (pct >= 100 ? 'var(--ok)' : 'var(--ink-3)') + '">' +
       (pct >= 100 ? t('dash.targetHit') : t('dash.toGo', { amt: money(App.storeTarget() - today.sales) })) + '</p>' +
-      '<div class="sec-title">📈 ' + t('dash.trend') + '</div>' +
+      '<div class="sec-title"> ' + t('dash.trend') + '</div>' +
       App.chart.line(series.map((s) => ({ label: s.label, short: s.dow[0], value: s.value })), { height: 200 }) +
       '</div>' +
 
-      '<div class="card"><h3 style="font-size:15px;margin-bottom:12px">💚 ' + t('dash.health') + '</h3>' +
+      '<div class="card"><h3 style="font-size:15px;margin-bottom:12px"> ' + t('dash.health') + '</h3>' +
       '<div class="ring-wrap">' + App.chart.ring(health.score) +
       '<div style="flex:1;font-size:12.5px">' +
       '<div class="kv" style="padding:5px 0"><span>' + t('com.stock') + '</span><b>' + health.stock + '%</b></div>' +
       '<div class="kv" style="padding:5px 0"><span>' + t('dash.trend') + '</span><b>' + health.trend + '%</b></div>' +
       '<div class="kv" style="padding:5px 0"><span>' + t('cus.due') + '</span><b>' + health.dues + '%</b></div>' +
       '</div></div>' +
-      '<div class="sec-title">🏆 ' + t('dash.topItems') + '</div>' +
+      '<div class="sec-title"> ' + t('dash.topItems') + '</div>' +
       (top.length ? top.map((x, i) => '<div class="list-row" style="padding:8px 0">' +
         '<span class="rank ' + (i < 3 ? 'g' + (i + 1) : '') + '">' + (i + 1) + '</span>' +
-        '<span style="flex:1;min-width:0"><b style="font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(x.emoji || '') + ' ' + esc(x.name) + '</b></span>' +
+        '<span style="flex:1;min-width:0"><b style="font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(x.name) + '</b></span>' +
         '<b class="num" style="font-size:13px">' + x.qty + '</b></div>').join('')
         : '<p class="muted" style="font-size:13px">No sales yet</p>') +
       '</div></div>' +
 
-      '<div class="sec-title">🔔 ' + t('dash.needAttention') + '</div>' +
+      '<div class="sec-title"> ' + t('dash.needAttention') + '</div>' +
       (insights.length || outLow.length ?
         '<div class="grid g-2" style="margin-bottom:8px">' +
-        '<div class="ai-card"><div class="ai-h">✨ ' + t('ai.title') + '</div>' +
-        (insights.length ? insights.map((x) => '<div class="list-row" style="padding:9px 0;border-color:color-mix(in srgb,var(--indigo) 14%,transparent)">' +
-          '<span style="font-size:17px">' + ({ restock: '📦', due: '📒', expiry: '📅', anomaly: '🔍', slow: '🐌' }[x.kind] || '💡') + '</span>' +
+        '<div class="ai-card"><div class="ai-h"> ' + t('ai.title') + '</div>' +
+        (insights.length ? insights.map((x) => '<div class="list-row" style="padding:9px 0;border-color:color-mix(in srgb,var(--ink-2) 14%,transparent)">' +
+          '<span class="ins-ic">' + App.icon({ restock: 'box', due: 'wallet', expiry: 'calendar', anomaly: 'alert', slow: 'clock' }[x.kind] || 'sparkle', 16) + '</span>' +
           '<span style="flex:1;font-size:13.5px;font-weight:600;line-height:1.45">' + esc(x.text) + '</span>' +
           (x.kind === 'restock' ? '<button class="btn xs pri" data-ai-restock="' + x.item.id + '">+' + x.suggest + '</button>' : '') +
-          (x.kind === 'due' ? '<button class="btn xs ok" data-ai-pay="' + x.customer.id + '">💰</button>' : '') +
-          (x.kind === 'anomaly' ? '<button class="btn xs ghost" data-ai-bill="' + x.bill.id + '">👁️</button>' : '') +
+          (x.kind === 'due' ? '<button class="btn xs ok" data-ai-pay="' + x.customer.id + '">' + App.icon('cash',16) + '</button>' : '') +
+          (x.kind === 'anomaly' ? '<button class="btn xs ghost" data-ai-bill="' + x.bill.id + '">' + App.icon('eye',16) + '</button>' : '') +
           '</div>').join('')
           : '<p style="font-size:13.5px">' + t('ai.nothing') + '</p>') + '</div>' +
 
-        '<div class="card"><div class="sec-title" style="margin-top:0">⚠️ ' + t('inv.low') + ' / ' + t('inv.out') + '</div>' +
+        '<div class="card"><div class="sec-title" style="margin-top:0"> ' + t('inv.low') + ' / ' + t('inv.out') + '</div>' +
         (outLow.length ? outLow.slice(0, 6).map((i) => '<div class="list-row" style="padding:8px 0">' +
-          '<span style="font-size:17px">' + esc(i.emoji || '📦') + '</span>' +
+          App.mark(i) +
           '<span style="flex:1;min-width:0"><b style="font-size:13.5px">' + esc(App.itemName(i)) + '</b></span>' +
           '<span class="chip ' + (App.stockState(i) === 'out' ? 'bad' : 'warn') + '">' + App.itemStock(i) + '</span>' +
-          '<button class="btn xs" data-ai-restock="' + i.id + '">+</button></div>').join('')
+          '<button class="btn xs" data-ai-restock="' + i.id + '">' + App.icon('plus',16) + '</button></div>').join('')
           : '<p class="muted" style="font-size:13px">' + t('inv.allGood') + '</p>') +
-        (exp.length ? '<div class="alert warn" style="margin-top:10px"><span class="ai">📅</span><span>' + exp.length + ' ' + t('inv.expiring').toLowerCase() + '</span></div>' : '') +
+        (exp.length ? '<div class="alert warn" style="margin-top:10px"><span class="ai"></span><span>' + exp.length + ' ' + t('inv.expiring').toLowerCase() + '</span></div>' : '') +
         '</div></div>'
-        : '<div class="alert ok"><span class="ai">✅</span><span>' + t('dash.noAlerts') + '</span></div>') +
+        : '<div class="alert ok"><span class="ai"></span><span>' + t('dash.noAlerts') + '</span></div>') +
 
-      '<div class="sec-title">🧾 ' + t('dash.recent') + '</div>' +
+      '<div class="sec-title"> ' + t('dash.recent') + '</div>' +
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
       '<th>#</th><th>' + t('pos.customer') + window.App.moneyLiteral('</th><th>Items</th><th>Mode</th><th class="r">') + t('com.total') + '</th><th class="r">When</th><th></th></tr></thead><tbody>' +
       (App.bills().slice(0, 10).map((b) => '<tr' + (b.void ? ' style="opacity:.45"' : '') + '>' +
         '<td class="num">' + b.no + '</td>' +
         '<td><b>' + esc(b.customerName) + '</b></td>' +
         '<td class="muted" style="font-size:12.5px">' + esc(b.lines.map((l) => l.name + '×' + l.qty).join(', ').slice(0, 44)) + '</td>' +
-        '<td><span class="chip ' + (b.credit ? 'bad' : b.mode === 'cash' ? 'ok' : '') + '">' + (b.credit ? '📒 ' + t('pos.credit') : String(b.mode).toUpperCase()) + '</span></td>' +
+        '<td><span class="chip ' + (b.credit ? 'bad' : b.mode === 'cash' ? 'ok' : '') + '">' + (b.credit ? '' + t('pos.credit') : String(b.mode).toUpperCase()) + '</span></td>' +
         '<td class="r num"><b' + (b.void ? ' style="text-decoration:line-through"' : '') + '>' + money(b.total) + '</b></td>' +
         '<td class="r muted" style="font-size:12.5px;white-space:nowrap">' + App.timeAgo(b.at) + '</td>' +
-        '<td class="r" style="white-space:nowrap"><button class="btn xs ghost" data-view-bill="' + b.id + '">👁️</button>' +
-        (!b.void && App.isOwner() ? '<button class="btn xs ghost" data-void="' + b.id + '">✕</button>' : '') + '</td></tr>').join('') ||
-        '<tr><td colspan="7">' + App.emptyState('🧾', 'No bills yet', 'Your first sale will show up here') + '</td></tr>') +
+        '<td class="r" style="white-space:nowrap"><button class="btn xs ghost" data-view-bill="' + b.id + '">' + App.icon('eye',16) + '</button>' +
+        (!b.void && App.isOwner() ? '<button class="btn xs ghost" data-void="' + b.id + '">' + App.icon('x',16) + '</button>' : '') + '</td></tr>').join('') ||
+        '<tr><td colspan="7">' + App.emptyState('', 'No bills yet', 'Your first sale will show up here') + '</td></tr>') +
       '</tbody></table></div></div>';
 
     if (w.innerWidth <= 1000) App.$('#dashRow').style.gridTemplateColumns = '1fr';
@@ -443,41 +443,41 @@
     const R = App.stats.days(repRange);
     const modes = {};
     R.bills.forEach((b) => { const k = b.credit ? 'credit' : b.mode; modes[k] = App.round2((modes[k] || 0) + b.total); });
-    const MC = { cash: '#16A34A', upi: '#6366F1', card: '#F5A524', credit: '#DC2626' };
+    const MC = { cash: 'var(--ok)', upi: 'var(--ink-2)', card: 'var(--warn)', credit: 'var(--bad)' };
     const cash = App.stats.cashExpected();
     const gstRows = App.gstBreakdown(R.bills,R.returns);
     const acts = App.activity().slice(0, 25);
 
     main.innerHTML =
-      '<div class="page-head"><div><h1>📊 ' + t('rep.title') + '</h1><div class="sub">' + t('rep.sub') + '</div></div>' +
+      '<div class="page-head"><div><h1> ' + t('rep.title') + '</h1><div class="sub">' + t('rep.sub') + '</div></div>' +
       '<div class="spacer"></div>' +
       '<div class="btn-row">' +
       [7, 14, 30, 90].map((n) => '<button class="chip tap ' + (repRange === n ? 'sel' : '') + '" data-rr="' + n + '">' + n + 'd</button>').join('') +
-      '<button class="btn sm" id="repCsv">📤 ' + t('rep.exportCsv') + window.App.moneyLiteral('</button><button class="btn sm" id="cashShifts">Cash shifts</button><button class="btn sm" id="statements">Statements</button></div></div><p class="muted">This overview uses browser-local dates and excludes voided bills. Use Statements for store business dates and dated corrections.</p>') +
+      '<button class="btn sm" id="repCsv"> ' + t('rep.exportCsv') + window.App.moneyLiteral('</button><button class="btn sm" id="cashShifts">Cash shifts</button><button class="btn sm" id="statements">Statements</button></div></div><p class="muted">This overview uses browser-local dates and excludes voided bills. Use Statements for store business dates and dated corrections.</p>') +
 
       '<div class="ai-card" style="margin-bottom:18px">' +
-      '<div class="ai-h">💬 ' + t('rep.ask') + '</div>' +
+      '<div class="ai-h"> ' + t('rep.ask') + '</div>' +
       '<div class="row" style="gap:8px"><input class="inp" id="askQ" placeholder="' + t('rep.askPh') + '">' +
-      '<button class="btn pri" id="askGo" style="flex:0 0 auto">→</button>' +
-      '<button class="btn" id="askMic" style="flex:0 0 auto">🎙️</button></div>' +
+      '<button class="btn pri" id="askGo" style="flex:0 0 auto">' + App.icon('arrowRight',16) + '</button>' +
+      '<button class="btn" id="askMic" style="flex:0 0 auto">' + App.icon('mic',16) + '</button></div>' +
       '<div id="askOut" style="margin-top:12px"></div>' +
       '<div class="chip-row" style="margin-top:10px">' +
       ['How much did I sell today?', "Who owes me money?", 'Best selling items this month', "What's running low?"]
         .map((s) => '<button class="chip tap" data-ask="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div></div>' +
 
       '<div class="grid g-4" style="margin-bottom:16px">' +
-      window.App.moneyLiteral('<div class="stat accent"><span class="em">💰</span><div class="k">Net ') + t('rep.sales') + ' · ' + repRange + 'd</div><div class="v">' + money(R.sales) + '</div><div class="d">' + R.count + ' bills · returns '+money(R.returned,true)+'</div></div>' +
-      '<div class="stat"><span class="em">📈</span><div class="k">' + t('rep.profit') + '</div><div class="v">' + money(R.profit) + '</div>' +
+      window.App.moneyLiteral('<div class="stat accent"><span class="em"></span><div class="k">Net ') + t('rep.sales') + ' · ' + repRange + 'd</div><div class="v">' + money(R.sales) + '</div><div class="d">' + R.count + ' bills · returns '+money(R.returned,true)+'</div></div>' +
+      '<div class="stat"><span class="em"></span><div class="k">' + t('rep.profit') + '</div><div class="v">' + money(R.profit) + '</div>' +
       '<div class="d up">' + (R.sales ? Math.round(R.profit / R.sales * 100) : 0) + '% margin</div></div>' +
-      '<div class="stat"><span class="em">🧾</span><div class="k">Avg bill</div><div class="v">' + money(R.avg) + '</div><div class="d muted">' + R.items + ' units</div></div>' +
-      '<div class="stat"><span class="em">📦</span><div class="k">' + t('dash.stockValue') + '</div><div class="v">' + money(App.stats.stockValue()) + '</div>' +
+      '<div class="stat"><span class="em"></span><div class="k">Avg bill</div><div class="v">' + money(R.avg) + '</div><div class="d muted">' + R.items + ' units</div></div>' +
+      '<div class="stat"><span class="em"></span><div class="k">' + t('dash.stockValue') + '</div><div class="v">' + money(App.stats.stockValue()) + '</div>' +
       '<div class="d muted">' + App.items().length + ' items</div></div></div>' +
 
-      '<div class="card" style="margin-bottom:16px"><div class="sec-title" style="margin-top:0">📊 ' + t('rep.sales') + '</div>' +
+      '<div class="card" style="margin-bottom:16px"><div class="sec-title" style="margin-top:0"> ' + t('rep.sales') + '</div>' +
       App.chart.bars(series.map((s) => ({ label: s.label, short: repRange > 30 ? '' : s.label.split(' ')[0], value: s.value })), { height: 240 }) + '</div>' +
 
       '<div class="grid g-2" style="margin-bottom:16px">' +
-      '<div class="card"><div class="sec-title" style="margin-top:0">💳 Original bills by mode (before returns)</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0"> Original bills by mode (before returns)</div>' +
       '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">' +
       App.chart.donut(Object.keys(modes).map((k) => ({ label: k, value: modes[k], color: MC[k] || '#999' })), { caption: repRange + ' days' }) +
       '<div style="flex:1;min-width:150px">' +
@@ -486,7 +486,7 @@
         '<b class="num">' + money(modes[k]) + '</b></div>').join('') : '<p class="muted" style="font-size:13px">No bills yet</p>') +
       '</div></div></div>' +
 
-      '<div class="card"><div class="sec-title" style="margin-top:0">💵 ' + (cash.businessDate?'Cash movements · '+cash.businessDate:t('rep.cash')) + '</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0"> ' + (cash.businessDate?'Cash movements · '+cash.businessDate:t('rep.cash')) + '</div>' +
       window.App.moneyLiteral('<div class="kv"><span>Bills paid in cash</span><b class="num">') + money(cash.billCash, true) + '</b></div>' +
       window.App.moneyLiteral('<div class="kv"><span>Customer cash received (collections and advances)</span><b class="num">') + money(cash.payCash, true) + '</b></div>' +
       window.App.moneyLiteral('<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ') + money(cash.supplierOut ?? cash.out-cash.refundCash, true) + '</b></div>' +
@@ -499,7 +499,7 @@
       '<div id="reconOut" style="margin-top:10px"></div>')+'</div></div>' +
 
       (st.gstEnabled ?
-        '<div class="card" style="margin-bottom:16px"><div class="sec-title" style="margin-top:0">🧾 ' + t('rep.gst') + ' · ' + repRange + 'd</div>' +
+        '<div class="card" style="margin-bottom:16px"><div class="sec-title" style="margin-top:0"> ' + t('rep.gst') + ' · ' + repRange + 'd</div>' +
         '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Rate</th><th class="r">' + t('rep.taxable') + '</th><th class="r">CGST</th><th class="r">SGST</th><th class="r">' + t('rep.collected') + '</th></tr></thead><tbody>' +
         (Object.keys(gstRows).length ? Object.keys(gstRows).sort((a, b) => a - b).map((rate) =>
           '<tr><td><b>' + rate + '%</b></td><td class="r num">' + money(gstRows[rate].taxable, true) + '</td>' +
@@ -507,12 +507,12 @@
           '<td class="r num"><b>' + money(gstRows[rate].tax, true) + '</b></td></tr>').join('')
           : '<tr><td colspan="5" class="muted" style="text-align:center">No taxed bills in this period</td></tr>') +
         '</tbody></table></div></div>'
-        : '<div class="alert info" style="margin-bottom:16px"><span class="ai">🧾</span><span>' + t('rep.noGst') + ' — ' +
+        : '<div class="alert info" style="margin-bottom:16px"><span class="ai"></span><span>' + t('rep.noGst') + ' — ' +
         '<button class="btn xs" id="goSettings">' + t('nav.settings') + '</button></span></div>') +
 
-      '<div class="card"><div class="sec-title" style="margin-top:0">📋 ' + t('rep.staffLog') + '</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0"> ' + t('rep.staffLog') + '</div>' +
       (acts.length ? acts.map((a) => '<div class="list-row" style="padding:9px 0">' +
-        '<span class="rank">' + ({ bill: '🧾', payment: '💰', void: '✕', restock: '📦', purchase: '🚚', spay: '💸', item: '✏️', customer: '👤', remind: '💬', import: '📥', sys: '⚙️' }[a.type] || '•') + '</span>' +
+        '<span class="rank">' + ({ bill: '', payment: '', void: '✕', restock: '', purchase: '', spay: '', item: '', customer: '', remind: '', import: '', sys: '' }[a.type] || '•') + '</span>' +
         '<span style="flex:1;font-size:13.5px">' + esc(a.text) + '</span>' +
         '<span class="chip">' + esc((App.staff(a.staffId) || {}).name || '—') + '</span>' +
         '<span class="muted" style="font-size:12px;white-space:nowrap">' + App.timeAgo(a.at) + '</span></div>').join('')
@@ -524,9 +524,9 @@
       out.innerHTML = '<div class="sk sk-line" style="width:70%"></div><div class="sk sk-line" style="width:45%"></div>';
       setTimeout(() => {
         const a = AI.ask(q);
-        if (!a) { out.innerHTML = '<div class="alert warn"><span class="ai">🤔</span><span>' + t('ai.noAnswer') + '</span></div>'; return; }
+        if (!a) { out.innerHTML = '<div class="alert warn"><span class="ai"></span><span>' + t('ai.noAnswer') + '</span></div>'; return; }
         out.innerHTML = '<div style="background:var(--surface);border-radius:14px;padding:14px 16px;border:1px solid var(--line)">' +
-          '<div style="font-size:26px;font-weight:850;letter-spacing:-.03em;color:var(--saffron-d)">' + esc(a.headline) + '</div>' +
+          '<div style="font-size:26px;font-weight:850;letter-spacing:-.03em;color:var(--ink)">' + esc(a.headline) + '</div>' +
           '<p style="font-size:14px;line-height:1.6;margin-top:6px">' + esc(a.text) + '</p>' +
           (a.action ? '<button class="btn sm" id="askAct" style="margin-top:10px">' + esc(a.action.label) + '</button>' : '') + '</div>';
         if (a.action) App.$('#askAct').onclick = a.action.fn;
@@ -555,16 +555,15 @@
       if (e.target.closest('#reconcile')) {
         const counted = parseFloat(App.$('#countedCash').value);
         const o = App.$('#reconOut');
-        if (isNaN(counted)) { o.innerHTML = '<div class="alert warn"><span class="ai">✋</span><span>Enter the counted amount</span></div>'; return; }
+        if (isNaN(counted)) { o.innerHTML = '<div class="alert warn"><span class="ai"></span><span>Enter the counted amount</span></div>'; return; }
         const d = App.round2(counted - cash.net);
         const resultHTML = Math.abs(d) < 1
-          ? '<div class="alert ok"><span class="ai">✅</span><span>' + t('rep.match') + '</span></div>'
-          : '<div class="alert ' + (d < 0 ? 'bad' : 'warn') + '"><span class="ai">' + (d < 0 ? '⚠️' : '💡') + '</span><span>' +
+          ? '<div class="alert ok"><span class="ai"></span><span>' + t('rep.match') + '</span></div>'
+          : '<div class="alert ' + (d < 0 ? 'bad' : 'warn') + '"><span class="ai">' + (d < 0 ? '' : '') + '</span><span>' +
           (d < 0 ? t('rep.short', { amt: money(-d, true) }) : t('rep.over', { amt: money(d, true) })) + '</span></div>';
         App.log('cash', 'Cash counted ' + money(counted, true) + ' vs expected ' + money(cash.net, true));
         (await App.save({ render: false }));
         o.innerHTML = resultHTML;
-        if (Math.abs(d) < 1) App.confetti({ count: 45 });
         return;
       }
       if (e.target.closest('#repCsv')) {

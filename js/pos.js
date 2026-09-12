@@ -79,8 +79,8 @@
     const th = it.threshold != null ? it.threshold : App.DB().settings.lowStock;
     const pct = Math.max(4, Math.min(100, (s / Math.max(th * 3, 1)) * 100));
     return '<button class="item-card ' + (state === 'out' ? 'out' : state === 'low' ? 'low' : '') + '" data-add="' + it.id + '">' +
-      (it.fav ? '<span class="fav">⭐</span>' : '') +
-      '<span class="emo">' + esc(it.emoji || '🛍️') + '</span>' +
+      (it.fav ? '<span class="fav"></span>' : '') +
+      App.mark(it, 'lg') +
       '<span class="nm">' + esc(App.itemName(it)) + '</span>' +
       '<span class="pr">' + money(it.price) + '</span>' +
       '<span class="st">' + (state === 'out' ? t('pos.outOfStock') : s + ' ' + t('com.stock').toLowerCase()) + '</span>' +
@@ -105,7 +105,7 @@
     const box = App.$('#itemGrid'); if (!box) return;
     const list = visibleItems();
     box.innerHTML = list.length ? list.map(itemCard).join('')
-      : App.emptyState('🔍', t('pos.noItems'), t('pos.quickHint'),
+      : App.emptyState('', t('pos.noItems'), t('pos.quickHint'),
         App.can('edit_inventory') ? '<button class="btn pri sm" id="quickAdd">' + t('pos.addQuick') + '</button>' : '');
     App.enhanceAccessibility(box);
   }
@@ -120,11 +120,11 @@
 
     box.innerHTML = cart.lines.length ? cart.lines.map((l) =>
       '<div class="cart-line" data-line="' + l.itemId + '">' +
-      '<span style="font-size:18px">' + esc(l.emoji || '🛍️') + '</span>' +
+      App.mark(l.name) +
       '<span class="cl-n"><b>' + esc(l.name) + '</b><span>' + money(l.price) + ' × ' + l.qty +' '+esc(l.unitLabel||'')+ '</span></span>' +
       '<span class="qty"><button data-dec="' + l.itemId + '">−</button><b>' + l.qty + '</b><button data-inc="' + l.itemId + '">+</button></span>' +
       '<span class="cl-amt">' + money(l.price * l.qty) + '</span></div>').join('')
-      : '<div class="empty" style="padding:26px 16px"><div class="e">🛒</div><h4>' + t('pos.empty') + '</h4><p>' + t('pos.emptySub') + '</p></div>';
+      : '<div class="empty" style="padding:26px 16px"><div class="e"></div><h4>' + t('pos.empty') + '</h4><p>' + t('pos.emptySub') + '</p></div>';
 
     App.$('#cartCount').textContent = cartQty();
     const f = App.$('#cartFoot');
@@ -133,23 +133,23 @@
 
     f.innerHTML =
       '<button class="btn sm block" id="pickCust" style="margin-bottom:10px;justify-content:flex-start">' +
-      '<span>👤</span><span>' + esc(cust ? cust.name : t('pos.walkin')) + '</span>' +
+      '<span></span><span>' + esc(cust ? cust.name : t('pos.walkin')) + '</span>' +
       (cust && cust.balance > 0 ? '<span class="chip bad xs" style="margin-left:auto;padding:2px 8px">' + money(cust.balance) + ' ' + t('com.pending').toLowerCase() + '</span>' : '<span style="margin-left:auto;opacity:.5">▾</span>') +
       '</button>' +
       '<div class="tot-row"><span>' + t('pos.subtotal') + '</span><span class="num">' + money(T.sub, true) + '</span></div>' +
-      '<div class="tot-row"><button id="discBtn" style="font-size:13.5px;font-weight:650;color:var(--saffron);text-decoration:underline dotted">' + t('pos.discount') + '</button>' +
+      '<div class="tot-row"><button id="discBtn" style="font-size:13.5px;font-weight:650;color:var(--ink);text-decoration:underline dotted">' + t('pos.discount') + '</button>' +
       '<span class="num">' + (T.disc ? '− ' + money(T.disc, true) : '—') + '</span></div>' +
       (App.DB().settings.gstEnabled ? '<div class="tot-row"><span>' + t('pos.tax') + '</span><span class="num">' + money(T.tax, true) + '</span></div>' : '') +
-      (cust && pts > 0 ? '<div class="tot-row"><button id="redeemBtn" style="font-size:13px;font-weight:650;color:var(--tulsi)">★ ' + t('pos.redeem') + ' (' + pts + ' = ' + money(ptVal) + ')</button><span class="num">' + (cart.redeem ? '− ' + money(cart.redeem) : '—') + '</span></div>' : '') +
+      (cust && pts > 0 ? '<div class="tot-row"><button id="redeemBtn" style="font-size:13px;font-weight:650;color:var(--ok)">★ ' + t('pos.redeem') + ' (' + pts + ' = ' + money(ptVal) + ')</button><span class="num">' + (cart.redeem ? '− ' + money(cart.redeem) : '—') + '</span></div>' : '') +
       '<div class="tot-row grand"><span>' + t('pos.grand') + '</span><span class="num">' + money(T.total, true) + '</span></div>' +
       '<div class="pay-modes">' +
-      [['cash', '💵', t('pos.cash')], ['upi', '📱', t('pos.upi')], ['card', '💳', t('pos.card')], ['credit', '📒', t('pos.credit')]]
+      [['cash', '', t('pos.cash')], ['upi', '', t('pos.upi')], ['card', '', t('pos.card')], ['credit', '', t('pos.credit')]]
         .map((m) => '<button class="pay-mode ' + (cart.mode === m[0] ? 'on' : '') + (m[0] === 'credit' ? ' credit' : '') + '" data-mode="' + m[0] + '"><span>' + m[1] + '</span>' + esc(m[2]) + '</button>').join('') +
       '</div>' +
       '<div class="btn-row" style="flex-wrap:nowrap">' +
-      '<button class="btn sm" id="clearCart" ' + (cart.lines.length ? '' : 'disabled') + ' title="' + t('pos.clear') + '">🗑️</button>' +
+      '<button class="btn sm" id="clearCart" ' + (cart.lines.length ? '' : 'disabled') + ' title="' + t('pos.clear') + '">' + App.icon('trash',16) + '</button>' +
       '<button class="btn ' + (cart.mode === 'credit' ? 'danger' : 'ok') + ' big" id="charge" style="flex:1" ' + (cart.lines.length ? '' : 'disabled') + '>' +
-      (cart.mode === 'credit' ? '📒 ' + t('pos.credit') : '✓ ' + t('pos.charge')) + ' · ' + money(T.total) + '</button></div>';
+      (cart.mode === 'credit' ? '' + t('pos.credit') : '✓ ' + t('pos.charge')) + ' · ' + money(T.total) + '</button></div>';
 
     const mob = App.$('#cartPanel');
     App.enhanceAccessibility(box);App.enhanceAccessibility(f);
@@ -169,10 +169,10 @@
   /* ───────── customer picker ───────── */
   function pickCustomer() {
     const body = App.el('<div>' +
-      '<div class="search-wrap" style="margin-bottom:12px"><span class="mag">🔍</span>' +
+      '<div class="search-wrap" style="margin-bottom:12px"><span class="mag"></span>' +
       '<input class="inp" id="cq" placeholder="' + t('com.search') + '"></div>' +
       '<div id="clist" style="max-height:46vh;overflow:auto"></div>' +
-      '<button class="btn block sm" id="newCust" style="margin-top:12px">➕ ' + t('cus.add') + '</button></div>');
+      '<button class="btn block sm" id="newCust" style="margin-top:12px"> ' + t('cus.add') + '</button></div>');
 
     let m;
     const paint = () => {
@@ -218,7 +218,6 @@
     App.buzz(30);
 
     const r = App.$('#charge') ? App.$('#charge').getBoundingClientRect() : null;
-    App.confetti({ x: r ? r.left + r.width / 2 : innerWidth / 2, y: r ? r.top : innerHeight * 0.5, count: cart.mode === 'credit' ? 40 : 100 });
 
     clearCart();
     lastBill = bill;
@@ -246,12 +245,12 @@
       title: t('pos.done') + '  #' + bill.no,
       body: wrap,
       buttons: [
-        App.can('void_bill')&&!bill.void?{label:App.uiText('Return / refunds'),cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
+        App.can('void_bill')&&!bill.void&&App.returnable(bill)?{label:App.uiText('Return / refunds'),cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
         {label:App.uiText('58 mm receipt preview'),cls:'ghost',keepOpen:true,fn:()=>App.thermal.preview(bill.id)},
-        { label: '💾 PNG', cls: 'ghost', keepOpen: true, fn: () => App.downloadCanvas(cv, 'bill-' + bill.no + '.png') },
-        { label: '🖨️ ' + t('com.print'), cls: 'ghost', keepOpen: true, fn: () => printBill(bill) },
+        { label: ' PNG', cls: 'ghost', keepOpen: true, fn: () => App.downloadCanvas(cv, 'bill-' + bill.no + '.png') },
+        { label: ' ' + t('com.print'), cls: 'ghost', keepOpen: true, fn: () => printBill(bill) },
         {
-          label: '💬 ' + t('pos.share'), cls: 'ok', keepOpen: true,
+          label: '' + t('pos.share'), cls: 'ok', keepOpen: true,
           fn: () => shareBill(bill, cust)
         },
         { label: '✓ ' + t('pos.newBill'), cls: 'pri' }
@@ -297,7 +296,7 @@
       (bill.tax ? '<div style="font-size:11px;display:flex;justify-content:space-between"><span>GST</span><span>' + bill.tax.toFixed(2) + '</span></div>' : '') +
       '<div style="font-size:15px;font-weight:800;display:flex;justify-content:space-between;margin-top:6px"><span>TOTAL</span><span>₹' + bill.total.toFixed(2) + '</span></div>' +
       (bill.credit && !bill.void ? '<div style="text-align:center;font-size:11px;font-weight:700;margin-top:6px">** UDHAAR — PENDING **</div>' : '') +
-      '<div style="text-align:center;font-size:10px;margin-top:10px">Thank you! धन्यवाद 🙏</div>';
+      '<div style="text-align:center;font-size:10px;margin-top:10px">Thank you! धन्यवाद </div>';
     if (bill.void) h = '<h1 style="text-align:center">CANCELLED / VOID</h1>' + h;
     App.printNode(h);
   }
@@ -339,11 +338,11 @@
       '<p class="muted" style="font-size:12.5px;margin-bottom:4px">' + t('voice.heard') + '</p>' +
       '<p style="font-size:15px;font-weight:650;margin-bottom:14px">“' + esc(said) + '”</p>' +
       '<div id="vlist"></div>' +
-      (res.unknown.length ? '<div class="alert warn" style="margin-top:12px"><span class="ai">❓</span><span>' +
+      (res.unknown.length ? '<div class="alert warn" style="margin-top:12px"><span class="ai"></span><span>' +
         t('voice.noMatch') + ': ' + esc(res.unknown.join(', ')) + '</span></div>' : '') + '</div>');
     const paint = () => {
       App.$('#vlist', body).innerHTML = res.lines.map((l, i) =>
-        '<div class="list-row"><span style="font-size:20px">' + esc(l.item.emoji || '🛍️') + '</span>' +
+        '<div class="list-row">' + App.mark(l.item) +
         '<span style="flex:1"><b>' + esc(App.itemName(l.item)) + '</b><br><small class="muted">' + money(l.item.price) + ' × ' + l.qty +' '+esc(App.units.label(l.item))+'<br>'+esc(l.said)+'</small></span>' +
         '<span class="qty"><button data-vd="' + i + '">−</button><b>' + l.qty + '</b><button data-vi="' + i + '">+</button></span>' +
         '<b class="num" style="width:62px;text-align:right">' + money(l.item.price * l.qty) + '</b></div>').join('');
@@ -355,7 +354,7 @@
       if (i2) { const i = +i2.dataset.vi; res.lines[i].qty++; paint(); }
     });
     App.modal({
-      title: '🎙️ ' + t('voice.confirm'), body,
+      title: '' + t('voice.confirm'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' },
       {
         label: t('com.add'), cls: 'pri',
@@ -391,7 +390,7 @@
     video.srcObject = stream;
     let stop = false;
     const m = App.modal({
-      title: '📷 ' + t('pos.scan'), body,
+      title: ' ' + t('pos.scan'), body,
       buttons: [{ label: App.uiText('Type it instead'), cls: 'ghost', fn: () => { stop = true; manual(); } }],
       onClose: () => { stop = true; stream.getTracks().forEach((tr) => tr.stop()); }
     });
@@ -432,20 +431,20 @@
     const favs = App.items().filter((i) => i.fav && App.sellableStock(i) > 0);
 
     main.innerHTML =
-      '<div class="page-head"><div><h1>🧾 ' + t('pos.title') + '</h1><div class="sub">' + t('pos.sub') + '</div></div>' +
+      '<div class="page-head"><div><h1> ' + t('pos.title') + '</h1><div class="sub">' + t('pos.sub') + '</div></div>' +
       '<div class="spacer"></div>' +
-      (lastBill ? '<button class="btn sm" id="showLast">🧾 ' + t('pos.lastBill') + ' #' + lastBill.no + '</button>' : '') +
+      (lastBill ? '<button class="btn sm" id="showLast"> ' + t('pos.lastBill') + ' #' + lastBill.no + '</button>' : '') +
       '</div>' +
       '<div class="pos">' +
       '<div>' +
       '<div class="pos-tools">' +
-      '<div class="search-wrap"><span class="mag">🔍</span><input class="inp" id="posSearch" placeholder="' + t('pos.searchItems') + '" value="' + esc(filter.q) + '"></div>' +
-      '<button class="btn pri" id="btnVoice" title="' + t('pos.voice') + '">🎙️ <span class="only-wide">' + t('pos.voice') + '</span></button>' +
-      '<button class="btn" id="btnScan" title="' + t('pos.scan') + '">📷</button>' +
+      '<div class="search-wrap"><span class="mag"></span><input class="inp" id="posSearch" placeholder="' + t('pos.searchItems') + '" value="' + esc(filter.q) + '"></div>' +
+      '<button class="btn pri" id="btnVoice" title="' + t('pos.voice') + '">' + App.icon('mic',16) + '<span class="only-wide">' + t('pos.voice') + '</span></button>' +
+      '<button class="btn" id="btnScan" title="' + t('pos.scan') + '">' + App.icon('scan',16) + '</button>' +
       '</div>' +
       (favs.length ? '<div class="chip-row" style="margin-bottom:12px">' +
-        '<span class="chip" style="background:transparent;border:0">⭐ ' + t('pos.favorites') + '</span>' +
-        favs.slice(0, 10).map((i) => '<button class="chip tap pri" data-add="' + i.id + '">' + esc(i.emoji || '') + ' ' + esc(App.itemName(i)) + ' · ' + money(i.price) + '</button>').join('') + '</div>' : '') +
+        '<span class="chip" style="background:transparent;border:0"> ' + t('pos.favorites') + '</span>' +
+        favs.slice(0, 10).map((i) => '<button class="chip tap pri" data-add="' + i.id + '">' + esc(App.itemName(i)) + ' · ' + money(i.price) + '</button>').join('') + '</div>' : '') +
       '<div class="chip-row" style="margin-bottom:13px">' +
       '<button class="chip tap ' + (filter.cat ? '' : 'sel') + '" data-cat="">' + t('com.all') + '</button>' +
       cats.map((c) => '<button class="chip tap ' + (filter.cat === c ? 'sel' : '') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>').join('') +
@@ -454,7 +453,7 @@
       '</div>' +
 
       '<div class="cart" id="cartPanel">' +
-      '<div class="cart-head" id="cartHead" role="button" tabindex="0" aria-controls="cartLines cartFoot"><span style="font-size:18px">🛒</span><h3>' + t('pos.cart') + '</h3>' +
+      '<div class="cart-head" id="cartHead" role="button" tabindex="0" aria-controls="cartLines cartFoot"><span style="font-size:18px"></span><h3>' + t('pos.cart') + '</h3>' +
       '<span class="cart-count" id="cartCount">0</span></div>' +
       '<div class="cart-lines" id="cartLines"></div>' +
       '<div class="cart-foot" id="cartFoot"></div>' +

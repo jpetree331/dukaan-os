@@ -11,13 +11,81 @@
   function el(html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; }
   App.el = el;
 
+  /* ───────── icons ─────────
+     Inline line icons (24-unit grid, stroked with currentColor) so the UI
+     never depends on emoji rendering, which differs on every phone. */
+  const ICONS = {
+    home: '<path d="M3 11l9-8 9 8"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+    receipt: '<path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+    box: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v9"/>',
+    users: '<circle cx="9"cy="8"r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/>',
+    truck: '<path d="M2 6h12v10H2z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="6"cy="18"r="2"/><circle cx="17"cy="18"r="2"/>',
+    chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    settings: '<circle cx="12"cy="12"r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    sun: '<circle cx="12"cy="12"r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    lock: '<rect x="4"y="10"width="16"height="11"rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+    logout: '<path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/>',
+    mic: '<rect x="9"y="3"width="6"height="11"rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    scan: '<path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><path d="M8 12h8"/>',
+    search: '<circle cx="11"cy="11"r="6.5"/><path d="M16 16l5 5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/>',
+    edit: '<path d="M4 20h4l11-11-4-4L4 16z"/><path d="M13 7l4 4"/>',
+    x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    chevronRight: '<path d="M9 5l7 7-7 7"/>',
+    chevronDown: '<path d="M5 9l7 7 7-7"/>',
+    arrowRight: '<path d="M4 12h16M13 5l7 7-7 7"/>',
+    check: '<path d="M4 12.5l5 5L20 6"/>',
+    cash: '<rect x="2"y="6"width="20"height="12"rx="2"/><circle cx="12"cy="12"r="3"/><path d="M6 12h.01M18 12h.01"/>',
+    message: '<path d="M4 4h16v12H8l-4 4z"/>',
+    print: '<path d="M6 9V3h12v6M6 18H3v-7h18v7h-3"/><rect x="6"y="14"width="12"height="7"/>',
+    download: '<path d="M12 3v12M6 9l6 6 6-6M4 21h16"/>',
+    upload: '<path d="M12 21V9M6 15l6-6 6 6M4 3h16"/>',
+    alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',
+    star: '<path d="M12 3l2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 17.3 6.2 20.5l1.4-6.4L2.7 9.7l6.5-.7z"/>',
+    calendar: '<rect x="3"y="5"width="18"height="16"rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/>',
+    user: '<circle cx="12"cy="8"r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v9h14v-9M10 21v-6h4v6"/>',
+    phone: '<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
+    globe: '<circle cx="12"cy="12"r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+    file: '<path d="M6 2h8l4 4v16H6z"/><path d="M14 2v4h4"/>',
+    sparkle: '<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>',
+    clock: '<circle cx="12"cy="12"r="9"/><path d="M12 7v5l3 2"/>',
+    tag: '<path d="M3 12V3h9l9 9-9 9z"/><path d="M7.5 7.5h.01"/>',
+    undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+    volume: '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/>',
+    eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12"cy="12"r="3"/>',
+    wallet: '<path d="M3 7h16a2 2 0 0 1 2 2v10H3z"/><path d="M3 7V5a2 2 0 0 1 2-2h11v4"/><circle cx="17"cy="14"r="1"/>',
+    gift: '<rect x="3"y="10"width="18"height="11"/><path d="M3 7h18v3H3zM12 7v14M12 7a3 3 0 1 1 3-3M12 7a3 3 0 1 0-3-3"/>',
+    inbox: '<path d="M3 13l2-8h14l2 8v7H3z"/><path d="M3 13h5l1.5 3h5L16 13h5"/>'
+  };
+  App.icon = function (name, size) {
+    const d = ICONS[name] || ICONS.tag;
+    return '<svg class="ic"width="' + (size || 18) + '"height="' + (size || 18) + '"viewBox="0 0 24 24"fill="none"stroke="currentColor"stroke-width="1.75"stroke-linecap="round"stroke-linejoin="round"aria-hidden="true">' + d + '</svg>';
+  };
+
+  /* Product mark: a two-letter monogram tile. Items keep their emoji field
+     (some shopkeepers like it), but the counter shows a consistent mark. */
+  App.mark = function (nameOrItem, cls) {
+    const name = typeof nameOrItem === 'string' ? nameOrItem : (nameOrItem && (nameOrItem.name || nameOrItem.nameHi)) || '';
+    const words = String(name).trim().split(/[\s\-–]+/).filter(Boolean);
+    let init = words.length > 1 ? words[0][0] + words[1][0] : String(name).slice(0, 2);
+    init = init.toUpperCase();
+    return '<span class="mark' + (cls || '') + '">' + esc(init) + '</span>';
+  };
+
   /* ───────── toasts ───────── */
-  const ICON = { ok: '✅', err: '⚠️', warn: '💡', info: 'ℹ️', money: '💰', cart: '🛒' };
+  const ICON = { ok: 'check', err: 'x', warn: 'alert', info: 'sparkle', money: 'cash', cart: 'receipt' };
   App.toast = function (kind, title, sub, action) {
     const root = $('#toastRoot');
     const node = el(
       '<div role="'+(kind==='err'?'alert':'status')+'" aria-atomic="true" class="toast ' + (kind === 'err' ? 'err' : kind === 'warn' ? 'warn' : 'ok') + '">' +
-      '<span class="ti">' + (ICON[kind] || ICON.ok) + '</span>' +
+      '<span class="ti">' + App.icon(ICON[kind] || ICON.ok, 16) + '</span>' +
       '<span class="tx"><b>' + esc(title) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>' +
       (action ? '<button class="undo">' + esc(action.label) + '</button>' : '') + '</div>');
     root.appendChild(node);
@@ -49,7 +117,7 @@
     const m = el('<div role="dialog" aria-modal="true" aria-labelledby="'+titleId+'" tabindex="-1" class="modal' + (opts.wide ? ' wide' : '') + '"></div>');
     m.innerHTML =
       '<div class="modal-head"><h3 id="'+titleId+'">' + esc(opts.title || '') + '</h3>' +
-      '<button class="icon-btn" aria-label="'+esc(App.t('com.close'))+'" data-x>✕</button></div>' +
+      '<button class="icon-btn" aria-label="'+esc(App.t('com.close'))+'" data-x>' + App.icon('x',18) + '</button></div>' +
       '<div class="modal-body"></div>' +
       (opts.foot === false ? '' : '<div class="modal-foot"></div>');
     back.appendChild(m);
@@ -199,11 +267,7 @@
   App.buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms || 12); } catch (e) { } };
 
   /* ───────── charts (hand-rolled SVG, no CDN) ───────── */
-  const CDEF = '<defs>' +
-    '<linearGradient id="gSaffron" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F97316"/><stop offset="100%" stop-color="#F5A524"/></linearGradient>' +
-    '<linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F97316" stop-opacity=".28"/><stop offset="100%" stop-color="#F97316" stop-opacity="0"/></linearGradient>' +
-    '<linearGradient id="gGreen" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#16A34A"/><stop offset="100%" stop-color="#4ADE80"/></linearGradient>' +
-    '</defs>';
+  const CDEF = '';
 
   App.chart = {
     bars(data, opts) {
@@ -280,7 +344,7 @@
 
     ring(pct, label) {
       const R = 40, C = 2 * Math.PI * R, v = Math.max(0, Math.min(100, pct));
-      const col = v >= 75 ? '#16A34A' : v >= 45 ? '#F5A524' : '#DC2626';
+      const col = v >= 75 ? 'var(--ok)' : v >= 45 ? 'var(--warn)' : 'var(--bad)';
       return '<div class="ring"><svg viewBox="0 0 96 96" width="96" height="96">' +
         '<circle cx="48" cy="48" r="' + R + '" fill="none" stroke="var(--line)" stroke-width="9"/>' +
         '<circle cx="48" cy="48" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" ' +
@@ -365,7 +429,7 @@
     c.fillStyle = th.b; c.fillRect(10, y - 20, W - 20, 34);
     row('TOTAL', receiptMoney(bill.total, true), true, th.a);
     y += 6;
-    if (bill.credit) { c.fillStyle = '#DC2626'; c.font = F(12, 700); c.textAlign = 'center'; c.fillText('⚠ UDHAAR — payment pending', W / 2, y); y += 22; }
+    if (bill.credit) { c.fillStyle = '#DC2626'; c.font = F(12, 700); c.textAlign = 'center'; c.fillText('UDHAAR — payment pending', W / 2, y); y += 22; }
     if (bill.loyalty > 0) { c.fillStyle = '#16A34A'; c.font = F(11.5, 600); c.textAlign = 'center'; c.fillText('★ ' + bill.loyalty + ' loyalty points earned', W / 2, y); y += 20; }
 
     if (st.upiId) {
@@ -378,7 +442,7 @@
       } catch (e) { console.warn('QR skipped', e); }
     }
     c.textAlign = 'center'; c.fillStyle = '#999'; c.font = F(11, 500);
-    c.fillText('Thank you! फिर आइएगा 🙏', W / 2, y + 6);
+    c.fillText('Thank you! फिर आइएगा', W / 2, y + 6);
     c.fillStyle = '#c4c4c4'; c.font = F(9.5, 500);
     c.fillText('Billed on Dukaan OS', W / 2, y + 24);
     return cv;
@@ -388,16 +452,16 @@
     const st = bill.receiptSettings || App.DB().settings;
     const money=(n,dec)=>String(st.currency || "₹")+Number(n).toLocaleString("en-IN",{minimumFractionDigits:dec?2:0,maximumFractionDigits:2});
     let s = '*' + (st.shopName || 'My Shop') + '*\n';
-    s += '🧾 Bill #' + bill.no + ' · ' + App.fmtDT(bill.at) + '\n';
-    s += '👤 ' + bill.customerName + '\n\n';
+    s += ' Bill #' + bill.no + ' · ' + App.fmtDT(bill.at) + '\n';
+    s += ' ' + bill.customerName + '\n\n';
     bill.lines.forEach((l) => { s += '• ' + l.name + '  ×' + l.qty + (l.quantitySpec?' '+App.units.label(l):'') + '  —  ' + money(l.gross) + '\n'; });
     s += '\n';
     if (bill.discount > 0) s += 'Discount: −' + money(bill.discount) + '\n';
     if (bill.tax > 0) s += 'GST: ' + money(bill.tax) + '\n';
     s += '*Total: ' + money(bill.total, true) + '*\n';
-    s += bill.void ? '\nCANCELLED / VOID — not a payment request\n' : bill.credit ? '\n⚠️ _Udhaar — payment pending_\n' : '✅ Paid by ' + String(bill.mode).toUpperCase() + '\n';
+    s += bill.void ? '\nCANCELLED / VOID — not a payment request\n' : bill.credit ? '\n _Udhaar — payment pending_\n' : 'Paid by ' + String(bill.mode).toUpperCase() + '\n';
     if (st.upiId && bill.credit && !bill.void) s += '\nPay on UPI: ' + st.upiId + '\n';
-    s += '\nधन्यवाद 🙏';
+    s += '\nधन्यवाद';
     return s;
   };
 
