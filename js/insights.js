@@ -453,7 +453,7 @@
       '<div class="spacer"></div>' +
       '<div class="btn-row">' +
       [7, 14, 30, 90].map((n) => '<button class="chip tap ' + (repRange === n ? 'sel' : '') + '" data-rr="' + n + '">' + n + 'd</button>').join('') +
-      '<button class="btn sm" id="repCsv">📤 ' + t('rep.exportCsv') + '</button><button class="btn sm" id="cashShifts">Cash shifts</button><button class="btn sm" id="statements">Statements</button></div></div>' +
+      '<button class="btn sm" id="repCsv">📤 ' + t('rep.exportCsv') + '</button><button class="btn sm" id="cashShifts">Cash shifts</button><button class="btn sm" id="statements">Statements</button></div></div><p class="muted">This overview uses browser-local dates and excludes voided bills. Use Statements for store business dates and dated corrections.</p>' +
 
       '<div class="ai-card" style="margin-bottom:18px">' +
       '<div class="ai-h">💬 ' + t('rep.ask') + '</div>' +
