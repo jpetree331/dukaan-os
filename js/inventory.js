@@ -23,7 +23,7 @@
       EMOJI.map((e) => '<button class="chip tap ' + (d.emoji === e ? 'sel' : '') + '" data-e="' + e + '" style="font-size:16px">' + e + '</button>').join('') + '</div></div>' +
       '<div class="field"><label>' + t('com.name') + ' *</label><input class="inp" id="i_name" value="' + esc(d.name) + '" placeholder="Lays Magic Masala" autofocus></div>' +
       '<div class="row"><div class="field"><label>हिंदी नाम <span class="muted">(' + t('com.optional') + ')</span></label><input class="inp" id="i_hi" value="' + esc(d.nameHi) + '" placeholder="लेज़ मैजिक मसाला"></div>' +
-      '<div class="field"><label>🎙️ Voice aliases</label><input class="inp" id="i_alias" value="' + esc(d.alias) + '" placeholder="lej, chips, aloo"></div></div>' +
+      '<div class="field"><label> Voice aliases</label><input class="inp" id="i_alias" value="' + esc(d.alias) + '" placeholder="lej, chips, aloo"></div></div>' +
       '<div class="row"><div class="field"><label>' + t('com.price') + ' * ₹</label><input class="inp num" id="i_price" type="number" inputmode="decimal" step="0.5" value="' + esc(d.price) + '"></div>' +
       '<div class="field"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="i_cost" type="number" inputmode="decimal" step="0.5" value="' + esc(d.cost) + '"></div></div>' +
       '<div class="row"><div class="field"><label>' + t('com.stock') + '</label><input class="inp num" id="i_stock" type="number" inputmode="decimal" value="' + esc(d.stock) + '" ' + (it ? 'disabled title="Use Count / dispose to record stock changes"' : '') + '></div>' +
@@ -34,18 +34,18 @@
       [0, 5, 12, 18, 28].map((g) => '<option value="' + g + '" ' + (+d.gst === g ? 'selected' : '') + '>' + g + '%</option>').join('') + '</select></div></div>' +
       '<div class="field"><label>' + t('inv.barcode') + '</label><div class="row">' +
       '<input class="inp" id="i_bc" value="' + esc(d.barcode) + '" placeholder="8901491101837">' +
-      '<button class="btn" id="i_scan" style="flex:0 0 auto">📷</button></div></div>' +
+      '<button class="btn" id="i_scan" style="flex:0 0 auto">' + App.icon('scan',16) + '</button></div></div>' +
       '<label class="switch"><input type="checkbox" id="i_fav" ' + (d.fav ? 'checked' : '') + '><span class="sw"></span>' +
-      '<span><span class="lbl">⭐ ' + t('inv.fav') + '</span></span></label>' +
+      '<span><span class="lbl"> ' + t('inv.fav') + '</span></span></label>' +
       (it && it.batches && it.batches.length ? '<div class="sec-title">' + t('inv.batches') + '</div>' +
         it.batches.slice().sort((a, b) => (a.expiry || '9999') < (b.expiry || '9999') ? -1 : 1).map((b) =>
-          '<div class="kv"><span>' + (b.expiry ? '📅 ' + App.fmtD(new Date(b.expiry + 'T00:00')) : 'No expiry') + '</span><b>' + b.qty + '</b></div>').join('') : '') +
+          '<div class="kv"><span>' + (b.expiry ? '' + App.fmtD(new Date(b.expiry + 'T00:00')) : 'No expiry') + '</span><b>' + b.qty + '</b></div>').join('') : '') +
       '</div>');
 
     App.modal({
-      title: it ? '✏️ ' + esc(it.name) : '➕ ' + t('inv.addItem'), body,
+      title: it ? '' + esc(it.name) : '' + t('inv.addItem'), body,
       buttons: [
-        it ? { label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => { removeItem(it.id).then((ok) => { if (ok) api.close(); }); } } : null,
+        it ? { label: 'Remove', cls: 'danger', keepOpen: true, fn: (api) => { removeItem(it.id).then((ok) => { if (ok) api.close(); }); } } : null,
         { label: t('com.cancel'), cls: 'ghost' },
         {
           label: t('com.save'), cls: 'pri', fn: async () => {
@@ -110,7 +110,7 @@
     const context = App.context();
     const it = App.item(id);
     const body = App.el('<div style="text-align:center">' +
-      '<div style="font-size:34px">' + esc(it.emoji || '📦') + '</div>' +
+      '<div style="display:flex;justify-content:center">' + App.mark(it, 'lg') + '</div>' +
       '<h3 style="margin:6px 0 2px">' + esc(App.itemName(it)) + '</h3>' +
       '<p class="muted" style="font-size:13px">' + t('com.stock') + ': <b class="num">' + App.itemStock(it) + '</b></p>' +
       '<div class="chip-row" style="justify-content:center;margin:16px 0 6px">' +
@@ -122,7 +122,7 @@
       '<input class="inp" id="r_e" type="date"></div></div>');
 
     const m = App.modal({
-      title: '📦 ' + t('inv.restock'), body,
+      title: '' + t('inv.restock'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
         label: t('com.save'), cls: 'ok', fn: async () => {
           const q = parseFloat(App.$('#r_q', body).value) || 0;
@@ -184,14 +184,14 @@
   function importCSV() {
     App.requirePermission('edit_inventory');
     const body = App.el('<div>' +
-      '<div class="alert info"><span class="ai">📄</span><span>' + t('inv.csvHelp') + '<br><small>First row must be the header. Existing barcodes/names get updated.</small></span></div>' +
+      '<div class="alert info"><span class="ai"></span><span>' + t('inv.csvHelp') + '<br><small>First row must be the header. Existing barcodes/names get updated.</small></span></div>' +
       '<div class="field" style="margin-top:14px"><label>CSV file</label><input class="inp" type="file" id="csvf" accept=".csv,text/csv"></div>' +
       '<button class="btn sm ghost" id="dlTemplate">⬇ Download template</button>' +
       '<div id="prev" style="margin-top:14px"></div></div>');
     let rows = null;
 
     const m = App.modal({
-      title: '📥 ' + t('inv.import'), body,
+      title: '' + t('inv.import'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
         label: t('com.add'), cls: 'pri', fn: async () => {
           if (!rows || !rows.length) { App.toast('err', 'Pick a CSV first'); return false; }
@@ -215,11 +215,11 @@
         rows = null;
         if (!App.contextValid(context)) return;
         const grid = App.parseCSV(String(fr.result));
-        if (grid.length < 2) { App.$('#prev', body).innerHTML = '<div class="alert bad"><span class="ai">⚠️</span><span>Need a header row plus at least one item.</span></div>'; return; }
+        if (grid.length < 2) { App.$('#prev', body).innerHTML = '<div class="alert bad"><span class="ai"></span><span>Need a header row plus at least one item.</span></div>'; return; }
         const head = grid[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, ''));
         const col = (names) => { for (const n of names) { const i = head.indexOf(n); if (i > -1) return i; } return -1; };
         const ci = { name: col(['name', 'item', 'itemname', 'product']), hi: col(['namehi', 'hindi', 'hindiname']), price: col(['price', 'mrp', 'sellprice', 'rate']), cost: col(['cost', 'costprice', 'buyprice', 'purchase']), stock: col(['stock', 'qty', 'quantity']), cat: col(['category', 'cat', 'type']), bc: col(['barcode', 'ean', 'code']), gst: col(['gst', 'tax', 'gstrate']), emoji: col(['emoji', 'icon']) };
-        if (ci.name < 0) { App.$('#prev', body).innerHTML = '<div class="alert bad"><span class="ai">⚠️</span><span>No <b>name</b> column found.</span></div>'; return; }
+        if (ci.name < 0) { App.$('#prev', body).innerHTML = '<div class="alert bad"><span class="ai"></span><span>No <b>name</b> column found.</span></div>'; return; }
         rows = grid.slice(1).map((r) => ({
           name: (r[ci.name] || '').trim(), nameHi: ci.hi > -1 ? (r[ci.hi] || '').trim() : '',
           price: ci.price > -1 && (r[ci.price] || '').trim() !== '' ? Number(r[ci.price]) : null,
@@ -230,7 +230,7 @@
           gst: ci.gst > -1 && (r[ci.gst] || '').trim() !== '' ? Number(r[ci.gst]) : null,
           emoji: ci.emoji > -1 ? (r[ci.emoji] || '').trim() : ''
         })).filter((r) => r.name);
-        App.$('#prev', body).innerHTML = '<div class="alert ok"><span class="ai">✅</span><span><b>' + rows.length + '</b> items ready to import.</span></div>' +
+        App.$('#prev', body).innerHTML = '<div class="alert ok"><span class="ai"></span><span><b>' + rows.length + '</b> items ready to import.</span></div>' +
           '<div class="tbl-wrap" style="max-height:200px;overflow:auto;margin-top:10px"><table class="tbl"><thead><tr><th>Name</th><th class="r">Price</th><th class="r">Stock</th></tr></thead><tbody>' +
           rows.slice(0, 30).map((r) => '<tr><td>' + esc(r.name) + '</td><td class="r num">' + (r.price || 0) + '</td><td class="r num">' + (r.stock || 0) + '</td></tr>').join('') +
           '</tbody></table></div>';
@@ -263,37 +263,37 @@
     });
 
     main.innerHTML =
-      '<div class="page-head"><div><h1>📦 ' + t('inv.title') + '</h1>' +
+      '<div class="page-head"><div><h1> ' + t('inv.title') + '</h1>' +
       '<div class="sub">' + (App.isOwner() ? t('inv.sub', { n: all.length, v: money(App.stats.stockValue()) }) : all.length + ' items') + '</div></div>' +
       '<div class="spacer"></div>' +
-      '<div class="btn-row"><button class="btn sm" id="impCsv">📥 ' + t('inv.import') + '</button>' +
-      '<button class="btn sm" id="expCsv">📤 CSV</button>' +
+      '<div class="btn-row"><button class="btn sm" id="impCsv"> ' + t('inv.import') + '</button>' +
+      '<button class="btn sm" id="expCsv"> CSV</button>' +
       (App.isOwner()?'<button class="btn sm" id="adjustHistory">Stock adjustments</button>':'')+
       (App.isOwner()?'<button class="btn sm" id="transferHistory">Stock transfers</button>':'')+
-      '<button class="btn pri" id="addItem">➕ ' + t('inv.addItem') + '</button></div></div>' +
+      '<button class="btn pri" id="addItem"> ' + t('inv.addItem') + '</button></div></div>' +
 
       ((out.length || low.length || exp.length) ?
         '<div class="grid g-3" style="margin-bottom:18px">' +
-        (out.length ? '<div class="stat bad"><span class="em">🚫</span><div class="k">' + t('inv.out') + '</div><div class="v" style="color:var(--bad)">' + out.length + '</div>' +
+        (out.length ? '<div class="stat bad"><span class="em"></span><div class="k">' + t('inv.out') + '</div><div class="v" style="color:var(--bad)">' + out.length + '</div>' +
           '<div class="d muted">' + esc(out.slice(0, 3).map((i) => App.itemName(i)).join(', ')) + (out.length > 3 ? ' +' + (out.length - 3) : '') + '</div></div>' : '') +
-        (low.length ? '<div class="stat" style="border-color:color-mix(in srgb,var(--warn) 34%,var(--line))"><span class="em">⚠️</span><div class="k">' + t('inv.low') + '</div><div class="v" style="color:var(--warn)">' + low.length + '</div>' +
+        (low.length ? '<div class="stat" style="border-color:color-mix(in srgb,var(--warn) 34%,var(--line))"><span class="em"></span><div class="k">' + t('inv.low') + '</div><div class="v" style="color:var(--warn)">' + low.length + '</div>' +
           '<div class="d muted">' + esc(low.slice(0, 3).map((i) => App.itemName(i)).join(', ')) + (low.length > 3 ? ' +' + (low.length - 3) : '') + '</div></div>' : '') +
-        (exp.length ? '<div class="stat" style="border-color:color-mix(in srgb,var(--indigo) 34%,var(--line))"><span class="em">📅</span><div class="k">' + t('inv.expiring') + '</div><div class="v" style="color:var(--indigo)">' + exp.length + '</div>' +
+        (exp.length ? '<div class="stat" style="border-color:color-mix(in srgb,var(--ink-2) 34%,var(--line))"><span class="em"></span><div class="k">' + t('inv.expiring') + '</div><div class="v" style="color:var(--ink-2)">' + exp.length + '</div>' +
           '<div class="d muted">' + esc(App.itemName(exp[0].item)) + ' · ' + (exp[0].days <= 0 ? 'expired' : exp[0].days + 'd') + '</div></div>' : '') +
-        '</div>' : '<div class="alert ok" style="margin-bottom:16px"><span class="ai">✅</span><span>' + t('inv.allGood') + '</span></div>') +
+        '</div>' : '<div class="alert ok" style="margin-bottom:16px"><span class="ai"></span><span>' + t('inv.allGood') + '</span></div>') +
 
       '<div class="pos-tools">' +
-      '<div class="search-wrap"><span class="mag">🔍</span><input class="inp" id="invQ" placeholder="' + t('com.search') + '" value="' + esc(f.q) + '"></div></div>' +
+      '<div class="search-wrap"><span class="mag"></span><input class="inp" id="invQ" placeholder="' + t('com.search') + '" value="' + esc(f.q) + '"></div></div>' +
       '<div class="chip-row" style="margin-bottom:14px">' +
-      [['all', t('com.all') + ' (' + all.length + ')'], ['fav', '⭐ ' + t('pos.favorites')], ['low', '⚠️ ' + t('inv.low') + ' (' + low.length + ')'], ['out', '🚫 ' + t('inv.out') + ' (' + out.length + ')']]
+      [['all', t('com.all') + ' (' + all.length + ')'], ['fav', '' + t('pos.favorites')], ['low', '' + t('inv.low') + ' (' + low.length + ')'], ['out', '' + t('inv.out') + ' (' + out.length + ')']]
         .map((v) => '<button class="chip tap ' + (f.view === v[0] ? 'sel' : '') + '" data-v="' + v[0] + '">' + v[1] + '</button>').join('') +
       (cats.length ? '<span style="width:1px;background:var(--line);margin:0 4px"></span>' +
         cats.map((c) => '<button class="chip tap ' + (f.cat === c ? 'sel' : '') + '" data-ic="' + esc(c) + '">' + esc(c) + '</button>').join('') : '') +
       '</div>' +
 
-      (exp.length ? '<div class="card" style="margin-bottom:16px;border-color:color-mix(in srgb,var(--indigo) 30%,var(--line))">' +
-        '<div class="sec-title" style="margin-top:0">📅 ' + t('inv.expiring') + '</div>' +
-        exp.slice(0, 6).map((e2) => '<div class="list-row"><span style="font-size:19px">' + esc(e2.item.emoji || '📦') + '</span>' +
+      (exp.length ? '<div class="card" style="margin-bottom:16px;border-color:color-mix(in srgb,var(--ink-2) 30%,var(--line))">' +
+        '<div class="sec-title" style="margin-top:0"> ' + t('inv.expiring') + '</div>' +
+        exp.slice(0, 6).map((e2) => '<div class="list-row">' + App.mark(e2.item) +
           '<span style="flex:1"><b>' + esc(App.itemName(e2.item)) + '</b><br><small class="muted">' + t('inv.fifoHint', { date: App.fmtD(e2.at), n: e2.batch.qty }) + '</small></span>' +
           '<span class="chip ' + (e2.days <= 3 ? 'bad' : e2.days <= 14 ? 'warn' : '') + '">' + (e2.days < 0 ? 'expired' : e2.days + ' d') + '</span></div>').join('') +
         '</div>' : '') +
@@ -306,8 +306,8 @@
         const th = i.threshold != null ? i.threshold : App.DB().settings.lowStock;
         const pct = Math.max(3, Math.min(100, (s / Math.max(th * 3, 1)) * 100));
         return '<tr data-row="' + i.id + '">' +
-          '<td><div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">' + esc(i.emoji || '🛍️') + '</span>' +
-          '<span><b>' + esc(App.itemName(i)) + '</b>' + (i.fav ? ' ⭐' : '') +
+          '<td><div style="display:flex;align-items:center;gap:10px">' + App.mark(i) +
+          '<span><b>' + esc(App.itemName(i)) + '</b>' + (i.fav ? '' : '') +
           (i.barcode ? '<br><small class="muted num" style="font-size:11px">' + esc(i.barcode) + '</small>' : '') + '</span></div></td>' +
           '<td><span class="chip">' + esc(i.category || '—') + '</span></td>' +
           '<td class="r num"><b>' + money(i.price) + '</b></td>' +
@@ -316,8 +316,8 @@
           '<div class="pbar" style="margin-top:5px"><i class="' + (state === 'out' ? 'r' : state === 'low' ? '' : 'g') + '" style="width:' + pct + '%"></i></div></td>' +
           '<td class="r" style="white-space:nowrap"><button class="btn xs" data-restock="' + i.id + '">+ ' + t('inv.restock') + '</button> ' +
           (App.isOwner()?'<button class="btn xs" data-adjust="'+i.id+'">Count / dispose</button> ':'')+
-          '<button class="btn xs ghost" data-edit="' + i.id + '">✏️</button></td></tr>';
-      }).join('') : '<tr><td colspan="6">' + App.emptyState('📦', 'No items here', 'Add your first item or import a CSV') + '</td></tr>') +
+          '<button class="btn xs ghost" data-edit="' + i.id + '">' + App.icon('edit',16) + '</button></td></tr>';
+      }).join('') : '<tr><td colspan="6">' + App.emptyState('', 'No items here', 'Add your first item or import a CSV') + '</td></tr>') +
       '</tbody></table></div></div>';
 
     if (!App.can('edit_inventory')) App.$$('#addItem, #impCsv, #expCsv, [data-edit]', main).forEach((el) => { el.hidden = true; });

@@ -11,9 +11,9 @@
   App.applyTheme = function () {
     const dark = App.DB().settings.theme === 'dark';
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    const b = $('#btnTheme'); if (b) b.textContent = dark ? '☀️' : '🌙';
+    const b = $('#btnTheme'); if (b) b.innerHTML = App.icon(dark ? 'sun' : 'moon');
     const meta = document.querySelector('meta[name=theme-color]');
-    if (meta) meta.setAttribute('content', dark ? '#221A13' : '#F97316');
+    if (meta) meta.setAttribute('content', dark ? '#131312' : '#F5F4F0');
   };
 
   /* ───────── routing ───────── */
@@ -47,7 +47,7 @@
     try { App.views[view](main); }
     catch (e) {
       console.error(e);
-      main.innerHTML = '<div class="card"><div class="alert bad"><span class="ai">⚠️</span><span>Something went wrong drawing this screen.<br><code style="font-size:11px">' +
+      main.innerHTML = '<div class="card"><div class="alert bad"><span class="ai"></span><span>Something went wrong drawing this screen.<br><code style="font-size:11px">' +
         App.esc(e.message) + '</code></span></div><button class="btn pri" id="errorReload" style="margin-top:12px">Reload</button></div>';
     }
     const errorReload = $('#errorReload', main); if (errorReload) errorReload.onclick = () => location.reload();
@@ -63,7 +63,7 @@
     $('#whoPill').textContent = String(me.name || '?').slice(0, 2).toUpperCase();
     $('#whoPill').title = me.name + ' · ' + t('set.' + me.role);
     const sp = $('#storePill');
-    sp.textContent = '🏪 ' + (db.stores.find((s) => s.id === st.activeStore) || {}).name;
+    sp.textContent = '' + (db.stores.find((s) => s.id === st.activeStore) || {}).name;
     sp.hidden = !App.canStore(st.activeStore);
     $('#btnLock').hidden = !st.pinOn;
     const acc = App.auth.currentAccount();
@@ -392,6 +392,9 @@
       App.setLocked(true);
     }
   }
+
+  /* fill every data-icon hook in the static shell */
+  $$('[data-icon]').forEach((el) => { el.innerHTML = App.icon(el.dataset.icon, +el.dataset.size || 18); });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

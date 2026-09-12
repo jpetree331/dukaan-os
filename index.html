@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
-<meta name="theme-color" content="#F97316">
+<meta name="theme-color" content="#F5F4F0">
 <meta name="description" content="Dukaan OS — smart billing, inventory and udhaar ledger for local shopkeepers.">
 <title>Dukaan OS — दुकान का डिजिटल काउंटर</title>
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏪</text></svg>">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23161615'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='36' font-style='italic' text-anchor='middle' fill='%23F5F4F0'%3ED%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -15,8 +15,7 @@
 <!-- ══════════ AUTH (sign up / log in) ══════════ -->
 <div id="authScreen" class="auth-screen" hidden>
   <div class="auth-card">
-    <div class="lock-mascot">🏪</div>
-    <h2>Dukaan OS</h2>
+    <div class="wordmark">Dukaan<span>OS</span></div>
     <p class="muted" id="authSub">Sign in to open your counter</p>
 
     <div class="auth-tabs" id="authTabs">
@@ -51,7 +50,7 @@
 <!-- ══════════ PIN LOCK ══════════ -->
 <div id="lockScreen" class="lock-screen" hidden>
   <div class="lock-card">
-    <div class="lock-mascot">🏪</div>
+    <div class="wordmark">Dukaan<span>OS</span></div>
     <h2 id="lockTitle">Dukaan OS</h2>
     <p id="lockSub" class="muted"></p>
     <div class="pin-dots" id="pinDots"></div>
@@ -63,7 +62,6 @@
 <!-- ══════════ BOOT SKELETON ══════════ -->
 <div id="boot" class="boot">
   <div class="boot-inner">
-    <div class="boot-logo">🏪</div>
     <div class="boot-name">Dukaan<span>OS</span></div>
     <div class="boot-bar"><i></i></div>
   </div>
@@ -73,30 +71,29 @@
 <div id="shell" class="shell" hidden>
 
   <header class="topbar">
-    <button class="icon-btn only-mobile" id="btnMenu" aria-label="Menu">☰</button>
+    <button class="icon-btn only-mobile" id="btnMenu" aria-label="Menu" data-icon="menu"></button>
     <div class="brand">
-      <span class="brand-mark">🏪</span>
       <span class="brand-text">Dukaan<b>OS</b></span>
     </div>
     <div class="store-pill" id="storePill" role="button" tabindex="0"></div>
     <div class="spacer"></div>
     <div class="net-pill" id="netPill" title="Connection"><i></i><span></span></div>
     <button class="icon-btn" id="btnLang" title="भाषा / Language">EN</button>
-    <button class="icon-btn" id="btnTheme" title="Theme">🌙</button>
-    <button class="icon-btn" id="btnLock" title="Lock">🔒</button>
-    <button class="icon-btn" id="btnLogout" title="Log out">🚪</button>
+    <button class="icon-btn" id="btnTheme" title="Theme" data-icon="moon"></button>
+    <button class="icon-btn" id="btnLock" title="Lock" data-icon="lock"></button>
+    <button class="icon-btn" id="btnLogout" title="Log out" data-icon="logout"></button>
     <div class="who" id="whoPill"></div>
   </header>
 
   <div class="body">
     <nav class="sidenav" id="sidenav">
-      <button class="nav-item" data-view="dashboard"><span class="ni">🏠</span><span class="nt" data-i18n="nav.dashboard"></span></button>
-      <button class="nav-item" data-view="billing"><span class="ni">🧾</span><span class="nt" data-i18n="nav.billing"></span></button>
-      <button class="nav-item" data-view="inventory"><span class="ni">📦</span><span class="nt" data-i18n="nav.inventory"></span></button>
-      <button class="nav-item" data-view="customers"><span class="ni">🤝</span><span class="nt" data-i18n="nav.customers"></span></button>
-      <button class="nav-item" data-view="suppliers"><span class="ni">🚚</span><span class="nt" data-i18n="nav.suppliers"></span></button>
-      <button class="nav-item" data-view="reports"><span class="ni">📊</span><span class="nt" data-i18n="nav.reports"></span></button>
-      <button class="nav-item" data-view="settings"><span class="ni">⚙️</span><span class="nt" data-i18n="nav.settings"></span></button>
+      <button class="nav-item" data-view="dashboard"><span class="ni" data-icon="home"></span><span class="nt" data-i18n="nav.dashboard"></span></button>
+      <button class="nav-item" data-view="billing"><span class="ni" data-icon="receipt"></span><span class="nt" data-i18n="nav.billing"></span></button>
+      <button class="nav-item" data-view="inventory"><span class="ni" data-icon="box"></span><span class="nt" data-i18n="nav.inventory"></span></button>
+      <button class="nav-item" data-view="customers"><span class="ni" data-icon="users"></span><span class="nt" data-i18n="nav.customers"></span></button>
+      <button class="nav-item" data-view="suppliers"><span class="ni" data-icon="truck"></span><span class="nt" data-i18n="nav.suppliers"></span></button>
+      <button class="nav-item" data-view="reports"><span class="ni" data-icon="chart"></span><span class="nt" data-i18n="nav.reports"></span></button>
+      <button class="nav-item" data-view="settings"><span class="ni" data-icon="settings"></span><span class="nt" data-i18n="nav.settings"></span></button>
       <div class="nav-foot">
         <div class="health-mini" id="healthMini"></div>
       </div>
@@ -107,11 +104,11 @@
   </div>
 
   <nav class="tabbar" id="tabbar">
-    <button class="tab" data-view="dashboard"><span>🏠</span><i data-i18n="nav.dashboard"></i></button>
-    <button class="tab" data-view="inventory"><span>📦</span><i data-i18n="nav.inventory"></i></button>
-    <button class="tab tab-fab" data-view="billing"><span>🧾</span><i data-i18n="nav.bill"></i></button>
-    <button class="tab" data-view="customers"><span>🤝</span><i data-i18n="nav.customers"></i></button>
-    <button class="tab" data-view="reports"><span>📊</span><i data-i18n="nav.reports"></i></button>
+    <button class="tab" data-view="dashboard"><span class="ni" data-icon="home" data-size="20"></span><i data-i18n="nav.dashboard"></i></button>
+    <button class="tab" data-view="inventory"><span class="ni" data-icon="box" data-size="20"></span><i data-i18n="nav.inventory"></i></button>
+    <button class="tab tab-fab" data-view="billing"><span class="ni" data-icon="receipt" data-size="20"></span><i data-i18n="nav.bill"></i></button>
+    <button class="tab" data-view="customers"><span class="ni" data-icon="users" data-size="20"></span><i data-i18n="nav.customers"></i></button>
+    <button class="tab" data-view="reports"><span class="ni" data-icon="chart" data-size="20"></span><i data-i18n="nav.reports"></i></button>
   </nav>
 </div>
 
@@ -122,9 +119,9 @@
 <canvas id="fxCanvas" class="fx-canvas"></canvas>
 <div id="voiceOrb" class="voice-orb" hidden>
   <div class="orb-ring"></div><div class="orb-ring r2"></div>
-  <div class="orb-core">🎙️</div>
+  <div class="orb-core" data-icon="mic" data-size="40"></div>
   <div class="orb-text" id="orbText"></div>
-  <button class="orb-stop" id="orbStop">✕</button>
+  <button class="orb-stop" id="orbStop" data-icon="x" data-size="20" aria-label="Stop"></button>
 </div>
 
 <script src="js/domain.js"></script>

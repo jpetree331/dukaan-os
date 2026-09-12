@@ -5,7 +5,7 @@
   'use strict';
   const App = w.App, esc = App.esc, money = App.money, t = (k, v) => App.t(k, v);
 
-  const RECEIPT_THEMES = [['saffron', '🟠 Saffron'], ['tulsi', '🟢 Tulsi'], ['indigo', '🔵 Indigo'], ['ink', '⚫ Ink']];
+  const RECEIPT_THEMES = [['saffron', 'Saffron'], ['tulsi', 'Tulsi'], ['indigo', 'Indigo'], ['ink', 'Ink']];
 
   /* ───────── backup ───────── */
   async function exportAll() {
@@ -99,13 +99,13 @@
       '<option value="cashier">' + t('set.cashier') + ' — can bill & take payments</option>' +
       '<option value="owner">' + t('set.owner') + ' — full access</option></select></div>' +
       '<div class="field"><label>PIN (4 digits, ' + t('com.optional') + ')</label><input class="inp num" id="st_p" type="password" maxlength="4" value="' + esc(s ? s.pin : '') + '"></div>' +
-      '<div class="alert info"><span class="ai">🔒</span><span>Cashiers can bill, restock and take payments. They cannot see full analytics, delete bills, or change settings.</span></div></div>');
+      '<div class="alert info"><span class="ai"></span><span>Cashiers can bill, restock and take payments. They cannot see full analytics, delete bills, or change settings.</span></div></div>');
     if (s) App.$('#st_r', body).value = s.role;
     App.modal({
-      title: s ? '✏️ ' + esc(s.name) : '➕ ' + t('set.addStaff'), body,
+      title: s ? '' + esc(s.name) : '' + t('set.addStaff'), body,
       buttons: [
         s && s.id !== 'sf_owner' ? {
-          label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => {
+          label: '', cls: 'danger', keepOpen: true, fn: (api) => {
             App.confirm(t('com.delete') + '?', s.name + ' will lose access.', { danger: true }).then(async (ok) => {
               if (!ok) return;
               App.assertContext(context); App.auth.requireFresh();
@@ -143,9 +143,9 @@
     const db = App.DB();
     const body = App.el('<div>' + db.staff.filter(s => s.active !== false&&App.canStore(App.S(),s)).map((s, i) =>
       '<button class="list-row" data-sw="' + s.id + '" style="width:100%;text-align:left">' + App.avatarFor(s.name, i) +
-      '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' · 🔒' : '') + '</small></span>' +
+      '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' ·' : '') + '</small></span>' +
       (db.session.staffId === s.id ? '<span class="chip ok">✓</span>' : '') + '</button>').join('') + '</div>');
-    const m = App.modal({ title: '👥 ' + t('set.switchStaff'), body, foot: false });
+    const m = App.modal({ title: '' + t('set.switchStaff'), body, foot: false });
     body.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-sw]'); if (!b) return;
       const s = db.staff.find((x) => x.id === b.dataset.sw);
@@ -182,14 +182,14 @@
       const bills = db.bills.filter((b) => b.storeId === s.id && !b.void);
       const today = bills.filter((b) => App.isToday(b.at)).reduce((x, b) => x + b.total, 0);
       return '<button class="list-row" data-st="' + s.id + '" style="width:100%;text-align:left">' +
-        '<span class="rank" style="background:var(--surface-3)">🏪</span>' +
+        '<span class="rank" style="background:var(--surface-3)"></span>' +
         '<span style="flex:1"><b>' + esc(s.name) + '</b>'+(App.isOwner()?'<br><small class="muted">' + bills.length + ' bills · ' + money(today) + ' today</small>':'')+'</span>' +
         (db.settings.activeStore === s.id ? '<span class="chip ok">✓</span>' : '') + '</button>';
     }).join('') +
-      (App.isOwner()?'<button class="btn block sm" id="addStore" style="margin-top:12px">➕ ' + t('set.addStore') + '</button>':'') +
-      (App.isOwner()&&db.stores.length > 1 ? '<div class="alert info" style="margin-top:12px"><span class="ai">🏢</span><span>Combined across all stores: <b>' +
+      (App.isOwner()?'<button class="btn block sm" id="addStore" style="margin-top:12px"> ' + t('set.addStore') + '</button>':'') +
+      (App.isOwner()&&db.stores.length > 1 ? '<div class="alert info" style="margin-top:12px"><span class="ai"></span><span>Combined across all stores: <b>' +
         money(db.bills.filter((b) => !b.void && App.isToday(b.at)).reduce((x, b) => x + b.total, 0)) + '</b> today</span></div>' : '') + '</div>');
-    const m = App.modal({ title: '🏪 ' + t('set.stores'), body, foot: false });
+    const m = App.modal({ title: '' + t('set.stores'), body, foot: false });
     body.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-st]');
       if (b) { await App.actions.switchStore(b.dataset.st);m.close();App.render();App.toast('ok','Switched store');return; }
@@ -217,13 +217,13 @@
     const isBlank = App.isBlankAccount();
 
     main.innerHTML =
-      '<div class="page-head"><div><h1>⚙️ ' + t('set.title') + '</h1>' +
+      '<div class="page-head"><div><h1> ' + t('set.title') + '</h1>' +
       '<div class="sub">' + esc(st.shopName) + ' · ' + esc((App.me() || {}).name) + '</div></div></div>' +
 
       '<div class="grid g-2">' +
 
       /* shop */
-      '<div class="card"><div class="sec-title" style="margin-top:0">🏪 ' + t('set.shop') + '</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0"> ' + t('set.shop') + '</div>' +
       '<div class="field"><label>' + t('set.shopName') + '</label><input class="inp" data-s="shopName" value="' + esc(st.shopName) + '"></div>' +
       '<div class="row"><div class="field"><label>' + t('com.phone') + '</label><input class="inp num" data-s="shopPhone" value="' + esc(st.shopPhone) + '"></div>' +
       '<div class="field"><label>' + t('set.upi') + '</label><input class="inp" data-s="upiId" value="' + esc(st.upiId) + '" placeholder="shop@upi"></div></div>' +
@@ -233,18 +233,18 @@
         w.QR.svg(w.QR.upiUri(st.upiId, st.shopName, 0, ''), { size: 150, border: 2 }) +
         '<p class="muted" style="font-size:12px;margin-top:6px">Your shop UPI QR — print and stick it at the counter</p>' +
         '<button class="btn xs" id="dlQr" style="margin-top:6px">⬇ Download QR</button></div>'
-        : '<div class="alert info"><span class="ai">📱</span><span>Add your UPI ID to print a payment QR on every bill.</span></div>') +
+        : '<div class="alert info"><span class="ai"></span><span>Add your UPI ID to print a payment QR on every bill.</span></div>') +
       '</div>' +
 
       /* preferences */
-      '<div class="card"><div class="sec-title" style="margin-top:0">🎛️ Preferences</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0"> Preferences</div>' +
       '<div class="field"><label>' + t('set.lang') + '</label><div class="chip-row">' +
-      '<button class="chip tap ' + (App.lang() === 'en' ? 'sel' : '') + '" data-lang="en">🇬🇧 English</button>' +
-      '<button class="chip tap ' + (App.lang() === 'hi' ? 'sel' : '') + '" data-lang="hi">🇮🇳 हिन्दी</button></div></div>' +
+      '<button class="chip tap ' + (App.lang() === 'en' ? 'sel' : '') + '" data-lang="en"> English</button>' +
+      '<button class="chip tap ' + (App.lang() === 'hi' ? 'sel' : '') + '" data-lang="hi"> हिन्दी</button></div></div>' +
       '<label class="switch"><input type="checkbox" data-t="theme" ' + (st.theme === 'dark' ? 'checked' : '') + '><span class="sw"></span>' +
-      '<span><span class="lbl">🌙 ' + t('set.theme') + '</span></span></label>' +
+      '<span><span class="lbl"> ' + t('set.theme') + '</span></span></label>' +
       '<label class="switch"><input type="checkbox" data-t="gstEnabled" ' + (st.gstEnabled ? 'checked' : '') + '><span class="sw"></span>' +
-      '<span><span class="lbl">🧾 ' + t('set.gstOn') + '</span><br><span class="hint">Adds GST to every bill and unlocks the tax report</span></span></label>' +
+      '<span><span class="lbl"> ' + t('set.gstOn') + '</span><br><span class="hint">Adds GST to every bill and unlocks the tax report</span></span></label>' +
       '<div class="row"><div class="field"><label>' + t('set.lowStock') + '</label><input class="inp num" data-s="lowStock" type="number" value="' + st.lowStock + '"></div>' +
       '<div class="field"><label>' + t('set.dailyTarget') + ' ₹</label><input class="inp num" data-s="dailyTarget" type="number" value="' + st.dailyTarget + '"></div></div>' +
       '<div class="row"><div class="field"><label>Default GST %</label><select class="inp" data-s="defaultGst">' +
@@ -255,63 +255,63 @@
       '</div>' +
 
       /* staff + stores */
-      '<div class="card"><div class="sec-title" style="margin-top:0">👥 ' + t('set.staff') + '</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0"> ' + t('set.staff') + '</div>' +
       db.staff.filter(s => s.active !== false).map((s, i) => '<div class="list-row">' + App.avatarFor(s.name, i) +
-        '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' · 🔒 PIN set' : '') + '</small></span>' +
+        '<span style="flex:1"><b>' + esc(s.name) + '</b><br><small class="muted">' + t('set.' + s.role) + (s.pin ? ' · PIN set' : '') + '</small></span>' +
         (db.session.staffId === s.id ? '<span class="chip ok">Active</span>' : '') +
-        (owner ? '<button class="btn xs ghost" data-staff="' + s.id + '">✏️</button>' : '') + '</div>').join('') +
-      (owner ? '<button class="btn sm block" id="addStaff" style="margin-top:12px">➕ ' + t('set.addStaff') + '</button>' : '') +
-      '<button class="btn sm block ghost" id="swStaff" style="margin-top:8px">🔄 ' + t('set.switchStaff') + '</button>' +
+        (owner ? '<button class="btn xs ghost" data-staff="' + s.id + '">' + App.icon('edit',16) + '</button>' : '') + '</div>').join('') +
+      (owner ? '<button class="btn sm block" id="addStaff" style="margin-top:12px"> ' + t('set.addStaff') + '</button>' : '') +
+      '<button class="btn sm block ghost" id="swStaff" style="margin-top:8px"> ' + t('set.switchStaff') + '</button>' +
 
-      '<div class="sec-title">🏪 ' + t('set.stores') + ' (' + db.stores.length + ')</div>' +
+      '<div class="sec-title"> ' + t('set.stores') + ' (' + db.stores.length + ')</div>' +
       '<div class="btn-row"><button class="btn sm" id="storeAssignments">Review store assignments</button><button class="btn sm" id="storeProfile">Store receipt and target</button></div>'+
-      db.stores.map((s) => '<div class="list-row"><span class="rank">🏪</span><span style="flex:1"><b>' + esc(s.name) + '</b></span>' +
+      db.stores.map((s) => '<div class="list-row"><span class="rank"></span><span style="flex:1"><b>' + esc(s.name) + '</b></span>' +
         (st.activeStore === s.id ? '<span class="chip ok">Active</span>' : '') + '</div>').join('') +
-      '<button class="btn sm block" id="mgStores" style="margin-top:12px">🏢 Manage stores</button>' +
+      '<button class="btn sm block" id="mgStores" style="margin-top:12px"> Manage stores</button>' +
 
-      '<div class="sec-title">🔒 ' + t('set.pin') + '</div>' +
+      '<div class="sec-title"> ' + t('set.pin') + '</div>' +
       '<label class="switch"><input type="checkbox" data-t="pinOn" ' + (st.pinOn ? 'checked' : '') + '><span class="sw"></span>' +
       '<span><span class="lbl">' + t('set.pin') + '</span><br><span class="hint">' + t('set.pinHint') + '</span></span></label>' +
-      '<button class="btn sm block" id="setPin">🔑 ' + (st.pin ? 'Change PIN' : t('set.setPin')) + '</button>' +
+      '<button class="btn sm block" id="setPin"> ' + (st.pin ? 'Change PIN' : t('set.setPin')) + '</button>' +
       '</div>' +
 
       /* account & security */
-      '<div class="card"><div class="sec-title" style="margin-top:0">🔐 Account &amp; security</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0"> Account &amp; security</div>' +
       (gateOn && account ?
         '<div class="kv"><span>Signed in as</span><b>@' + esc(account.username) + '</b></div>' +
         '<div class="kv"><span>Account created</span><b>' + App.fmtD(account.createdAt) + '</b></div>' +
         '<div class="btn-row" style="margin-top:12px">' +
-        '<button class="btn" id="changePass">🔑 Change password</button>' +
-        '<button class="btn" id="doLogout">🚪 Log out</button></div>' +
-        '<button class="btn sm block ghost" id="gateOff" style="margin-top:12px">🔓 Turn off login</button>' +
+        '<button class="btn" id="changePass"> Change password</button>' +
+        '<button class="btn" id="doLogout"> Log out</button></div>' +
+        '<button class="btn sm block ghost" id="gateOff" style="margin-top:12px"> Turn off login</button>' +
         '<p class="muted" style="font-size:11.5px;margin-top:6px">The shop will open without asking for a password. Your bills and stock stay exactly as they are.</p>' +
-        (owner ? '<button class="btn danger block" id="delAccount" style="margin-top:16px">🗑️ Delete my account</button>' +
+        (owner ? '<button class="btn danger block" id="delAccount" style="margin-top:16px"> Delete my account</button>' +
           '<p class="muted" style="font-size:11.5px;margin-top:6px">Permanently removes your login and every bill, item and customer. Cannot be undone.</p>' : '')
         :
-        '<div class="alert info"><span class="ai">🔓</span><span>The app opens straight to your counter — no login needed.</span></div>' +
-        '<button class="btn pri block" id="gateOn" style="margin-top:12px">🔐 Turn on login</button>' +
+        '<div class="alert info"><span class="ai"></span><span>The app opens straight to your counter — no login needed.</span></div>' +
+        '<button class="btn pri block" id="gateOn" style="margin-top:12px"> Turn on login</button>' +
         '<p class="muted" style="font-size:11.5px;margin-top:6px">Adds a username &amp; password before the shop opens, to discourage casual access. Records remain unencrypted on this device; someone controlling its browser storage can bypass the login. Existing records are carried over.</p>'
       ) +
       '</div>' +
 
       /* backup */
-      '<div class="card"><div class="sec-title" style="margin-top:0">💾 ' + t('set.backup') + '</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0"> ' + t('set.backup') + '</div>' +
       '<div class="alert ' + (st.lastBackup && Date.now() - st.lastBackup < 7 * App.DAY ? 'ok' : 'warn') + '"><span class="ai">' +
-      (st.lastBackup ? '✅' : '⚠️') + '</span><span>' +
+      (st.lastBackup ? '' : '') + '</span><span>' +
       (st.lastBackup ? 'Last backup ' + App.timeAgo(st.lastBackup) : 'You have never taken a backup. Export an encrypted copy and keep its password safe.') + '</span></div>' +
       '<div class="btn-row" style="margin-top:12px">' +
-      '<button class="btn pri" id="expAll">💾 ' + t('set.exportAll') + '</button>' +
-      '<button class="btn" id="expLed">📤 Ledger CSV</button></div>' +
+      '<button class="btn pri" id="expAll"> ' + t('set.exportAll') + '</button>' +
+      '<button class="btn" id="expLed"> Ledger CSV</button></div>' +
       '<div class="field" style="margin-top:14px"><label>' + t('set.importData') + '</label>' +
       '<input class="inp" type="file" id="impFile" accept=".json,application/json"></div>' +
-      '<div class="alert info"><span class="ai">📶</span><span>' + t('sync.offlineHint') + '</span></div>' +
+      '<div class="alert info"><span class="ai"></span><span>' + t('sync.offlineHint') + '</span></div>' +
       '<div class="kv"><span>Bills stored</span><b class="num">' + db.bills.length + '</b></div>' +
       '<div class="kv"><span>Items</span><b class="num">' + db.items.filter((i) => !i.deleted).length + '</b></div>' +
       '<div class="kv"><span>Customers</span><b class="num">' + db.customers.filter((c) => !c.deleted).length + '</b></div>' +
       '<div class="kv"><span>Cloud sync unavailable; legacy queued changes</span><b class="num">' + App.sync.pending() + '</b></div>' +
-      (isBlank ? '<button class="btn sm block" id="loadSample" style="margin-top:14px">🧪 Load sample data</button>' +
+      (isBlank ? '<button class="btn sm block" id="loadSample" style="margin-top:14px"> Load sample data</button>' +
         '<p class="muted" style="font-size:11.5px;margin-top:6px">Optional demo shop to explore with. Only offered while your shop is still empty — nothing is ever added on its own.</p>' : '') +
-      (owner ? '<button class="btn danger block" id="resetAll" style="margin-top:16px">🗑️ ' + t('set.reset') + '</button>' : '') +
+      (owner ? '<button class="btn danger block" id="resetAll" style="margin-top:16px"> ' + t('set.reset') + '</button>' : '') +
       '</div></div>' +
 
       '<p class="muted" style="text-align:center;font-size:12px;margin-top:26px">Dukaan OS · built for the counter, not the boardroom · v2.0</p>';
@@ -374,7 +374,7 @@
         c.fillStyle = '#111'; c.font = '700 24px "Segoe UI",sans-serif';
         c.fillText(st.upiId, 300, 596);
         c.fillStyle = '#999'; c.font = '500 15px "Segoe UI",sans-serif';
-        c.fillText('धन्यवाद 🙏  ·  Dukaan OS', 300, 640);
+        c.fillText('धन्यवाद  ·  Dukaan OS', 300, 640);
         App.downloadCanvas(cv, 'upi-qr.png');
         return;
       }
@@ -395,10 +395,10 @@
           '<div class="field"><label>Username</label><input class="inp" id="g_user" placeholder="raj123" autocapitalize="off" spellcheck="false" autofocus></div>' +
           '<div class="field"><label>Password</label><input class="inp" id="g_pass" type="password" placeholder="12 to 256 characters"></div>' +
           '<div class="field"><label>Confirm password</label><input class="inp" id="g_pass2" type="password"></div>' +
-          '<div class="alert warn"><span class="ai">⚠️</span><span>There is no "forgot password" — this works offline, so nothing can reset it for you. Write it down somewhere safe.</span></div>' +
+          '<div class="alert warn"><span class="ai"></span><span>There is no "forgot password" — this works offline, so nothing can reset it for you. Write it down somewhere safe.</span></div>' +
           '<p class="auth-err" id="g_err"></p></div>');
         App.modal({
-          title: '🔐 Turn on login', body,
+          title: 'Turn on login', body,
           buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
             label: 'Create login', cls: 'pri', keepOpen: true, fn: async (api) => {
               const errEl = App.$('#g_err', body);
@@ -442,7 +442,7 @@
           '<div class="field"><label>Confirm new password</label><input class="inp" id="cp_new2" type="password"></div>' +
           '<p class="auth-err" id="cp_err"></p></div>');
         App.modal({
-          title: '🔑 Change password', body,
+          title: 'Change password', body,
           buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
             label: t('com.save'), cls: 'pri', keepOpen: true, fn: async (api) => {
               const errEl = App.$('#cp_err', body);
@@ -462,11 +462,11 @@
         const acc = App.auth.currentAccount();
         if (!acc) return;
         const body = App.el('<div>' +
-          '<div class="alert bad"><span class="ai">⚠️</span><span>This deletes your login and every bill, item, customer and supplier for <b>' + esc(acc.shopName) + '</b>. There is no undo.</span></div>' +
+          '<div class="alert bad"><span class="ai"></span><span>This deletes your login and every bill, item, customer and supplier for <b>' + esc(acc.shopName) + '</b>. There is no undo.</span></div>' +
           '<div class="field" style="margin-top:12px"><label>Enter your password to confirm</label><input class="inp" id="da_pw" type="password" autofocus></div>' +
           '<p class="auth-err" id="da_err"></p></div>');
         App.modal({
-          title: '🗑️ Delete my account', body,
+          title: 'Delete my account', body,
           buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
             label: 'Delete permanently', cls: 'danger', keepOpen: true, fn: async (api) => {
               const errEl = App.$('#da_err', body);
