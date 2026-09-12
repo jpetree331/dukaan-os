@@ -1,5 +1,12 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {create,item,supplier,cart}=require('./harness.cjs');
+test('VERIFY-11: draft retry posts cash once while stock transfers and counts move no cash',async()=>{
+ const {A}=await create(),i=item(A);A.DB().stores.push({id:'branch',name:'Branch'});await A.save();await A.actions.openCashShift({openingFloat:500,note:'Main counted opening'});
+ await A.posAdd(i.id,1);const d=A.drafts.current(),request={...JSON.parse(JSON.stringify(d.cart)),draftId:d.id};const bill=await A.actions.checkout(request);await A.actions.checkout(request);assert.equal(A.DB().cashMovements.length,1);assert.equal(A.cashShiftSummary(A.openCashSession()).expected,600);const receipt=A.billText(bill);
+ const transfer=await A.actions.sendTransfer({toStoreId:'branch',lines:[{itemId:i.id,qty:2}],note:'Stock to branch'});const source=A.item(i.id);await A.actions.adjustStock({itemId:source.id,batchId:source.batches?.[0]?.id || 'undated',count:6,note:'Physical shelf count'});assert.equal(A.cashShiftSummary(A.openCashSession()).expected,600);
+ await A.actions.switchStore('branch');await A.actions.receiveTransfer({transferId:transfer.id,lines:[{lineId:transfer.lines[0].lineId,qty:2}],note:'Two units received'});await A.actions.openCashShift({openingFloat:20,note:'Branch physical float'});await A.actions.checkout(cart(A.item(transfer.lines[0].targetItemId)));assert.equal(A.cashShiftSummary(A.openCashSession()).expected,120);
+ await A.actions.switchStore('st_main');assert.equal(A.cashShiftSummary(A.openCashSession()).expected,600);assert.equal(A.billText(bill),receipt);assert.equal(A.DB().cashMovements.length,2);
+});
 test('VERIFY-11: imported cash attribution must preserve actor and valid command metadata',async()=>{
  const {A}=await create(),i=item(A);await A.save();const s=await A.actions.openCashShift({openingFloat:100,note:'Counted opening cash'});await A.actions.checkout(cart(i));await A.actions.cashEntry({amount:5,note:'Cash transport cost'});await A.actions.closeCashShift({shiftId:s.id,counted:195,note:'Counted closing cash'});await A.actions.correctCashClose({shiftId:s.id,counted:195,note:'Confirmed physical count'});
  const mutate=fn=>{const d=JSON.parse(JSON.stringify(A.DB()));fn(d);assert.throws(()=>A.validateData(d),/cash|command/i);};
