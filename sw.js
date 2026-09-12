@@ -4,7 +4,7 @@ const PREFIX = 'dukaan-os-' + encodeURIComponent(self.registration.scope) + '-';
 const CACHE = PREFIX + 'security-v1';
 const SHELL = [
   './', './index.html', './manifest.json',
-  './css/app.css',
+  './css/app.css', './js/money-language.js',
   './js/domain.js', './js/storage.js', './js/indexeddb.js', './js/core.js', './js/safety.js', './js/migrations.js', './js/i18n.js', './js/core-accessibility.js', './js/qr.js', './js/ui.js', './js/auth.js', './js/backup.js', './js/returns.js', './js/supplier-corrections.js', './js/stock-adjustments.js', './js/stores-transfers.js', './js/cash-shifts.js', './js/statements.js', './js/voice.js',
   './js/pos.js', './js/inventory.js', './js/ledger.js', './js/insights.js',
   './js/settings.js', './js/app.js'

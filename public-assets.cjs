@@ -1,2 +1,2 @@
 module.exports = ['index.html', 'manifest.json', 'sw.js', 'css/app.css',
-  ...['domain', 'storage', 'indexeddb', 'core', 'safety', 'migrations', 'i18n', 'core-accessibility', 'qr', 'ui', 'auth', 'backup', 'returns', 'supplier-corrections', 'stock-adjustments', 'stores-transfers', 'cash-shifts', 'statements', 'voice', 'pos', 'inventory', 'ledger', 'insights', 'settings', 'app'].map(s => 'js/' + s + '.js')];
+  ...['domain', 'storage', 'indexeddb', 'core', 'safety', 'migrations', 'i18n', 'core-accessibility', 'money-language', 'qr', 'ui', 'auth', 'backup', 'returns', 'supplier-corrections', 'stock-adjustments', 'stores-transfers', 'cash-shifts', 'statements', 'voice', 'pos', 'inventory', 'ledger', 'insights', 'settings', 'app'].map(s => 'js/' + s + '.js')];

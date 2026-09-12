@@ -473,22 +473,25 @@
     const body = el('<div style="text-align:center">' +
       (opts.sub ? '<p class="muted" style="font-size:13px;margin-bottom:10px">' + esc(opts.sub) + '</p>' : '') +
       (opts.extra || '') +
-      '<div id="npv" class="num" style="font-size:38px;font-weight:850;padding:12px 0;letter-spacing:-.03em">₹0</div>' +
+      '<div class="field"><label for="npInput">'+App.uiText('Amount')+'</label><input id="npInput" class="inp num" inputmode="decimal" autocomplete="off" autofocus></div>'+
+      '<div id="npv" aria-hidden="true" class="num" style="font-size:38px;font-weight:850;padding:12px 0;letter-spacing:-.03em">₹0</div>' +
       (opts.quick ? '<div class="chip-row" style="justify-content:center;margin-bottom:12px">' +
         opts.quick.map((q) => '<button class="chip tap" data-q="' + q + '">' + money(q) + '</button>').join('') + '</div>' : '') +
       '<div class="pin-pad" style="grid-template-columns:repeat(3,1fr);justify-content:center">' +
       [1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, '⌫'].map((k) => '<button data-k="' + k + '">' + k + '</button>').join('') +
       '</div></div>');
     let val = initial ? String(initial) : '';
-    const paint = () => { $('#npv', body).textContent = '₹' + (val || '0'); };
+    const paint = () => { $('#npv', body).textContent = '₹' + (val || '0');$('#npInput',body).value=val; };
     paint();
     const m = App.modal({
       title, body,
       buttons: [{ label: App.t('com.cancel'), cls: 'ghost' }, {
         label: opts.ok || App.t('com.confirm'), cls: 'ok',
-        fn: async () => { const n = parseFloat(val || '0') || 0; if (n <= 0 && !opts.allowZero) return false; return await onOk(n,body); }
+        fn: async () => {if(!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(val)||val.length>12)throw Error(App.uiText('Enter a valid amount with up to two decimal places.'));const n=Number(val);if(n<=0&&!opts.allowZero)throw Error(App.uiText('Enter an amount greater than zero.'));return await onOk(n,body); }
       }]
     });
+    $('#npInput',body).addEventListener('input',e=>{val=e.target.value;$('#npv',body).textContent='₹'+(val||'0');});
+    $('[data-k="⌫"]',body).setAttribute('aria-label',App.uiText('Delete last digit'));
     body.addEventListener('click', (e) => {
       const q = e.target.closest('[data-q]'), k = e.target.closest('[data-k]');
       if (q) { val = String(q.dataset.q); paint(); App.buzz(); return; }

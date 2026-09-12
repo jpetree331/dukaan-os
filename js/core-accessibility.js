@@ -97,6 +97,7 @@
   "This browser cannot run secure login — please update it": "इस ब्राउज़र में सुरक्षित लॉगिन नहीं चल सकता। इसे अपडेट करें।"
 };
  A.coreLocaleInventory=()=>Object.keys(HI);
+ A.registerUIWords=words=>{for(const [key,value] of Object.entries(words)){if(typeof value!=='string'||!key)throw Error('Invalid UI translation');HI[key]=value;}};
  A.captureFocus=()=>{const n=document.activeElement;if(!n||n===document.body)return null;return {node:n,id:n.id,attr:['data-inc','data-dec','data-mode','data-view','data-add'].find(k=>n.hasAttribute(k)),value:['data-inc','data-dec','data-mode','data-view','data-add'].map(k=>n.getAttribute(k)).find(v=>v!==null)};};
  A.restoreFocus=f=>{if(!f||A.isLocked())return;const n=f.node.isConnected?f.node:f.id?document.getElementById(f.id):f.attr?[...document.querySelectorAll('['+f.attr+']')].find(n=>n.getAttribute(f.attr)===f.value):null;if(n&&!n.disabled&&!n.closest('[hidden],[inert]'))n.focus();};
  A.uiText=function(text,vars){let result=A.lang()==='hi'?(HI[text] || text):text;
