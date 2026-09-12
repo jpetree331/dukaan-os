@@ -643,9 +643,11 @@
       ],
       "recovery": "If hardware is unavailable, push code/report as blocked and keep support disabled; a screenshot or mock cannot close VERIFY-17.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "blocked",
+      "codeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "evidence": [
+        "reports/BUILD-17.md"
+      ]
     },
     {
       "number": 18,
