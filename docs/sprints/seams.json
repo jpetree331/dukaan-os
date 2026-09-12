@@ -21,7 +21,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -38,7 +38,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -62,7 +63,7 @@
         "SCHEMA"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -78,7 +79,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -102,7 +104,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -118,7 +120,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -142,7 +145,7 @@
         "SCHEMA"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -157,7 +160,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -181,7 +185,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -196,7 +200,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -222,7 +227,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -237,7 +242,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -259,7 +265,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -273,7 +279,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -299,7 +306,7 @@
         "UI"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -313,7 +320,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -337,7 +345,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -351,7 +359,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -375,7 +384,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -389,7 +398,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -409,7 +419,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -422,7 +432,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -444,7 +455,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -457,7 +468,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -479,7 +491,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -492,7 +504,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -514,7 +527,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -527,7 +540,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -549,7 +563,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -562,7 +576,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -582,7 +597,7 @@
         "STOCK"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -594,7 +609,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -616,7 +632,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -628,7 +644,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -650,7 +667,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -662,7 +679,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -684,7 +702,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -696,7 +714,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -720,7 +739,7 @@
         "RECEIPT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -732,7 +751,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -754,7 +774,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -766,7 +786,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -786,7 +807,7 @@
         "STOCK"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -797,7 +818,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -819,7 +841,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -830,7 +852,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -852,7 +875,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -863,7 +886,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -885,7 +909,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -896,7 +920,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -918,7 +943,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -929,7 +954,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -951,7 +977,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -962,7 +988,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -986,7 +1013,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -997,7 +1024,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1019,7 +1047,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1029,7 +1057,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1053,7 +1082,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1063,7 +1092,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1087,7 +1117,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1097,7 +1127,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1121,7 +1152,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1131,7 +1162,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1155,7 +1187,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1165,7 +1197,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1189,7 +1222,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1199,7 +1232,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1223,7 +1257,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1233,7 +1267,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1257,7 +1292,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1267,7 +1302,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1287,7 +1323,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1296,7 +1332,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1318,7 +1355,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1327,7 +1364,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1349,7 +1387,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1358,7 +1396,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1380,7 +1419,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1389,7 +1428,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1413,7 +1453,7 @@
         "RECEIPT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1422,7 +1462,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1444,7 +1485,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1453,7 +1494,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1477,7 +1519,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1486,7 +1528,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1508,7 +1551,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1517,7 +1560,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1541,7 +1585,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1550,7 +1594,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1570,7 +1615,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1578,7 +1623,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1600,7 +1646,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1608,7 +1654,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1630,7 +1677,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1638,7 +1685,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1660,7 +1708,7 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1668,7 +1716,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1690,7 +1739,7 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1698,7 +1747,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1722,7 +1772,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1730,7 +1780,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1752,7 +1803,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1760,7 +1811,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ],
       "requiredScenarios": [
         "Close formal cash shift, refund in later shift: preserve closed totals and assign cash movement only to later shift."
@@ -1785,7 +1837,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1793,7 +1845,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1817,7 +1870,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1825,7 +1878,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1847,7 +1901,7 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
@@ -1855,7 +1909,8 @@
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1875,14 +1930,15 @@
         "STOCK"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1904,14 +1960,15 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1933,14 +1990,15 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1962,14 +2020,15 @@
         "STORE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -1993,14 +2052,15 @@
         "RECEIPT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2022,14 +2082,15 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2055,14 +2116,15 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2086,14 +2148,15 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2117,14 +2180,15 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2148,14 +2212,15 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2177,14 +2242,15 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-12.md",
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2202,13 +2268,14 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2228,13 +2295,14 @@
         "UI"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2252,13 +2320,14 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2276,13 +2345,14 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2304,13 +2374,14 @@
         "UI"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2328,13 +2399,14 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2352,13 +2424,14 @@
         "RECEIPT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2373,13 +2446,14 @@
         "BASE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2397,13 +2471,14 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2423,13 +2498,14 @@
         "RECEIPT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2447,13 +2523,14 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2473,13 +2550,14 @@
         "LOCALE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-13.md",
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2499,12 +2577,13 @@
         "STOCK"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2526,12 +2605,13 @@
         "UI"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2551,12 +2631,13 @@
         "STOCK"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2578,12 +2659,13 @@
         "RECOVER"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2605,12 +2687,13 @@
         "UI"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2630,12 +2713,13 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2657,12 +2741,13 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2684,12 +2769,13 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2711,12 +2797,13 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2736,12 +2823,13 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2761,12 +2849,13 @@
         "REPORT"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2790,12 +2879,13 @@
         "LOCALE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2815,12 +2905,13 @@
         "LOCALE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
         "reports/VERIFY-14.md",
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2842,11 +2933,12 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2870,11 +2962,12 @@
         "UI"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2896,11 +2989,12 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2922,11 +3016,12 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2950,11 +3045,12 @@
         "UI"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2974,11 +3070,12 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -2998,11 +3095,12 @@
         "STOCK"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -3022,11 +3120,12 @@
         "STOCK"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -3048,11 +3147,12 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -3072,11 +3172,12 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -3096,11 +3197,12 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -3122,11 +3224,12 @@
         "LOCALE"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -3148,11 +3251,12 @@
         "AUTH"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -3176,11 +3280,12 @@
         "STOCK"
       ],
       "status": "passed",
-      "testedCodeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
       "reviewer": "Codex self-verification",
       "rationale": null,
       "evidence": [
-        "reports/VERIFY-15.md"
+        "reports/VERIFY-15.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
@@ -3199,11 +3304,13 @@
         "MONEY",
         "STOCK"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-02-16",
@@ -3223,11 +3330,13 @@
         "STOCK",
         "UI"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-03-16",
@@ -3245,11 +3354,13 @@
         "MONEY",
         "STOCK"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-04-16",
@@ -3267,11 +3378,13 @@
         "MONEY",
         "STOCK"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-05-16",
@@ -3293,11 +3406,13 @@
         "RECEIPT",
         "UI"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-06-16",
@@ -3313,11 +3428,13 @@
         "BASE",
         "MONEY"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-07-16",
@@ -3337,11 +3454,13 @@
         "STOCK",
         "RECEIPT"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-08-16",
@@ -3359,11 +3478,13 @@
         "MONEY",
         "STOCK"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-09-16",
@@ -3381,11 +3502,13 @@
         "STOCK",
         "MONEY"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-10-16",
@@ -3403,11 +3526,13 @@
         "STOCK",
         "RECEIPT"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-11-16",
@@ -3423,11 +3548,13 @@
         "BASE",
         "MONEY"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-12-16",
@@ -3449,11 +3576,13 @@
         "RECEIPT",
         "LOCALE"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-13-16",
@@ -3473,11 +3602,13 @@
         "LOCALE",
         "RECEIPT"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-14-16",
@@ -3499,11 +3630,13 @@
         "MONEY",
         "STOCK"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-15-16",
@@ -3525,11 +3658,13 @@
         "STOCK",
         "MONEY"
       ],
-      "status": "planned",
-      "testedCodeCommit": null,
-      "reviewer": null,
+      "status": "passed",
+      "testedCodeCommit": "7184d449efd612731aa479f528545306acecc741",
+      "reviewer": "Codex self-verification",
       "rationale": null,
-      "evidence": []
+      "evidence": [
+        "reports/VERIFY-16.md"
+      ]
     },
     {
       "id": "SEAM-01-17",

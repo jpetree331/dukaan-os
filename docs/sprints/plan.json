@@ -606,10 +606,11 @@
       ],
       "recovery": "Keep existing print/export fallback; publish dimensions and rendered samples, with simulated output clearly labelled.",
       "optional": false,
-      "status": "built-unverified",
-      "codeCommit": "23a01e7ed657e892318a450218f89ed047e0140b",
+      "status": "passed",
+      "codeCommit": "7184d449efd612731aa479f528545306acecc741",
       "evidence": [
-        "reports/BUILD-16.md"
+        "reports/BUILD-16.md",
+        "reports/VERIFY-16.md"
       ]
     },
     {
