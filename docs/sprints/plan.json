@@ -451,9 +451,11 @@
       ],
       "recovery": "Do not mark an unexplained difference as rounding noise; quantify and trace every discrepancy. This sprint ends with a cumulative shop-day verification.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "27528740c8f783a246306c22f7b4ef52fd3f1e4e",
+      "evidence": [
+        "reports/BUILD-12.md"
+      ]
     },
     {
       "number": 13,
