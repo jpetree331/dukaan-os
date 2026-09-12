@@ -10,6 +10,7 @@
 
   /* ───────── item editor ───────── */
   App.editItem = function (id, done, preset) {
+    App.requirePermission('edit_inventory');
     const it = id ? App.item(id) : null;
     const d = Object.assign({
       name: '', nameHi: '', alias: '', price: '', cost: '', stock: 0, category: '', barcode: '',
@@ -25,7 +26,7 @@
       '<div class="field"><label>🎙️ Voice aliases</label><input class="inp" id="i_alias" value="' + esc(d.alias) + '" placeholder="lej, chips, aloo"></div></div>' +
       '<div class="row"><div class="field"><label>' + t('com.price') + ' * ₹</label><input class="inp num" id="i_price" type="number" inputmode="decimal" step="0.5" value="' + esc(d.price) + '"></div>' +
       '<div class="field"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="i_cost" type="number" inputmode="decimal" step="0.5" value="' + esc(d.cost) + '"></div></div>' +
-      '<div class="row"><div class="field"><label>' + t('com.stock') + '</label><input class="inp num" id="i_stock" type="number" inputmode="decimal" value="' + esc(d.stock) + '" ' + (it && it.batches && it.batches.length ? 'disabled title="Managed by batches"' : '') + '></div>' +
+      '<div class="row"><div class="field"><label>' + t('com.stock') + '</label><input class="inp num" id="i_stock" type="number" inputmode="decimal" value="' + esc(d.stock) + '" ' + (it ? 'disabled title="Use Count / dispose to record stock changes"' : '') + '></div>' +
       '<div class="field"><label>' + t('inv.threshold') + '</label><input class="inp num" id="i_th" type="number" inputmode="numeric" value="' + esc(d.threshold == null ? '' : d.threshold) + '" placeholder="' + App.DB().settings.lowStock + '"></div></div>' +
       '<div class="row"><div class="field"><label>' + t('com.category') + '</label><input class="inp" id="i_cat" list="catlist" value="' + esc(d.category) + '" placeholder="Snacks">' +
       '<datalist id="catlist">' + cats.map((c) => '<option value="' + esc(c) + '">').join('') + '</datalist></div>' +
@@ -47,18 +48,21 @@
         it ? { label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => { removeItem(it.id).then((ok) => { if (ok) api.close(); }); } } : null,
         { label: t('com.cancel'), cls: 'ghost' },
         {
-          label: t('com.save'), cls: 'pri', fn: () => {
+          label: t('com.save'), cls: 'pri', fn: async () => {
+            App.requirePermission('edit_inventory');
             const name = App.$('#i_name', body).value.trim();
             const price = parseFloat(App.$('#i_price', body).value);
             if (!name) { App.toast('err', 'Name is required'); return false; }
             if (!(price >= 0)) { App.toast('err', 'Price is required'); return false; }
+            const stock = it ? null : parseFloat(App.$('#i_stock', body).value) || 0;
+            if (stock !== null) App.domain.quantityUnits(stock);
             const rec = it || { id: App.uid('it'), storeId: App.S(), batches: [], at: Date.now() };
             rec.name = name;
             rec.nameHi = App.$('#i_hi', body).value.trim();
             rec.alias = App.$('#i_alias', body).value.trim();
             rec.price = App.round2(price);
             rec.cost = App.round2(parseFloat(App.$('#i_cost', body).value) || 0);
-            if (!(it && it.batches && it.batches.length)) rec.stock = App.round2(parseFloat(App.$('#i_stock', body).value) || 0);
+            if (stock !== null) rec.stock = stock;
             const th = App.$('#i_th', body).value.trim();
             rec.threshold = th === '' ? null : +th;
             rec.category = App.$('#i_cat', body).value.trim();
@@ -68,7 +72,7 @@
             rec.fav = App.$('#i_fav', body).checked;
             if (!it) App.DB().items.push(rec);
             App.log(it ? 'item' : 'item', (it ? 'Updated ' : 'Added ') + rec.name);
-            App.save({ op: 'item' });
+            (await App.save({ op: 'item' }));
             App.toast('ok', t('inv.saved'), rec.name);
             done && done(rec);
           }
@@ -87,13 +91,14 @@
   };
 
   function removeItem(id) {
+    App.requirePermission('edit_inventory');
     const it = App.item(id);
     return App.confirm(t('com.delete') + '?', it.name + ' will be hidden from billing. Past bills keep their record.', { danger: true, ok: t('com.delete') })
-      .then((ok) => {
+      .then(async (ok) => {
         if (!ok) return false;
         it.deleted = true;
         App.log('item', 'Removed ' + it.name);
-        App.save({ op: 'item' });
+        (await App.save({ op: 'item' }));
         App.toast('ok', t('inv.deleted'), it.name);
         return true;
       });
@@ -101,42 +106,83 @@
 
   /* ───────── restock ───────── */
   App.restockModal = function (id) {
+    App.requirePermission('restock');
+    const context = App.context();
     const it = App.item(id);
     const body = App.el('<div style="text-align:center">' +
-      '<div style="font-size:34px">' + (it.emoji || '📦') + '</div>' +
+      '<div style="font-size:34px">' + esc(it.emoji || '📦') + '</div>' +
       '<h3 style="margin:6px 0 2px">' + esc(App.itemName(it)) + '</h3>' +
       '<p class="muted" style="font-size:13px">' + t('com.stock') + ': <b class="num">' + App.itemStock(it) + '</b></p>' +
       '<div class="chip-row" style="justify-content:center;margin:16px 0 6px">' +
       [5, 10, 20, 50, 100].map((n) => '<button class="chip tap pri" data-q="' + n + '" style="padding:9px 15px;font-size:14px">+' + n + '</button>').join('') + '</div>' +
       '<div class="row" style="margin-top:14px;text-align:left">' +
       '<div class="field"><label>' + t('com.qty') + '</label><input class="inp num" id="r_q" type="number" inputmode="numeric" value="10"></div>' +
-      '<div class="field"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="r_c" type="number" inputmode="decimal" value="' + (it.cost || '') + '"></div></div>' +
+      (App.isOwner() ? '<div class="field"><label>' + t('com.cost') + ' ₹</label><input class="inp num" id="r_c" type="number" inputmode="decimal" value="' + (it.cost || '') + '"></div>' : '') + '</div>' +
       '<div class="field" style="text-align:left"><label>' + t('inv.expiry') + ' <span class="muted">(' + t('com.optional') + ')</span></label>' +
       '<input class="inp" id="r_e" type="date"></div></div>');
 
     const m = App.modal({
       title: '📦 ' + t('inv.restock'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-        label: t('com.save'), cls: 'ok', fn: () => {
+        label: t('com.save'), cls: 'ok', fn: async () => {
           const q = parseFloat(App.$('#r_q', body).value) || 0;
           if (q <= 0) return false;
-          App.actions.restock(it.id, q, App.$('#r_e', body).value, parseFloat(App.$('#r_c', body).value) || it.cost);
+          (await App.actions.restock(it.id, q, App.$('#r_e', body).value, !App.isOwner() || App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value)));
           App.toast('ok', t('inv.restocked', { name: App.itemName(it), n: q }));
         }
       }]
     });
-    body.addEventListener('click', (e) => {
+    body.addEventListener('click', async (e) => {
       const q = e.target.closest('[data-q]');
       if (q) {
-        App.actions.restock(it.id, +q.dataset.q, App.$('#r_e', body).value, parseFloat(App.$('#r_c', body).value) || it.cost);
+        App.assertContext(context);
+        (await App.actions.restock(it.id, +q.dataset.q, App.$('#r_e', body).value, !App.isOwner() || App.$('#r_c', body).value.trim() === '' ? it.cost : Number(App.$('#r_c', body).value)));
         App.toast('ok', t('inv.restocked', { name: App.itemName(it), n: q.dataset.q }));
         m.close();
       }
     });
   };
 
+  // Validate every row before touching inventory; omitted numeric cells preserve existing data.
+  App.importItemRows = async (rows) => {
+    App.checkDataBounds(rows);
+    App.requirePermission('edit_inventory');
+    const staged = JSON.parse(JSON.stringify(App.DB().items)),counts=[];
+    let added = 0, updated = 0;
+    rows.forEach((r, index) => {
+      if (!r.name || !r.name.trim()) throw new Error('CSV row ' + (index + 2) + ': name is required.');
+      for (const k of ['price', 'cost', 'stock', 'gst']) if (r[k] != null) App.number(r[k], 'CSV row ' + (index + 2) + ' ' + k, 0, k === 'gst' ? 100 : 1e9);
+      if (r.stock != null) App.domain.quantityUnits(r.stock);
+      const matches = staged.filter((i) => !i.deleted && (!i.storeId || i.storeId === App.S()) &&
+        ((r.barcode && i.barcode === r.barcode) || i.name.toLowerCase() === r.name.toLowerCase()));
+      if (matches.length > 1) throw new Error('CSV row ' + (index + 2) + ': barcode and name identify different items.');
+      const ex = matches[0];
+      if (ex) {
+        if (r.stock != null && r.stock !== App.itemStock(ex)) {
+          if(ex.batches.length)throw new Error('Use Restock or Count / dispose to change batch stock for ' + ex.name + '.');
+          counts.push(App.stageImportedStockCount(ex,r.stock));
+        }
+        for (const k of ['price', 'cost', 'stock', 'gst']) if (r[k] != null) ex[k] = k === 'stock' ? r[k] : App.round2(r[k]);
+        for (const k of ['nameHi', 'category', 'barcode', 'emoji', 'alias']) if (r[k]) ex[k] = r[k];
+        updated++;
+      } else {
+        if (r.price == null) throw new Error('CSV row ' + (index + 2) + ': a new item needs a price.');
+        staged.push({ id: App.uid('it'), storeId: App.S(), name: r.name, nameHi: r.nameHi || '', alias: r.alias || '',
+          price: r.price, cost: r.cost ?? 0, stock: r.stock ?? 0, category: r.category || '', barcode: r.barcode || '',
+          emoji: r.emoji || '🛍️', fav: false, threshold: null, gst: r.gst ?? App.DB().settings.defaultGst, batches: [], at: Date.now() });
+        added++;
+      }
+    });
+    App.DB().items = staged;
+    if(counts.length)(App.DB().stockAdjustments ||= []).push(...counts);
+    App.log('import', added + ' items imported, ' + updated + ' updated');
+    (await App.save({ op: 'import' }));
+    return { added, updated };
+  };
+
   /* ───────── CSV import ───────── */
   function importCSV() {
+    App.requirePermission('edit_inventory');
     const body = App.el('<div>' +
       '<div class="alert info"><span class="ai">📄</span><span>' + t('inv.csvHelp') + '<br><small>First row must be the header. Existing barcodes/names get updated.</small></span></div>' +
       '<div class="field" style="margin-top:14px"><label>CSV file</label><input class="inp" type="file" id="csvf" accept=".csv,text/csv"></div>' +
@@ -147,31 +193,9 @@
     const m = App.modal({
       title: '📥 ' + t('inv.import'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-        label: t('com.add'), cls: 'pri', fn: () => {
+        label: t('com.add'), cls: 'pri', fn: async () => {
           if (!rows || !rows.length) { App.toast('err', 'Pick a CSV first'); return false; }
-          let added = 0, updated = 0;
-          rows.forEach((r) => {
-            const ex = App.items().find((i) =>
-              (r.barcode && i.barcode === r.barcode) || i.name.toLowerCase() === r.name.toLowerCase());
-            if (ex) {
-              ex.price = r.price != null ? r.price : ex.price;
-              ex.cost = r.cost != null ? r.cost : ex.cost;
-              if (r.stock != null && !(ex.batches || []).length) ex.stock = r.stock;
-              ex.category = r.category || ex.category;
-              ex.barcode = r.barcode || ex.barcode;
-              updated++;
-            } else {
-              App.DB().items.push({
-                id: App.uid('it'), storeId: App.S(), name: r.name, nameHi: r.nameHi || '', alias: r.alias || '',
-                price: r.price || 0, cost: r.cost || 0, stock: r.stock || 0, category: r.category || '',
-                barcode: r.barcode || '', emoji: r.emoji || '🛍️', fav: false, threshold: null,
-                gst: r.gst != null ? r.gst : App.DB().settings.defaultGst, batches: [], at: Date.now()
-              });
-              added++;
-            }
-          });
-          App.log('import', added + ' items imported, ' + updated + ' updated');
-          App.save({ op: 'import' });
+          const { added, updated } = (await App.importItemRows(rows));
           App.toast('ok', 'Import done', added + ' added · ' + updated + ' updated');
         }
       }]
@@ -184,8 +208,12 @@
 
     App.$('#csvf', body).onchange = (e) => {
       const file = e.target.files[0]; if (!file) return;
+      try { App.checkFile(file); } catch (e) { App.reportError(e); return; }
+      const context = App.context();
       const fr = new FileReader();
       fr.onload = () => {
+        rows = null;
+        if (!App.contextValid(context)) return;
         const grid = App.parseCSV(String(fr.result));
         if (grid.length < 2) { App.$('#prev', body).innerHTML = '<div class="alert bad"><span class="ai">⚠️</span><span>Need a header row plus at least one item.</span></div>'; return; }
         const head = grid[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, ''));
@@ -194,12 +222,12 @@
         if (ci.name < 0) { App.$('#prev', body).innerHTML = '<div class="alert bad"><span class="ai">⚠️</span><span>No <b>name</b> column found.</span></div>'; return; }
         rows = grid.slice(1).map((r) => ({
           name: (r[ci.name] || '').trim(), nameHi: ci.hi > -1 ? (r[ci.hi] || '').trim() : '',
-          price: ci.price > -1 ? parseFloat(r[ci.price]) || 0 : null,
-          cost: ci.cost > -1 ? parseFloat(r[ci.cost]) || 0 : null,
-          stock: ci.stock > -1 ? parseFloat(r[ci.stock]) || 0 : null,
+          price: ci.price > -1 && (r[ci.price] || '').trim() !== '' ? Number(r[ci.price]) : null,
+          cost: ci.cost > -1 && (r[ci.cost] || '').trim() !== '' ? Number(r[ci.cost]) : null,
+          stock: ci.stock > -1 && (r[ci.stock] || '').trim() !== '' ? Number(r[ci.stock]) : null,
           category: ci.cat > -1 ? (r[ci.cat] || '').trim() : '',
           barcode: ci.bc > -1 ? (r[ci.bc] || '').trim() : '',
-          gst: ci.gst > -1 ? parseFloat(r[ci.gst]) || 0 : null,
+          gst: ci.gst > -1 && (r[ci.gst] || '').trim() !== '' ? Number(r[ci.gst]) : null,
           emoji: ci.emoji > -1 ? (r[ci.emoji] || '').trim() : ''
         })).filter((r) => r.name);
         App.$('#prev', body).innerHTML = '<div class="alert ok"><span class="ai">✅</span><span><b>' + rows.length + '</b> items ready to import.</span></div>' +
@@ -236,10 +264,12 @@
 
     main.innerHTML =
       '<div class="page-head"><div><h1>📦 ' + t('inv.title') + '</h1>' +
-      '<div class="sub">' + t('inv.sub', { n: all.length, v: money(App.stats.stockValue()) }) + '</div></div>' +
+      '<div class="sub">' + (App.isOwner() ? t('inv.sub', { n: all.length, v: money(App.stats.stockValue()) }) : all.length + ' items') + '</div></div>' +
       '<div class="spacer"></div>' +
       '<div class="btn-row"><button class="btn sm" id="impCsv">📥 ' + t('inv.import') + '</button>' +
       '<button class="btn sm" id="expCsv">📤 CSV</button>' +
+      (App.isOwner()?'<button class="btn sm" id="adjustHistory">Stock adjustments</button>':'')+
+      (App.isOwner()?'<button class="btn sm" id="transferHistory">Stock transfers</button>':'')+
       '<button class="btn pri" id="addItem">➕ ' + t('inv.addItem') + '</button></div></div>' +
 
       ((out.length || low.length || exp.length) ?
@@ -263,36 +293,41 @@
 
       (exp.length ? '<div class="card" style="margin-bottom:16px;border-color:color-mix(in srgb,var(--indigo) 30%,var(--line))">' +
         '<div class="sec-title" style="margin-top:0">📅 ' + t('inv.expiring') + '</div>' +
-        exp.slice(0, 6).map((e2) => '<div class="list-row"><span style="font-size:19px">' + (e2.item.emoji || '📦') + '</span>' +
+        exp.slice(0, 6).map((e2) => '<div class="list-row"><span style="font-size:19px">' + esc(e2.item.emoji || '📦') + '</span>' +
           '<span style="flex:1"><b>' + esc(App.itemName(e2.item)) + '</b><br><small class="muted">' + t('inv.fifoHint', { date: App.fmtD(e2.at), n: e2.batch.qty }) + '</small></span>' +
           '<span class="chip ' + (e2.days <= 3 ? 'bad' : e2.days <= 14 ? 'warn' : '') + '">' + (e2.days < 0 ? 'expired' : e2.days + ' d') + '</span></div>').join('') +
         '</div>' : '') +
 
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
       '<th>' + t('com.name') + '</th><th>' + t('com.category') + '</th><th class="r">' + t('com.price') + '</th>' +
-      '<th class="r">' + t('com.cost') + '</th><th class="r">' + t('com.stock') + '</th><th></th></tr></thead><tbody>' +
+      (App.isOwner() ? '<th class="r">' + t('com.cost') + '</th>' : '') + '<th class="r">' + t('com.stock') + '</th><th></th></tr></thead><tbody>' +
       (list.length ? list.map((i) => {
         const s = App.itemStock(i), state = App.stockState(i);
         const th = i.threshold != null ? i.threshold : App.DB().settings.lowStock;
         const pct = Math.max(3, Math.min(100, (s / Math.max(th * 3, 1)) * 100));
         return '<tr data-row="' + i.id + '">' +
-          '<td><div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">' + (i.emoji || '🛍️') + '</span>' +
+          '<td><div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">' + esc(i.emoji || '🛍️') + '</span>' +
           '<span><b>' + esc(App.itemName(i)) + '</b>' + (i.fav ? ' ⭐' : '') +
           (i.barcode ? '<br><small class="muted num" style="font-size:11px">' + esc(i.barcode) + '</small>' : '') + '</span></div></td>' +
           '<td><span class="chip">' + esc(i.category || '—') + '</span></td>' +
           '<td class="r num"><b>' + money(i.price) + '</b></td>' +
-          '<td class="r num muted">' + (i.cost ? money(i.cost) : '—') + '</td>' +
+          (App.isOwner() ? '<td class="r num muted">' + (i.cost ? money(i.cost) : '—') + '</td>' : '') +
           '<td class="r" style="min-width:110px"><b class="num" style="color:' + (state === 'out' ? 'var(--bad)' : state === 'low' ? 'var(--warn)' : 'inherit') + '">' + s + '</b>' +
           '<div class="pbar" style="margin-top:5px"><i class="' + (state === 'out' ? 'r' : state === 'low' ? '' : 'g') + '" style="width:' + pct + '%"></i></div></td>' +
           '<td class="r" style="white-space:nowrap"><button class="btn xs" data-restock="' + i.id + '">+ ' + t('inv.restock') + '</button> ' +
+          (App.isOwner()?'<button class="btn xs" data-adjust="'+i.id+'">Count / dispose</button> ':'')+
           '<button class="btn xs ghost" data-edit="' + i.id + '">✏️</button></td></tr>';
       }).join('') : '<tr><td colspan="6">' + App.emptyState('📦', 'No items here', 'Add your first item or import a CSV') + '</td></tr>') +
       '</tbody></table></div></div>';
 
+    if (!App.can('edit_inventory')) App.$$('#addItem, #impCsv, #expCsv, [data-edit]', main).forEach((el) => { el.hidden = true; });
     const Q = App.$('#invQ');
     Q.addEventListener('input', () => { f.q = Q.value; App.render(); setTimeout(() => { const n = App.$('#invQ'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 0); });
 
     main.addEventListener('click', (e) => {
+      const adjust=e.target.closest('[data-adjust]');if(adjust)return App.stockAdjustmentDialog(adjust.dataset.adjust);
+      if(e.target.closest('#adjustHistory'))return App.stockAdjustmentHistory();
+      if(e.target.closest('#transferHistory'))return App.transferHistory();
       const v = e.target.closest('[data-v]'), c = e.target.closest('[data-ic]');
       const r = e.target.closest('[data-restock]'), ed = e.target.closest('[data-edit]');
       if (v) { f.view = v.dataset.v; return App.render(); }
@@ -302,6 +337,7 @@
       if (e.target.closest('#addItem')) return App.editItem(null);
       if (e.target.closest('#impCsv')) return importCSV();
       if (e.target.closest('#expCsv')) {
+        App.requirePermission('edit_inventory');
         const rows = [['name', 'nameHi', 'price', 'cost', 'stock', 'category', 'barcode', 'gst']];
         all.forEach((i) => rows.push([i.name, i.nameHi || '', i.price, i.cost, App.itemStock(i), i.category || '', i.barcode || '', i.gst]));
         App.download(App.toCSV(rows), 'dukaan-inventory-' + App.dayKey(Date.now()) + '.csv', 'text/csv');

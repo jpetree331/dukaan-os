@@ -31,7 +31,18 @@
 
   /* ───────── modal ───────── */
   let openModals = 0;
+  const modalClosers = new Set();
+  App.on('secureclear', () => {
+    for (const close of [...modalClosers]) close();
+    for (const id of ['#toastRoot', '#printArea']) { const node = $(id); if (node) node.innerHTML = ''; }
+    const orb = $('#voiceOrb'); if (orb) orb.hidden = true;
+    if (App.isLocked()) {
+      const shell = $('#shell'); if (shell) { shell.hidden = true; shell.inert = true; }
+      const main = $('#main'); if (main) main.innerHTML = '';
+    }
+  });
   App.modal = function (opts) {
+    const context = App.context();
     const back = el('<div class="modal-back"></div>');
     const m = el('<div class="modal' + (opts.wide ? ' wide' : '') + '"></div>');
     m.innerHTML =
@@ -43,27 +54,47 @@
     const body = $('.modal-body', m), foot = $('.modal-foot', m);
     if (typeof opts.body === 'string') body.innerHTML = opts.body; else if (opts.body) body.appendChild(opts.body);
 
-    const api = { root: m, body, foot, close };
+    const api = { root: m, body, foot, close: () => { busy = false; close(); } };
+    const forceClose = () => { busy = false; close(); back.hidden = true; };
+    modalClosers.add(forceClose);
+    let closed = false, busy = false;
     function close() {
+      if (closed || busy) return;
+      closed = true;
+      modalClosers.delete(forceClose);
+      document.removeEventListener('keydown', onk);
       m.classList.add('out'); back.style.opacity = 0;
-      setTimeout(() => back.remove(), 240);
+      setTimeout(() => { back.remove(); App.emit('modalclosed'); }, 240);
       openModals--; if (!openModals) document.body.style.overflow = '';
       if (opts.onClose) opts.onClose();
     }
     (opts.buttons || []).forEach((b) => {
       if (!b) return;
       const btn = el('<button class="btn ' + (b.cls || '') + '">' + esc(b.label) + '</button>');
-      btn.onclick = () => { if (b.fn) { if (b.fn(api) === false) return; } if (b.keepOpen !== true) close(); };
+      btn.onclick = async () => {
+        if (busy || closed) return;
+        btn.disabled = true;
+        try {
+          App.assertContext(context);
+          // The callback may explicitly close its own modal after an awaited operation.
+          let result = b.fn ? b.fn(api) : undefined;
+          if (result && typeof result.then === 'function') { busy = true; result = await result; busy = false; }
+          if (result === false) return;
+          if (b.keepOpen !== true) close();
+        } catch (e) { App.reportError(e); }
+        finally { busy = false; btn.disabled = false; }
+      };
       foot && foot.appendChild(btn);
     });
     $('[data-x]', m).onclick = close;
     back.addEventListener('mousedown', (e) => { if (e.target === back && opts.dismissable !== false) close(); });
-    document.addEventListener('keydown', function onk(e) {
-      if (e.key === 'Escape' && document.body.contains(back)) { close(); document.removeEventListener('keydown', onk); }
-    });
+    function onk(e) {
+      if (e.key === 'Escape' && $('#modalRoot').lastElementChild === back) close();
+    }
+    document.addEventListener('keydown', onk);
     $('#modalRoot').appendChild(back);
     openModals++; document.body.style.overflow = 'hidden';
-    setTimeout(() => { const f = m.querySelector('[autofocus],input,select'); if (f && w.innerWidth > 860) f.focus(); }, 120);
+    setTimeout(() => { const f = m.querySelector('[autofocus],input,select'); if (!closed && f && w.innerWidth > 860) f.focus(); }, 120);
     if (opts.onReady) opts.onReady(api);
     return api;
   };
@@ -96,7 +127,7 @@
         { label: opts.ok || App.t('com.save'), cls: 'pri', fn: () => res($('#_pv', body).value) }],
         onClose: () => res(null)
       });
-      $('#_pv', body).addEventListener('keydown', (e) => { if (e.key === 'Enter') { res($('#_pv', body).value); m.close(); } });
+      $('#_pv', body).addEventListener('keydown', (e) => { if (e.key === 'Enter') { if (!App.isLocked()) { res($('#_pv', body).value); m.close(); } } });
     });
   };
 
@@ -141,7 +172,7 @@
     if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
     const to = $(toSel); if (!fromEl || !to) return;
     const a = fromEl.getBoundingClientRect(), b = to.getBoundingClientRect();
-    const g = el('<div class="fly">' + (emoji || '🛒') + '</div>');
+    const g = el('<div class="fly">' + esc(emoji || '🛒') + '</div>');
     g.style.cssText += 'left:' + a.left + 'px;top:' + a.top + 'px;width:' + Math.min(a.width, 90) + 'px;height:' + Math.min(a.height, 60) + 'px';
     document.body.appendChild(g);
     const dx = (b.left + b.width / 2) - (a.left + Math.min(a.width, 90) / 2);
@@ -173,21 +204,21 @@
       opts = opts || {};
       const W = 700, H = opts.height || 220, pl = 44, pr = 8, pt = 14, pb = 26;
       const iw = W - pl - pr, ih = H - pt - pb;
-      const max = Math.max(1, ...data.map((d) => d.value));
+      const min=Math.min(0,...data.map(d=>d.value)),max=Math.max(0,...data.map(d=>d.value)),span=max-min || 1,zero=pt+ih*max/span;
       const bw = iw / data.length, gap = Math.min(10, bw * 0.28);
       let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">' + CDEF;
       for (let i = 0; i <= 4; i++) {
         const y = pt + ih - (ih * i / 4);
         s += '<line class="c-grid" x1="' + pl + '" y1="' + y + '" x2="' + (W - pr) + '" y2="' + y + '" stroke-dasharray="' + (i ? '3 5' : '0') + '"/>';
-        s += '<text class="c-lbl" x="' + (pl - 7) + '" y="' + (y + 3.5) + '" text-anchor="end">' + App.short(max * i / 4) + '</text>';
+        s += '<text class="c-lbl" x="' + (pl - 7) + '" y="' + (y + 3.5) + '" text-anchor="end">' + App.short(min+span * i / 4) + '</text>';
       }
       data.forEach((d, i) => {
-        const h = Math.max(d.value > 0 ? 3 : 0, ih * (d.value / max));
-        const x = pl + i * bw + gap / 2, y = pt + ih - h;
+        const h = ih*Math.abs(d.value)/span;
+        const x = pl + i * bw + gap / 2, y = d.value>=0?zero-h:zero;
         s += '<rect class="c-bar" x="' + x + '" y="' + y + '" width="' + (bw - gap) + '" height="' + h + '" rx="5">' +
           '<title>' + esc(d.label) + ': ' + money(d.value) + '</title>' +
           '<animate attributeName="height" from="0" to="' + h + '" dur="0.6s" fill="freeze" calcMode="spline" keySplines=".22 1 .36 1"/>' +
-          '<animate attributeName="y" from="' + (pt + ih) + '" to="' + y + '" dur="0.6s" fill="freeze" calcMode="spline" keySplines=".22 1 .36 1"/></rect>';
+          '<animate attributeName="y" from="' + zero + '" to="' + y + '" dur="0.6s" fill="freeze" calcMode="spline" keySplines=".22 1 .36 1"/></rect>';
         const step = Math.ceil(data.length / 12);
         if (i % step === 0 || i === data.length - 1)
           s += '<text class="c-lbl" x="' + (x + (bw - gap) / 2) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(d.short || d.label) + '</text>';
@@ -199,9 +230,9 @@
       opts = opts || {};
       const W = 700, H = opts.height || 230, pl = 46, pr = 10, pt = 16, pb = 26;
       const iw = W - pl - pr, ih = H - pt - pb;
-      const max = Math.max(1, ...data.map((d) => d.value));
+      const min=Math.min(0,...data.map(d=>d.value)),max=Math.max(0,...data.map(d=>d.value)),span=max-min || 1;
       const X = (i) => pl + (data.length === 1 ? iw / 2 : iw * i / (data.length - 1));
-      const Y = (v) => pt + ih - ih * (v / max);
+      const Y = (v) => pt + ih - ih * ((v-min) / span);
       let d = '', area = '';
       data.forEach((p, i) => { d += (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(p.value).toFixed(1); });
       area = d + 'L' + X(data.length - 1).toFixed(1) + ',' + (pt + ih) + 'L' + X(0).toFixed(1) + ',' + (pt + ih) + 'Z';
@@ -209,7 +240,7 @@
       for (let i = 0; i <= 4; i++) {
         const y = pt + ih - (ih * i / 4);
         s += '<line class="c-grid" x1="' + pl + '" y1="' + y + '" x2="' + (W - pr) + '" y2="' + y + '" stroke-dasharray="' + (i ? '3 5' : '0') + '"/>' +
-          '<text class="c-lbl" x="' + (pl - 7) + '" y="' + (y + 3.5) + '" text-anchor="end">' + App.short(max * i / 4) + '</text>';
+          '<text class="c-lbl" x="' + (pl - 7) + '" y="' + (y + 3.5) + '" text-anchor="end">' + App.short(min+span * i / 4) + '</text>';
       }
       s += '<path class="c-area" d="' + area + '"/>';
       s += '<path class="c-line" d="' + d + '" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1">' +
@@ -260,7 +291,8 @@
   };
 
   App.receiptCanvas = function (bill) {
-    const st = App.DB().settings, th = THEMES[st.receiptTheme] || THEMES.saffron;
+    const st = bill.receiptSettings || App.DB().settings, th = THEMES[st.receiptTheme] || THEMES.saffron;
+    const receiptMoney=(n,dec)=>String(st.currency || "₹")+Number(n).toLocaleString("en-IN",{minimumFractionDigits:dec?2:0,maximumFractionDigits:2});
     const dpr = 2, W = 400;
     const lineH = 26, headH = 178, footH = 210 + (st.upiId ? 190 : 0);
     const H = headH + bill.lines.length * lineH + footH;
@@ -283,13 +315,13 @@
     else if (sub) c.fillText('— धन्यवाद —', W / 2, 76);
 
     c.textAlign = 'left'; c.fillStyle = '#333'; c.font = F(12, 600);
-    c.fillText('Bill #' + bill.no, 18, 118);
+    c.fillText((bill.void ? 'VOID · Bill #' : 'Bill #') + bill.no, 18, 118);
     c.textAlign = 'right';
     c.fillText(App.fmtDT(bill.at), W - 18, 118);
     c.textAlign = 'left'; c.font = F(12.5, 700); c.fillStyle = '#1a1a1a';
     c.fillText(String(bill.customerName || 'Walk-in').slice(0, 30), 18, 138);
     c.textAlign = 'right'; c.font = F(11, 600); c.fillStyle = th.a;
-    c.fillText((bill.credit ? 'UDHAAR' : String(bill.mode || 'cash').toUpperCase()), W - 18, 138);
+    c.fillText((bill.void ? 'CANCELLED' : bill.credit ? 'UDHAAR' : String(bill.mode || 'cash').toUpperCase()), W - 18, 138);
 
     c.strokeStyle = '#e3e3e3'; c.setLineDash([4, 4]);
     c.beginPath(); c.moveTo(14, 152); c.lineTo(W - 14, 152); c.stroke(); c.setLineDash([]);
@@ -306,7 +338,7 @@
       c.textAlign = 'center'; c.fillText(String(l.qty), 244, y);
       c.textAlign = 'right'; c.fillText(String(l.price), 312, y);
       c.fillStyle = '#1a1a1a'; c.font = F(13, 700);
-      c.fillText(App.money(l.gross), W - 18, y);
+      c.fillText(receiptMoney(l.gross), W - 18, y);
       y += lineH;
     });
 
@@ -319,12 +351,12 @@
       c.textAlign = 'right'; c.fillText(v, W - 18, y);
       y += bold ? 28 : 20;
     };
-    row('Subtotal', App.money(bill.sub, true));
-    if (bill.discount > 0) row('Discount', '− ' + App.money(bill.discount, true), false, '#16A34A');
-    if (bill.tax > 0) row('GST', App.money(bill.tax, true));
+    row('Subtotal', receiptMoney(bill.sub, true));
+    if (bill.discount > 0) row('Discount', '− ' + receiptMoney(bill.discount, true), false, '#16A34A');
+    if (bill.tax > 0) row('GST', receiptMoney(bill.tax, true));
     y += 4;
     c.fillStyle = th.b; c.fillRect(10, y - 20, W - 20, 34);
-    row('TOTAL', App.money(bill.total, true), true, th.a);
+    row('TOTAL', receiptMoney(bill.total, true), true, th.a);
     y += 6;
     if (bill.credit) { c.fillStyle = '#DC2626'; c.font = F(12, 700); c.textAlign = 'center'; c.fillText('⚠ UDHAAR — payment pending', W / 2, y); y += 22; }
     if (bill.loyalty > 0) { c.fillStyle = '#16A34A'; c.font = F(11.5, 600); c.textAlign = 'center'; c.fillText('★ ' + bill.loyalty + ' loyalty points earned', W / 2, y); y += 20; }
@@ -346,7 +378,8 @@
   };
 
   App.billText = function (bill) {
-    const st = App.DB().settings;
+    const st = bill.receiptSettings || App.DB().settings;
+    const money=(n,dec)=>String(st.currency || "₹")+Number(n).toLocaleString("en-IN",{minimumFractionDigits:dec?2:0,maximumFractionDigits:2});
     let s = '*' + (st.shopName || 'My Shop') + '*\n';
     s += '🧾 Bill #' + bill.no + ' · ' + App.fmtDT(bill.at) + '\n';
     s += '👤 ' + bill.customerName + '\n\n';
@@ -355,8 +388,8 @@
     if (bill.discount > 0) s += 'Discount: −' + money(bill.discount) + '\n';
     if (bill.tax > 0) s += 'GST: ' + money(bill.tax) + '\n';
     s += '*Total: ' + money(bill.total, true) + '*\n';
-    s += bill.credit ? '\n⚠️ _Udhaar — payment pending_\n' : '✅ Paid by ' + String(bill.mode).toUpperCase() + '\n';
-    if (st.upiId && bill.credit) s += '\nPay on UPI: ' + st.upiId + '\n';
+    s += bill.void ? '\nCANCELLED / VOID — not a payment request\n' : bill.credit ? '\n⚠️ _Udhaar — payment pending_\n' : '✅ Paid by ' + String(bill.mode).toUpperCase() + '\n';
+    if (st.upiId && bill.credit && !bill.void) s += '\nPay on UPI: ' + st.upiId + '\n';
     s += '\nधन्यवाद 🙏';
     return s;
   };
@@ -392,13 +425,16 @@
   /* ───────── CSV ───────── */
   App.toCSV = function (rows) {
     return rows.map((r) => r.map((c) => {
-      const s = c == null ? '' : String(c);
+      let s = c == null ? '' : String(c);
+      if (typeof c === 'string' && /^[\s]*[=+@-]/.test(s)) s = "'" + s;
       return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     }).join(',')).join('\n');
   };
   App.parseCSV = function (text) {
+    if (typeof text !== 'string' || text.length > 4000000) throw new Error('CSV is too large.');
     const rows = []; let row = [], cur = '', q = false;
     for (let i = 0; i < text.length; i++) {
+      if (row.length > 100 || rows.length >= App.limits.records || cur.length > App.limits.text) throw new Error('CSV exceeds the supported row or field limits.');
       const ch = text[i];
       if (q) {
         if (ch === '"' && text[i + 1] === '"') { cur += '"'; i++; }
@@ -408,6 +444,7 @@
       else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
       else if (ch !== '\r') cur += ch;
     }
+    if (cur.length > App.limits.text || row.length > 100) throw new Error('CSV field is too long.');
     if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
     return rows.filter((r) => r.some((c) => String(c).trim() !== ''));
   };
@@ -419,7 +456,7 @@
     return '<div class="avatar ' + cls + '">' + esc(init) + '</div>';
   };
   App.emptyState = (emoji, title, sub, btn) =>
-    '<div class="empty"><div class="e">' + emoji + '</div><h4>' + esc(title) + '</h4>' +
+    '<div class="empty"><div class="e">' + esc(emoji) + '</div><h4>' + esc(title) + '</h4>' +
     (sub ? '<p>' + esc(sub) + '</p>' : '') + (btn || '') + '</div>';
 
   App.skeleton = (n, h) => Array.from({ length: n || 3 }, () => '<div class="sk" style="height:' + (h || 64) + 'px;border-radius:16px;margin-bottom:10px"></div>').join('');
@@ -429,6 +466,7 @@
     opts = opts || {};
     const body = el('<div style="text-align:center">' +
       (opts.sub ? '<p class="muted" style="font-size:13px;margin-bottom:10px">' + esc(opts.sub) + '</p>' : '') +
+      (opts.extra || '') +
       '<div id="npv" class="num" style="font-size:38px;font-weight:850;padding:12px 0;letter-spacing:-.03em">₹0</div>' +
       (opts.quick ? '<div class="chip-row" style="justify-content:center;margin-bottom:12px">' +
         opts.quick.map((q) => '<button class="chip tap" data-q="' + q + '">' + money(q) + '</button>').join('') + '</div>' : '') +
@@ -442,7 +480,7 @@
       title, body,
       buttons: [{ label: App.t('com.cancel'), cls: 'ghost' }, {
         label: opts.ok || App.t('com.confirm'), cls: 'ok',
-        fn: () => { const n = parseFloat(val || '0') || 0; if (n <= 0 && !opts.allowZero) return false; onOk(n); }
+        fn: async () => { const n = parseFloat(val || '0') || 0; if (n <= 0 && !opts.allowZero) return false; return await onOk(n,body); }
       }]
     });
     body.addEventListener('click', (e) => {

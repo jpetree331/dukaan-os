@@ -99,7 +99,7 @@
 
     'sync.online': 'Online', 'sync.offline': 'Offline mode', 'sync.pending': '{n} to sync',
     'sync.syncing': 'Syncing…', 'sync.done': 'Everything synced', 'sync.doneSub': '{n} changes uploaded',
-    'sync.offlineHint': 'No internet — your work is saved on this phone and will sync automatically.',
+    'sync.offlineHint': 'Work is saved on this device only. Cloud sync is not available; export backups regularly.',
 
     'lock.enter': 'Enter your PIN', 'lock.wrong': 'Wrong PIN, try again', 'lock.welcome': 'Welcome back'
   };
@@ -198,7 +198,7 @@
 
     'sync.online': 'ऑनलाइन', 'sync.offline': 'ऑफलाइन', 'sync.pending': '{n} भेजना बाकी',
     'sync.syncing': 'भेजा जा रहा है…', 'sync.done': 'सब सिंक हो गया', 'sync.doneSub': '{n} बदलाव अपलोड हुए',
-    'sync.offlineHint': 'इंटरनेट नहीं है — काम इसी फ़ोन में सेव है, नेट आते ही अपने आप चला जाएगा।',
+    'sync.offlineHint': 'काम इसी फ़ोन में सेव है। क्लाउड सिंक उपलब्ध नहीं है; नियमित बैकअप लें।',
 
     'lock.enter': 'अपना पिन डालें', 'lock.wrong': 'गलत पिन, फिर कोशिश करें', 'lock.welcome': 'वापसी पर स्वागत है'
   };
@@ -212,10 +212,10 @@
     if (vars) Object.keys(vars).forEach((k) => { s = s.split('{' + k + '}').join(vars[k]); });
     return s;
   };
-  App.setLang = function (l) {
+  App.setLang = async function (l) {
     App.DB().settings.lang = l === 'hi' ? 'hi' : 'en';
+    (await App.save({ sync: false }));
     document.documentElement.lang = App.DB().settings.lang;
-    App.save({ sync: false });
   };
   /* item display name follows the UI language when a Hindi name exists */
   App.itemName = (it) => (App.lang() === 'hi' && it && it.nameHi ? it.nameHi : (it ? it.name : ''));

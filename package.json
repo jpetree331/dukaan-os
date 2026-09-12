@@ -5,8 +5,22 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test": "node --test tests/*.test.cjs",
+    "build": "node scripts/build-public.cjs",
+    "plan:check": "node scripts/check-sprint-plan.cjs"
   },
-  "keywords": ["pos", "billing", "inventory", "kirana", "udhaar", "ledger", "pwa", "offline-first", "hindi", "voice"],
+  "keywords": [
+    "pos",
+    "billing",
+    "inventory",
+    "kirana",
+    "udhaar",
+    "ledger",
+    "pwa",
+    "offline-first",
+    "hindi",
+    "voice"
+  ],
   "license": "MIT"
 }

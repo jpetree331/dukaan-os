@@ -33,7 +33,7 @@
         if (Math.abs(dx) > TH && !fg.dataset.armed) { fg.dataset.armed = '1'; App.buzz(18); }
         if (Math.abs(dx) <= TH) delete fg.dataset.armed;
       };
-      const up = () => {
+      const up = async () => {
         if (!drag) return;
         drag = false;
         fg.classList.remove('dragging'); fg.classList.add('snap');
@@ -43,7 +43,7 @@
         delete fg.dataset.armed;
         try { fg.releasePointerCapture(pid); } catch (err) { }
         if (fired) {
-          if (dir > 0) settle(id); else remind(id);
+          if (dir > 0) settle(id); else (await remind(id));
         }
         dx = 0;
       };
@@ -58,17 +58,34 @@
   /* ═════════ customer actions ═════════ */
   function settle(id) {
     const c = App.customer(id); if (!c) return;
-    App.numpadModal('💰 ' + t('cus.logPayment'), c.balance ? String(App.round2(c.balance)) : '', (amt) => {
-      App.actions.takePayment(id, amt, 'cash');
+    const operationId=App.uid('collection');
+    const bills=App.bills().filter(b=>b.customerId===id&&b.credit&&!b.void);
+    App.numpadModal('💰 ' + t('cus.logPayment'), c.balance ? String(App.round2(c.balance)) : '', async (amt,body) => {
+      (await App.actions.takePayment(id, amt, App.$('#collectionMode',body).value,'',{operationId,billId:App.$('#collectionBill',body).value}));
       const done = (c.balance || 0) <= 0.5;
       App.toast('ok', t('cus.received', { name: c.name, amt: money(amt, true) }), done ? t('cus.paidFull', { name: c.name }) : money(c.balance) + ' ' + t('com.pending').toLowerCase());
       if (done) App.confetti({ count: 60 });
       App.render();
-    }, { sub: c.name + ' · ' + t('cus.balance') + ' ' + money(c.balance, true), ok: t('cus.logPayment'), quick: [100, 200, 500, App.round2(c.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });
+    }, { extra:'<div class="field"><label for="collectionMode">Payment method</label><select class="inp" id="collectionMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div><div class="field"><label for="collectionBill">Apply to bill (optional)</label><select class="inp" id="collectionBill"><option value="">Customer balance</option>'+bills.map(b=>'<option value="'+b.id+'">Bill #'+b.no+'</option>').join('')+'</select></div>',sub: c.name + ' · ' + t('cus.balance') + ' ' + money(c.balance, true), ok: t('cus.logPayment'), quick: [100, 200, 500, App.round2(c.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });
   }
   App.settleCustomer = settle;
+  App.customerEntryDialog = function(id,kind){
+    const c=App.customer(id);if(!c)return;
+    const operationId=App.uid('customer_entry');
+    const body=App.el('<div><p>'+esc(c.name)+' · '+esc(money(c.balance,true))+'</p><div class="field"><label for="entryAmount">'+(kind==='advance'?'Amount received':'Signed amount: positive debt, negative credit')+'</label><input class="inp" id="entryAmount" type="number" step="0.01" autofocus></div>'+
+      (kind==='advance'?'<div class="field"><label for="entryMode">Payment method</label><select class="inp" id="entryMode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div>':'')+
+      (kind==='opening'?'<div class="field"><label for="entryDate">Opening date</label><input class="inp" id="entryDate" type="date" value="'+App.dayKey(Date.now())+'"></div>':'')+
+      '<div class="field"><label for="entryNote">Reason / note</label><input class="inp" id="entryNote"></div><p class="muted">'+(kind==='advance'?'This records money received and may create customer credit.':'This changes the balance without recording cash received or paid.')+'</p></div>');
+    App.modal({title:{advance:'Record advance',opening:'Opening balance',correction:'Correct customer balance'}[kind],body,buttons:[{label:t('com.cancel'),cls:'ghost'},{label:t('com.save'),cls:'pri',fn:async()=>{
+      const amount=Number(App.$('#entryAmount',body).value),note=App.$('#entryNote',body).value;
+      if(kind==='advance')await App.actions.customerCredit(id,amount,App.$('#entryMode',body).value,note,{operationId});
+      else if(kind==='opening')await App.actions.openingBalance(id,amount,new Date(App.$('#entryDate',body).value+'T00:00:00').getTime(),note,{operationId});
+      else await App.actions.correctCustomerBalance(id,amount,note,{operationId});
+      App.toast('ok','Customer entry saved');App.render();
+    }}]});
+  };
 
-  function remind(id) {
+  async function remind(id) {
     const c = App.customer(id); if (!c) return;
     const st = App.DB().settings;
     const days = c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0;
@@ -78,7 +95,7 @@
       : 'Namaste ' + c.name + ' 🙏\n\nA friendly reminder — *' + money(c.balance, true) + '* is pending at ' + st.shopName + (days ? ' (' + days + ' days)' : '') + '.\nPlease settle whenever convenient.' + (st.upiId ? '\n\nUPI: ' + st.upiId : '') + '\n\nThank you!';
     App.whatsapp(c.phone, msg);
     App.log('remind', 'Reminder sent to ' + c.name);
-    App.save({ render: false, sync: false });
+    (await App.save({ render: false, sync: false }));
     App.toast('ok', t('cus.remind'), c.name);
   }
   App.remindCustomer = remind;
@@ -98,15 +115,15 @@
       buttons: [
         c ? {
           label: '🗑️', cls: 'danger', keepOpen: true, fn: (api) => {
-            if (c.balance > 0.5) { App.toast('err', 'Settle ' + money(c.balance) + ' first'); return; }
-            App.confirm(t('com.delete') + '?', c.name + ' will be removed. Past bills are kept.', { danger: true }).then((ok) => {
-              if (!ok) return; c.deleted = true; App.save({ op: 'customer' }); App.toast('ok', 'Removed ' + c.name); api.close(); App.render();
+            if (Math.abs(c.balance) > 0.005) { App.toast('err', 'Settle ' + money(c.balance) + ' first'); return; }
+            App.confirm(t('com.delete') + '?', c.name + ' will be removed. Past bills are kept.', { danger: true }).then(async (ok) => {
+              if (!ok) return; c.deleted = true; (await App.save({ op: 'customer' })); App.toast('ok', 'Removed ' + c.name); api.close(); App.render();
             });
           }
         } : null,
         { label: t('com.cancel'), cls: 'ghost' },
         {
-          label: t('com.save'), cls: 'pri', fn: () => {
+          label: t('com.save'), cls: 'pri', fn: async () => {
             const n = App.$('#c_n', body).value.trim();
             if (!n) { App.toast('err', 'Name is required'); return false; }
             const rec = c || { id: App.uid('cu'), storeId: App.S(), balance: 0, spend: 0, visits: 0, points: 0, dueSince: null, at: Date.now(), firstAt: Date.now() };
@@ -116,7 +133,7 @@
             rec.note = App.$('#c_note', body).value.trim();
             if (!c) App.DB().customers.push(rec);
             App.log('customer', (c ? 'Updated ' : 'Added ') + rec.name);
-            App.save({ op: 'customer' });
+            (await App.save({ op: 'customer' }));
             App.toast('ok', t('com.done'), rec.name);
             done && done(rec);
           }
@@ -126,16 +143,17 @@
 
   App.customerDetail = function (id) {
     const c = App.customer(id);
-    const bills = App.bills().filter((b) => b.customerId === id).slice(0, 40);
-    const pays = App.payments().filter((p) => p.customerId === id).slice(0, 20);
+    const statement=App.customerStatement(id);
+    const bills = App.bills().filter((b) => b.customerId === id);
+    const pays = App.payments().filter((p) => p.customerId === id);
     const feed = bills.map((b) => ({ t: b.at, kind: 'bill', b })).concat(pays.map((p) => ({ t: p.at, kind: 'pay', p })))
-      .sort((a, b) => b.t - a.t).slice(0, 40);
+      .sort((a, b) => b.t - a.t);
     const days = c.dueSince ? App.daysBetween(c.dueSince, Date.now()) : 0;
 
     const body = App.el('<div>' +
       '<div class="grid g-3" style="margin-bottom:16px">' +
-      '<div class="stat ' + (c.balance > 0 ? 'bad' : 'good') + '"><div class="k">' + t('cus.balance') + '</div><div class="v" style="color:' + (c.balance > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(c.balance) + '</div>' +
-      (days ? '<div class="d down">' + t('cus.since', { n: days }) + '</div>' : '<div class="d up">✓ clear</div>') + '</div>' +
+      '<div class="stat ' + (c.balance > 0 ? 'bad' : 'good') + '"><div class="k">' + (c.balance < 0 ? 'Credit owed to customer' : t('cus.balance')) + '</div><div class="v" style="color:' + (c.balance > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(Math.abs(c.balance), true) + '</div>' +
+      (c.balance < 0 ? '<div class="d up">Available against future udhaar bills</div>' : days ? '<div class="d down">' + t('cus.since', { n: days }) + '</div>' : '<div class="d up">✓ clear</div>') + '</div>' +
       '<div class="stat"><div class="k">' + t('cus.spent', { amt: '' }).trim() + '</div><div class="v">' + App.short(c.spend || 0) + '</div><div class="d muted">' + t('cus.visits', { n: c.visits || 0 }) + '</div></div>' +
       '<div class="stat"><div class="k">★ ' + t('cus.points') + '</div><div class="v">' + Math.floor(c.points || 0) + '</div><div class="d muted">= ' + money(Math.floor(c.points || 0) * (App.DB().settings.loyaltyValue || 1)) + '</div></div>' +
       '</div>' +
@@ -143,34 +161,40 @@
       (c.balance > 0 ? '<button class="btn ok" id="dPay">💰 ' + t('cus.logPayment') + '</button>' : '') +
       (c.phone && c.balance > 0 ? '<button class="btn" id="dRemind">💬 ' + t('cus.remind') + '</button>' : '') +
       '<button class="btn ghost" id="dEdit">✏️ ' + t('com.edit') + '</button>' +
-      '<button class="btn ghost" id="dCsv">📤 ' + t('com.export') + '</button></div>' +
+      '<button class="btn ghost" id="dCsv">📤 ' + t('com.export') + '</button><button class="btn ghost" id="dStatementCsv">Balance CSV</button></div>' +
+      '<div class="btn-row"><button class="btn" id="dAdvance">Record advance</button>'+(App.isOwner()?'<button class="btn" id="dOpening">Opening balance</button><button class="btn" id="dCorrection">Correct balance</button>':'')+'</div>'+
+      '<div class="sec-title">Balance entries (latest 40; CSV includes all)</div><div class="table-wrap"><table><thead><tr><th>Date / entry</th><th>Change</th><th>Balance</th></tr></thead><tbody>'+statement.entries.slice(-40).map(e=>'<tr><td>'+esc(App.fmtDT(e.at)+' · '+e.kind)+'<br><small>'+esc(e.note || '')+'</small></td><td>'+esc(money(e.delta,true))+'</td><td>'+esc(money(e.balance,true))+'</td></tr>').join('')+'</tbody></table></div>'+
       '<div class="sec-title">' + t('cus.history') + '</div>' +
-      (feed.length ? feed.map((f) => f.kind === 'bill' ?
+      (feed.length ? feed.slice(0, 40).map((f) => f.kind === 'bill' ?
         '<div class="list-row"><span class="rank" style="background:' + (f.b.void ? 'var(--line)' : f.b.credit ? 'var(--bad-bg)' : 'var(--ok-bg)') + ';color:' + (f.b.credit ? 'var(--bad)' : 'var(--ok)') + '">' + (f.b.credit ? '📒' : '🧾') + '</span>' +
         '<span style="flex:1;min-width:0"><b' + (f.b.void ? ' style="text-decoration:line-through;opacity:.5"' : '') + '>#' + f.b.no + ' · ' + esc(f.b.lines.map((l) => l.name).join(', ').slice(0, 44)) + '</b>' +
-        '<br><small class="muted">' + App.fmtDT(f.b.at) + ' · ' + String(f.b.mode).toUpperCase() + '</small></span>' +
+        '<br><small class="muted">' + App.fmtDT(f.b.at) + ' · ' + esc(String(f.b.mode).toUpperCase()) + '</small></span>' +
         '<b class="num">' + money(f.b.total) + '</b>' +
         '<button class="btn xs ghost" data-rebill="' + f.b.id + '">👁️</button></div>'
         :
         '<div class="list-row"><span class="rank" style="background:var(--ok-bg);color:var(--ok)">💰</span>' +
-        '<span style="flex:1"><b>Payment received</b><br><small class="muted">' + App.fmtDT(f.p.at) + ' · ' + String(f.p.mode).toUpperCase() + '</small></span>' +
+        '<span style="flex:1"><b>Payment received</b><br><small class="muted">' + App.fmtDT(f.p.at) + ' · ' + esc(String(f.p.mode).toUpperCase()) + '</small></span>' +
         '<b class="num" style="color:var(--ok)">− ' + money(f.p.amount) + '</b></div>').join('')
         : App.emptyState('🧾', 'No purchases yet', '')) +
       '</div>');
 
     const m = App.modal({ title: '👤 ' + esc(c.name) + (c.phone ? ' · ' + esc(c.phone) : ''), body, wide: true, foot: false });
-    body.addEventListener('click', (e) => {
+    body.addEventListener('click', async (e) => {
+      for(const [button,kind] of [['#dAdvance','advance'],['#dOpening','opening'],['#dCorrection','correction']])if(e.target.closest(button)){m.close();return App.customerEntryDialog(id,kind);}
       if (e.target.closest('#dPay')) { m.close(); return settle(id); }
-      if (e.target.closest('#dRemind')) return remind(id);
+      if (e.target.closest('#dRemind')) return (await remind(id));
       if (e.target.closest('#dEdit')) { m.close(); return App.editCustomer(id, () => App.render()); }
       const rb = e.target.closest('[data-rebill]');
       if (rb) { const b = App.DB().bills.find((x) => x.id === rb.dataset.rebill); if (b) App.showReceipt(b); return; }
-      if (e.target.closest('#dCsv')) {
-        const rows = [['Date', 'Type', 'Ref', 'Items', 'Amount', 'Mode']];
-        feed.forEach((f) => f.kind === 'bill'
-          ? rows.push([App.fmtDT(f.b.at), f.b.credit ? 'Udhaar' : 'Sale', '#' + f.b.no, f.b.lines.map((l) => l.name + '×' + l.qty).join('; '), f.b.total, f.b.mode])
-          : rows.push([App.fmtDT(f.p.at), 'Payment', '', '', -f.p.amount, f.p.mode]));
-        App.download(App.toCSV(rows), 'ledger-' + c.name.replace(/\s+/g, '-') + '.csv', 'text/csv');
+      if (e.target.closest('#dStatementCsv')) {
+        const rows = [['Date','Entry','Reference','Change','Balance','Mode','Note']];
+        statement.entries.forEach(e=>rows.push([App.fmtDT(e.at),e.kind,e.billId || e.paymentId || e.id,e.delta,e.balance,e.mode || '',e.note || '']));
+        App.download(App.toCSV(rows), 'balance-' + c.name.replace(/\s+/g, '-') + '.csv', 'text/csv');
+      }
+      if(e.target.closest('#dCsv')){
+        const rows=[['Date','Type','Ref','Items','Amount','Mode']];
+        feed.forEach(f=>f.kind==='bill'?rows.push([App.fmtDT(f.b.at),f.b.void?'Cancelled':f.b.credit?'Udhaar':'Sale','#'+f.b.no,f.b.lines.map(l=>l.name+'×'+l.qty).join('; '),f.b.total,f.b.mode]):rows.push([App.fmtDT(f.p.at),f.p.kind==='advance'?'Advance':'Payment','','',-f.p.amount,f.p.mode]));
+        App.download(App.toCSV(rows),'ledger-'+c.name.replace(/\s+/g,'-')+'.csv','text/csv');
       }
     });
   };
@@ -198,7 +222,7 @@
       '<button class="btn pri" id="addCust">➕ ' + t('cus.add') + '</button></div>' +
 
       (bdays.length ? '<div class="alert ok" style="margin-bottom:14px"><span class="ai">🎂</span><span>' +
-        bdays.map((c) => t('cus.bdayToday', { name: c.name })).join(' · ') +
+        bdays.map((c) => esc(t('cus.bdayToday', { name: c.name }))).join(' · ') +
         ' <button class="btn xs" data-bday="' + bdays[0].id + '" style="margin-left:8px">💬 Wish them</button></span></div>' : '') +
 
       '<div class="grid g-3" style="margin-bottom:18px">' +
@@ -232,7 +256,7 @@
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
       '<th>' + t('com.name') + '</th><th>' + t('com.phone') + '</th><th class="r">Spent</th><th class="r">★</th><th class="r">Last seen</th><th></th></tr></thead><tbody>' +
       (rest.length ? rest.map((c, i) => '<tr>' +
-        '<td><div style="display:flex;align-items:center;gap:10px">' + App.avatarFor(c.name, i) + '<b>' + esc(c.name) + '</b></div></td>' +
+        '<td><div style="display:flex;align-items:center;gap:10px">' + App.avatarFor(c.name, i) + '<div><b>' + esc(c.name) + '</b>' + (c.balance < 0 ? '<br><small>Credit owed: ' + money(-c.balance, true) + '</small>' : '') + '</div></div></td>' +
         '<td class="num muted">' + esc(c.phone || '—') + '</td>' +
         '<td class="r num">' + money(c.spend || 0) + '</td>' +
         '<td class="r num">' + Math.floor(c.points || 0) + '</td>' +
@@ -245,14 +269,14 @@
     const Q = App.$('#cusQ');
     Q.addEventListener('input', () => { cf.q = Q.value; App.render(); setTimeout(() => { const n = App.$('#cusQ'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 0); });
 
-    main.addEventListener('click', (e) => {
+    main.addEventListener('click', async (e) => {
       const od = e.target.closest('[data-od]'), so = e.target.closest('[data-sort]');
       const op = e.target.closest('[data-open]'), pay = e.target.closest('[data-pay]'), rem = e.target.closest('[data-rem]');
       const bd = e.target.closest('[data-bday]');
       if (od) { cf.overdue = +od.dataset.od; return App.render(); }
       if (so) { cf.sort = so.dataset.sort; return App.render(); }
       if (pay) return settle(pay.dataset.pay);
-      if (rem) return remind(rem.dataset.rem);
+      if (rem) return (await remind(rem.dataset.rem));
       if (op) return App.customerDetail(op.dataset.open);
       if (e.target.closest('#addCust')) return App.editCustomer(null, () => App.render());
       if (bd) {
@@ -283,6 +307,7 @@
 
   /* ═════════ suppliers ═════════ */
   App.editSupplier = function (id, done) {
+    App.requirePermission('settings');
     const s = id ? App.supplier(id) : null;
     const d = Object.assign({ name: '', phone: '', supplies: '', dueDate: '' }, s || {});
     const body = App.el('<div>' +
@@ -293,14 +318,14 @@
     App.modal({
       title: s ? '✏️ ' + esc(s.name) : '➕ ' + t('sup.add'), body,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-        label: t('com.save'), cls: 'pri', fn: () => {
+        label: t('com.save'), cls: 'pri', fn: async () => {
           const n = App.$('#s_n', body).value.trim();
           if (!n) { App.toast('err', 'Name is required'); return false; }
           const rec = s || { id: App.uid('sp'), storeId: App.S(), balance: 0, dueSince: null, at: Date.now() };
           rec.name = n; rec.phone = App.$('#s_p', body).value.trim();
           rec.supplies = App.$('#s_s', body).value.trim(); rec.dueDate = App.$('#s_d', body).value;
           if (!s) App.DB().suppliers.push(rec);
-          App.save({ op: 'supplier' });
+          (await App.save({ op: 'supplier' }));
           App.toast('ok', t('com.done'), rec.name);
           done && done(rec);
         }
@@ -309,9 +334,10 @@
   };
 
   App.purchaseModal = function (supplierId) {
+    App.requirePermission('purchase');
     const sups = App.suppliers();
     if (!sups.length) { App.toast('warn', t('sup.noSup'), t('sup.add')); return App.editSupplier(null, () => App.render()); }
-    const lines = [];
+    const lines = [], operationId=App.uid('purchase');
     const body = App.el('<div>' +
       '<div class="field"><label>' + t('nav.suppliers') + '</label><select class="inp" id="p_s">' +
       sups.map((s) => '<option value="' + s.id + '" ' + (s.id === supplierId ? 'selected' : '') + '>' + esc(s.name) + '</option>').join('') + '</select></div>' +
@@ -325,7 +351,7 @@
       '<div class="field"><label>' + t('inv.expiry') + ' <span class="muted">(' + t('com.optional') + ')</span></label><input class="inp" id="p_e" type="date"></div>' +
       '<div id="p_list" style="margin:10px 0"></div>' +
       '<div class="kv" style="font-size:17px"><b>' + t('com.total') + '</b><b id="p_tot" class="num">₹0</b></div>' +
-      '<div class="field" style="margin-top:12px"><label>Paid now ₹</label><input class="inp num" id="p_paid" type="number" inputmode="decimal" value="0"></div></div>');
+      '<div class="field" style="margin-top:12px"><label>Paid now ₹</label><input class="inp num" id="p_paid" type="number" inputmode="decimal" value="0"></div><div class="field"><label>Payment mode</label><select class="inp" id="p_mode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></div></div>');
 
     const syncCost = () => {
       const it = App.item(App.$('#p_i', body).value);
@@ -334,7 +360,7 @@
     const paint = () => {
       App.$('#p_list', body).innerHTML = lines.length ? lines.map((l, i) => {
         const it = App.item(l.itemId);
-        return '<div class="list-row"><span style="font-size:17px">' + (it ? it.emoji : '📦') + '</span>' +
+        return '<div class="list-row"><span style="font-size:17px">' + esc(it ? it.emoji : '📦') + '</span>' +
           '<span style="flex:1"><b>' + esc(it ? App.itemName(it) : '?') + '</b><br><small class="muted">' + l.qty + ' × ' + money(l.cost) + (l.expiry ? ' · exp ' + l.expiry : '') + '</small></span>' +
           '<b class="num">' + money(l.qty * l.cost) + '</b>' +
           '<button class="btn xs danger" data-del="' + i + '">✕</button></div>';
@@ -348,10 +374,10 @@
     App.modal({
       title: '🚚 ' + t('sup.newPO'), body, wide: true,
       buttons: [{ label: t('com.cancel'), cls: 'ghost' }, {
-        label: t('com.save'), cls: 'pri', fn: () => {
+        label: t('com.save'), cls: 'pri', fn: async () => {
           if (!lines.length) { App.toast('err', 'Add at least one item'); return false; }
           const sid = App.$('#p_s', body).value;
-          const po = App.actions.recordPurchase(sid, lines, parseFloat(App.$('#p_paid', body).value) || 0);
+          const po = (await App.actions.recordPurchase(sid, lines, Number(App.$('#p_paid', body).value), '', App.$('#p_mode', body).value,{operationId}));
           App.toast('ok', t('sup.stockIn'), lines.length + ' items · ' + money(po.total, true));
           App.confetti({ count: 40, colors: ['#16A34A', '#4ADE80', '#F5A524'] });
         }
@@ -363,8 +389,9 @@
       if (e.target.closest('#p_add')) {
         const itemId = App.$('#p_i', body).value;
         const qty = parseFloat(App.$('#p_q', body).value) || 0;
-        const cost = parseFloat(App.$('#p_c', body).value) || 0;
+        const cost = Number(App.$('#p_c', body).value);
         if (!itemId || qty <= 0) { App.toast('err', 'Enter a quantity'); return; }
+        App.number(cost, 'Purchase cost');
         lines.push({ itemId, qty, cost, expiry: App.$('#p_e', body).value });
         paint();
         return;
@@ -375,6 +402,7 @@
   };
 
   App.views.suppliers = function (main) {
+    App.requirePermission('settings');
     const sups = App.suppliers().sort((a, b) => (b.balance || 0) - (a.balance || 0));
     const owed = App.stats.totalOwed();
     const pos = App.purchases().slice(0, 25);
@@ -409,34 +437,31 @@
           '<span class="due"><b style="color:' + (s.balance > 0 ? 'var(--bad)' : 'var(--ok)') + '">' + money(s.balance || 0) + '</b><small>' + t('sup.owed') + '</small></span>' +
           (s.balance > 0 ? '<button class="btn xs ok" data-spay="' + s.id + '">💸</button>' : '') +
           '<button class="btn xs" data-spo="' + s.id + '">📦</button>' +
+          '<button class="btn xs" data-saccount="' + s.id + '">Account</button>' +
           '<button class="btn xs ghost" data-sed="' + s.id + '">✏️</button>' +
           '</div></div>';
       }).join('') : '<div class="card">' + App.emptyState('🚚', t('sup.noSup'), 'Add the distributors you buy stock from') + '</div>') +
 
       '<div class="sec-title">📦 ' + t('sup.history') + '</div>' +
       '<div class="card pad-0"><div class="tbl-wrap"><table class="tbl"><thead><tr>' +
-      '<th>#</th><th>' + t('com.date') + '</th><th>' + t('nav.suppliers') + '</th><th>Items</th><th class="r">' + t('com.total') + '</th><th class="r">' + t('com.paid') + '</th></tr></thead><tbody>' +
+      '<th>#</th><th>' + t('com.date') + '</th><th>' + t('nav.suppliers') + '</th><th>Items</th><th class="r">' + t('com.total') + '</th><th class="r">Linked paid</th></tr></thead><tbody>' +
       (pos.length ? pos.map((p) => '<tr><td class="num">' + p.no + '</td><td class="muted" style="font-size:12.5px">' + App.fmtDT(p.at) + '</td>' +
         '<td><b>' + esc(p.supplierName) + '</b></td>' +
-        '<td class="muted" style="font-size:12.5px">' + esc(p.lines.map((l) => { const it = App.item(l.itemId); return (it ? it.name : '?') + '×' + l.qty; }).join(', ').slice(0, 52)) + '</td>' +
+        '<td class="muted" style="font-size:12.5px">' + esc(p.lines.map((l) => { const it = App.item(l.itemId); return (l.name || (it ? it.name : '?')) + '×' + l.qty; }).join(', ').slice(0, 52)) + (p.cancelled ? ' · Cancelled' : '') + '</td>' +
         '<td class="r num"><b>' + money(p.total) + '</b></td>' +
-        '<td class="r num" style="color:' + (p.paid >= p.total ? 'var(--ok)' : 'var(--warn)') + '">' + money(p.paid) + '</td></tr>').join('')
+        '<td class="r num" style="color:' + (App.purchasePaid(p) >= p.total ? 'var(--ok)' : 'var(--warn)') + '">' + money(App.purchasePaid(p)) + '</td></tr>').join('')
         : '<tr><td colspan="6">' + App.emptyState('📦', 'No purchases recorded', 'Log what you buy so stock updates itself') + '</td></tr>') +
       '</tbody></table></div></div>';
 
     main.addEventListener('click', (e) => {
+      const account=e.target.closest('[data-saccount]');if(account)return App.supplierDetail(account.dataset.saccount);
       const sp = e.target.closest('[data-spay]'), po = e.target.closest('[data-spo]'), ed = e.target.closest('[data-sed]');
       if (e.target.closest('#addSup')) return App.editSupplier(null, () => App.render());
       if (e.target.closest('#newPO')) return App.purchaseModal();
       if (po) return App.purchaseModal(po.dataset.spo);
       if (ed) return App.editSupplier(ed.dataset.sed, () => App.render());
       if (sp) {
-        const s = App.supplier(sp.dataset.spay);
-        return App.numpadModal('💸 ' + t('sup.paySupplier'), String(App.round2(s.balance)), (amt) => {
-          App.actions.paySupplier(s.id, amt, 'cash');
-          App.toast('ok', t('com.done'), 'Paid ' + money(amt, true) + ' to ' + s.name);
-          App.render();
-        }, { sub: s.name + ' · ' + t('sup.owed') + ' ' + money(s.balance, true), quick: [500, 1000, 2000, App.round2(s.balance)].filter((x, i, a) => x > 0 && a.indexOf(x) === i) });
+        return App.supplierPaymentDialog(sp.dataset.spay);
       }
     });
   };

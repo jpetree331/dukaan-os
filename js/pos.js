@@ -6,36 +6,41 @@
   const App = w.App, esc = App.esc, money = App.money, t = (k, v) => App.t(k, v);
   App.views = App.views || {};
 
-  const cart = { lines: [], discount: 0, mode: 'cash', customerId: '', note: '', redeem: 0 };
+  const cart = { storeId: '', lines: [], discount: 0, mode: 'cash', customerId: '', note: '', redeem: 0 };
   App.cart = cart;
   let filter = { q: '', cat: '' }, lastBill = null;
+  let loadedScope='',draftSave=Promise.resolve(),draftError=null;
+  const scopeKey=()=>JSON.stringify(App.drafts.scope());
+  function loadDraft(){
+    const scope=scopeKey();if(loadedScope===scope)return;
+    loadedScope=scope;const saved=App.drafts.current();
+    Object.assign(cart,{storeId:'',lines:[],discount:0,mode:'cash',customerId:'',note:'',redeem:0,draftId:''},saved?JSON.parse(JSON.stringify(saved.cart)):{});
+    cart.draftId=saved?.id || '';lastBill=null;
+  }
+  App.on('secureclear',()=>{loadedScope='';Object.assign(cart,{storeId:'',lines:[],discount:0,mode:'cash',customerId:'',note:'',redeem:0,draftId:''});lastBill=null;});
+  App.posFlush=()=>draftSave;
 
   const cartQty = () => cart.lines.reduce((s, l) => s + l.qty, 0);
   const subTotal = () => App.round2(cart.lines.reduce((s, l) => s + l.price * l.qty, 0));
 
   function totals() {
-    const st = App.DB().settings;
-    const sub = subTotal();
-    const disc = App.clamp(cart.discount || 0, 0, sub);
-    const taxable = App.round2(sub - disc);
-    let tax = 0;
-    if (st.gstEnabled) {
-      const ratio = sub > 0 ? taxable / sub : 0;
-      tax = App.round2(cart.lines.reduce((s, l) => {
-        const it = App.item(l.itemId);
-        const g = it && it.gst != null ? it.gst : st.defaultGst;
-        return s + (l.price * l.qty * ratio) * (g / 100);
-      }, 0));
-    }
-    return { sub, disc, tax, total: App.round2(taxable + tax) };
+    const T = App.cartTotals(cart);
+    cart.redeem = T.redeem;
+    return T;
   }
+  App.posTotals = totals;
 
   /* ───────── cart ops ───────── */
   function add(itemId, qty, fromEl) {
+    App.requirePermission('bill');
+    loadDraft();
+    if (cart.storeId && cart.storeId !== App.S()) clearCart();
+    cart.storeId = App.S();
     const it = App.item(itemId);
     if (!it) return;
     qty = qty || 1;
-    const have = App.itemStock(it);
+    App.number(qty, 'Quantity', 0.0001); App.domain.quantityUnits(qty);
+    const have = App.sellableStock(it);
     const inCart = (cart.lines.find((l) => l.itemId === itemId) || {}).qty || 0;
     if (have <= 0) { App.toast('err', App.itemName(it), t('pos.outOfStock')); return; }
     if (inCart + qty > have) {
@@ -44,37 +49,37 @@
       App.toast('warn', App.itemName(it), t('pos.onlyLeft', { n: have }));
     }
     const ex = cart.lines.find((l) => l.itemId === itemId);
-    if (ex) ex.qty = App.round2(ex.qty + qty);
-    else cart.lines.push({ itemId, name: App.itemName(it), emoji: it.emoji || '🛍️', qty, price: it.price });
+    if (ex) ex.qty = App.domain.quantity(ex.qty + qty);
+    else cart.lines.push({ itemId, name: App.itemName(it), emoji: it.emoji || '🛍️', qty, price: it.price,selectionVersion:App.selectionVersion(it) });
     if (fromEl) App.flyTo(fromEl, '#cartCount', it.emoji || '🛒');
     App.buzz();
-    paintCart(); App.bump('#cartCount');
+    paintCart(); App.bump('#cartCount');return draftSave;
   }
   App.posAdd = add;
 
   function setQty(itemId, q) {
+    App.requirePermission('bill');
+    App.domain.quantityUnits(q);
     const l = cart.lines.find((x) => x.itemId === itemId); if (!l) return;
     const it = App.item(itemId);
-    const max = it ? App.itemStock(it) : 999;
+    const max = it ? App.sellableStock(it) : 999;
     if (q > max) { q = max; App.toast('warn', App.itemName(it), t('pos.onlyLeft', { n: max })); }
     if (q <= 0) {
-      const node = App.$('[data-line="' + itemId + '"]');
-      if (node) { node.classList.add('rm'); setTimeout(() => { cart.lines = cart.lines.filter((x) => x.itemId !== itemId); paintCart(); }, 220); return; }
       cart.lines = cart.lines.filter((x) => x.itemId !== itemId);
-    } else l.qty = App.round2(q);
+    } else l.qty = App.domain.quantity(q);
     paintCart();
   }
-  function clearCart() { cart.lines = []; cart.discount = 0; cart.redeem = 0; cart.customerId = ''; cart.mode = 'cash'; cart.note = ''; paintCart(); }
-  App.posClear = clearCart;
+  function clearCart() { lastBill = null; cart.draftId='';cart.storeId = ''; cart.lines = []; cart.discount = 0; cart.redeem = 0; cart.customerId = ''; cart.mode = 'cash'; cart.note = ''; paintCart();return draftSave; }
+  App.posClear = () => {loadedScope='';loadDraft();paintCart(false);};
 
   /* ───────── item grid ───────── */
   function itemCard(it) {
-    const s = App.itemStock(it), state = App.stockState(it);
+    const s = App.sellableStock(it), state = s <= 0 ? 'out' : App.stockState(it);
     const th = it.threshold != null ? it.threshold : App.DB().settings.lowStock;
     const pct = Math.max(4, Math.min(100, (s / Math.max(th * 3, 1)) * 100));
     return '<button class="item-card ' + (state === 'out' ? 'out' : state === 'low' ? 'low' : '') + '" data-add="' + it.id + '">' +
       (it.fav ? '<span class="fav">⭐</span>' : '') +
-      '<span class="emo">' + (it.emoji || '🛍️') + '</span>' +
+      '<span class="emo">' + esc(it.emoji || '🛍️') + '</span>' +
       '<span class="nm">' + esc(App.itemName(it)) + '</span>' +
       '<span class="pr">' + money(it.price) + '</span>' +
       '<span class="st">' + (state === 'out' ? t('pos.outOfStock') : s + ' ' + t('com.stock').toLowerCase()) + '</span>' +
@@ -100,18 +105,18 @@
     const list = visibleItems();
     box.innerHTML = list.length ? list.map(itemCard).join('')
       : App.emptyState('🔍', t('pos.noItems'), t('pos.quickHint'),
-        '<button class="btn pri sm" id="quickAdd">' + t('pos.addQuick') + '</button>');
+        App.can('edit_inventory') ? '<button class="btn pri sm" id="quickAdd">' + t('pos.addQuick') + '</button>' : '');
   }
 
   /* ───────── cart panel ───────── */
-  function paintCart() {
+  function paintCart(persist=true) {
     const box = App.$('#cartLines'); if (!box) return;
     const T = totals();
     const cust = cart.customerId ? App.customer(cart.customerId) : null;
 
     box.innerHTML = cart.lines.length ? cart.lines.map((l) =>
       '<div class="cart-line" data-line="' + l.itemId + '">' +
-      '<span style="font-size:18px">' + (l.emoji || '🛍️') + '</span>' +
+      '<span style="font-size:18px">' + esc(l.emoji || '🛍️') + '</span>' +
       '<span class="cl-n"><b>' + esc(l.name) + '</b><span>' + money(l.price) + ' × ' + l.qty + '</span></span>' +
       '<span class="qty"><button data-dec="' + l.itemId + '">−</button><b>' + l.qty + '</b><button data-inc="' + l.itemId + '">+</button></span>' +
       '<span class="cl-amt">' + money(l.price * l.qty) + '</span></div>').join('')
@@ -144,6 +149,14 @@
 
     const mob = App.$('#cartPanel');
     if (mob && cart.lines.length && w.innerWidth <= 860) mob.classList.add('open');
+    if(persist){
+      const context=App.context();
+      draftSave=App.drafts.save(cart).then(saved=>{if(App.contextValid(context)){cart.draftId=saved?.id || '';draftError=null;}}).catch(error=>{
+        draftError=error;
+        App.toast('err','Cart could not be saved',error.message);
+        if(App.contextValid(context)){loadedScope='';loadDraft();paintCart(false);}
+      });
+    }
   }
 
   /* ───────── customer picker ───────── */
@@ -173,48 +186,50 @@
     App.$('#cq', body).addEventListener('input', paint);
     body.addEventListener('click', (e) => {
       const b = e.target.closest('[data-c]');
-      if (b) { cart.customerId = b.dataset.c; paintCart(); m.close(); return; }
+      if (b) { cart.redeem = 0; cart.customerId = b.dataset.c; paintCart(); m.close(); return; }
       if (e.target.closest('#newCust')) {
         m.close();
-        App.editCustomer(null, (c) => { cart.customerId = c.id; paintCart(); });
+        App.editCustomer(null, (c) => { cart.redeem = 0; cart.customerId = c.id; paintCart(); });
       }
     });
   }
 
   /* ───────── checkout ───────── */
-  function checkout() {
-    if (!cart.lines.length) return;
+  async function checkout() {
+    if (!cart.lines.length || App.isSaving()) return;
+    await draftSave;if(draftError)throw draftError;
     const T = totals();
     if (cart.mode === 'credit' && !cart.customerId) {
       App.toast('warn', t('pos.needCustomer'));
       pickCustomer();
       return;
     }
-    const bill = App.actions.checkout({
-      lines: cart.lines, discount: cart.discount + (cart.redeem || 0),
+    const bill = (await App.actions.checkout({
+      draftId:cart.draftId,storeId: cart.storeId, lines: cart.lines, discount: cart.discount,
       mode: cart.mode, customerId: cart.customerId, note: cart.note, redeem: cart.redeem
-    });
-    lastBill = bill;
+    }));
     App.buzz(30);
 
     const r = App.$('#charge') ? App.$('#charge').getBoundingClientRect() : null;
     App.confetti({ x: r ? r.left + r.width / 2 : innerWidth / 2, y: r ? r.top : innerHeight * 0.5, count: cart.mode === 'credit' ? 40 : 100 });
 
     clearCart();
+    lastBill = bill;
     const mob = App.$('#cartPanel'); if (mob) mob.classList.remove('open');
     paintItems();
 
-    App.toast(cart.mode === 'credit' ? 'warn' : 'ok', t('pos.done'),
+    App.toast(bill.credit ? 'warn' : 'ok', t('pos.done'),
       t('pos.doneSub', { amt: money(bill.total, true), mode: bill.credit ? t('pos.credit') : t('pos.' + bill.mode) }),
-      { label: t('com.undo'), fn: () => { App.actions.voidBill(bill.id, 'undo'); App.toast('ok', t('com.undo'), 'Bill #' + bill.no + ' cancelled'); App.render(); } });
+      { label: t('com.undo'), fn: async () => { (await App.actions.voidBill(bill.id, 'undo')); App.toast('ok', t('com.undo'), 'Bill #' + bill.no + ' cancelled'); App.render(); } });
 
-    App.checkTarget();
+    await App.checkTarget().catch(() => App.toast('warn', 'Sale saved', 'The daily target preference could not be saved.'));
     showReceipt(bill);
   }
 
   /* ───────── receipt modal ───────── */
   function showReceipt(bill) {
-    const cust = bill.customerId ? App.customer(bill.customerId) : null;
+    bill = App.domain.snapshot(bill);
+    const cust = bill.customerPhone!==undefined?{phone:bill.customerPhone}:(bill.customerId ? App.customer(bill.customerId) : null);
     const wrap = App.el('<div><div class="receipt-prev" id="rcp"></div></div>');
     const cv = App.receiptCanvas(bill);
     wrap.querySelector('#rcp').appendChild(cv);
@@ -223,6 +238,7 @@
       title: t('pos.done') + '  #' + bill.no,
       body: wrap,
       buttons: [
+        App.can('void_bill')&&!bill.void?{label:'Return / refunds',cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
         { label: '💾 PNG', cls: 'ghost', keepOpen: true, fn: () => App.downloadCanvas(cv, 'bill-' + bill.no + '.png') },
         { label: '🖨️ ' + t('com.print'), cls: 'ghost', keepOpen: true, fn: () => printBill(bill) },
         {
@@ -262,7 +278,7 @@
       (st.gstin ? '<div style="font-size:11px">GSTIN: ' + esc(st.gstin) + '</div>' : '') +
       '<hr></div>' +
       '<div style="font-size:11px;display:flex;justify-content:space-between"><span>Bill #' + bill.no + '</span><span>' + App.fmtDT(bill.at) + '</span></div>' +
-      '<div style="font-size:12px;font-weight:700;margin:4px 0">' + esc(bill.customerName) + ' · ' + String(bill.mode).toUpperCase() + '</div><hr>' +
+      '<div style="font-size:12px;font-weight:700;margin:4px 0">' + esc(bill.customerName) + ' · ' + esc(String(bill.mode).toUpperCase()) + '</div><hr>' +
       '<table style="width:100%;font-size:11px;border-collapse:collapse">' +
       '<tr><th align="left">Item</th><th>Qty</th><th align="right">Rate</th><th align="right">Amt</th></tr>' +
       bill.lines.map((l) => '<tr><td>' + esc(l.name) + '</td><td align="center">' + l.qty + '</td><td align="right">' + l.price + '</td><td align="right">' + l.gross.toFixed(2) + '</td></tr>').join('') +
@@ -271,8 +287,9 @@
       (bill.discount ? '<div style="font-size:11px;display:flex;justify-content:space-between"><span>Discount</span><span>-' + bill.discount.toFixed(2) + '</span></div>' : '') +
       (bill.tax ? '<div style="font-size:11px;display:flex;justify-content:space-between"><span>GST</span><span>' + bill.tax.toFixed(2) + '</span></div>' : '') +
       '<div style="font-size:15px;font-weight:800;display:flex;justify-content:space-between;margin-top:6px"><span>TOTAL</span><span>₹' + bill.total.toFixed(2) + '</span></div>' +
-      (bill.credit ? '<div style="text-align:center;font-size:11px;font-weight:700;margin-top:6px">** UDHAAR — PENDING **</div>' : '') +
+      (bill.credit && !bill.void ? '<div style="text-align:center;font-size:11px;font-weight:700;margin-top:6px">** UDHAAR — PENDING **</div>' : '') +
       '<div style="text-align:center;font-size:10px;margin-top:10px">Thank you! धन्यवाद 🙏</div>';
+    if (bill.void) h = '<h1 style="text-align:center">CANCELLED / VOID</h1>' + h;
     App.printNode(h);
   }
   App.printBill = printBill;
@@ -317,7 +334,7 @@
         t('voice.noMatch') + ': ' + esc(res.unknown.join(', ')) + '</span></div>' : '') + '</div>');
     const paint = () => {
       App.$('#vlist', body).innerHTML = res.lines.map((l, i) =>
-        '<div class="list-row"><span style="font-size:20px">' + (l.item.emoji || '🛍️') + '</span>' +
+        '<div class="list-row"><span style="font-size:20px">' + esc(l.item.emoji || '🛍️') + '</span>' +
         '<span style="flex:1"><b>' + esc(App.itemName(l.item)) + '</b><br><small class="muted">' + money(l.item.price) + ' × ' + l.qty + '</small></span>' +
         '<span class="qty"><button data-vd="' + i + '">−</button><b>' + l.qty + '</b><button data-vi="' + i + '">+</button></span>' +
         '<b class="num" style="width:62px;text-align:right">' + money(l.item.price * l.qty) + '</b></div>').join('');
@@ -333,15 +350,17 @@
       buttons: [{ label: t('com.cancel'), cls: 'ghost' },
       {
         label: t('com.add'), cls: 'pri',
-        fn: () => { res.lines.forEach((l) => add(l.item.id, l.qty)); App.toast('ok', t('voice.added', { n: res.lines.length })); }
+        fn: async () => { for(const l of res.lines){await add(l.item.id,l.qty);if(draftError)throw draftError;}App.toast('ok', t('voice.added', { n: res.lines.length })); }
       }]
     });
   }
 
   /* ───────── barcode scanning ───────── */
   async function scan() {
+    App.requirePermission('bill');
+    const context = App.context();
     const manual = () => App.prompt(t('inv.barcode'), t('inv.barcode'), { placeholder: '890...' })
-      .then((code) => { if (code) onCode(code.trim()); });
+      .then((code) => { if (code && App.contextValid(context)) onCode(code.trim()); });
 
     if (!('BarcodeDetector' in w)) {
       App.toast('warn', 'Camera scanner needs Chrome on Android', 'Type the barcode instead');
@@ -351,9 +370,11 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     } catch (e) {
+      if (!App.contextValid(context)) return;
       App.toast('err', 'Camera blocked', 'Allow camera access, or type the code');
       return manual();
     }
+    if (!App.contextValid(context)) { stream.getTracks().forEach(tr => tr.stop()); return; }
     const body = App.el('<div><div class="scanbox"><video playsinline muted autoplay></video>' +
       '<div class="scanframe"></div><div class="scanline"></div></div>' +
       '<p class="muted" style="font-size:12.5px;text-align:center;margin-top:10px">Point at the barcode</p></div>');
@@ -365,11 +386,14 @@
       buttons: [{ label: 'Type it instead', cls: 'ghost', fn: () => { stop = true; manual(); } }],
       onClose: () => { stop = true; stream.getTracks().forEach((tr) => tr.stop()); }
     });
-    const det = new w.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'] });
+    let det;
+    try { det = new w.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'] }); }
+    catch (e) { m.close(); return manual(); }
     const loop = async () => {
       if (stop) return;
       try {
         const codes = await det.detect(video);
+        if (!App.contextValid(context) || stop) return;
         if (codes && codes.length) {
           App.buzz(40);
           m.close();
@@ -394,8 +418,9 @@
 
   /* ───────── render ───────── */
   App.views.billing = function (main) {
+    loadDraft();
     const cats = Array.from(new Set(App.items().map((i) => i.category).filter(Boolean))).sort();
-    const favs = App.items().filter((i) => i.fav && App.itemStock(i) > 0);
+    const favs = App.items().filter((i) => i.fav && App.sellableStock(i) > 0);
 
     main.innerHTML =
       '<div class="page-head"><div><h1>🧾 ' + t('pos.title') + '</h1><div class="sub">' + t('pos.sub') + '</div></div>' +
@@ -411,7 +436,7 @@
       '</div>' +
       (favs.length ? '<div class="chip-row" style="margin-bottom:12px">' +
         '<span class="chip" style="background:transparent;border:0">⭐ ' + t('pos.favorites') + '</span>' +
-        favs.slice(0, 10).map((i) => '<button class="chip tap pri" data-add="' + i.id + '">' + (i.emoji || '') + ' ' + esc(App.itemName(i)) + ' · ' + money(i.price) + '</button>').join('') + '</div>' : '') +
+        favs.slice(0, 10).map((i) => '<button class="chip tap pri" data-add="' + i.id + '">' + esc(i.emoji || '') + ' ' + esc(App.itemName(i)) + ' · ' + money(i.price) + '</button>').join('') + '</div>' : '') +
       '<div class="chip-row" style="margin-bottom:13px">' +
       '<button class="chip tap ' + (filter.cat ? '' : 'sel') + '" data-cat="">' + t('com.all') + '</button>' +
       cats.map((c) => '<button class="chip tap ' + (filter.cat === c ? 'sel' : '') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>').join('') +
@@ -426,13 +451,13 @@
       '<div class="cart-foot" id="cartFoot"></div>' +
       '</div></div>';
 
-    paintItems(); paintCart();
+    paintItems(); paintCart(false);
 
     const S = App.$('#posSearch');
     S.addEventListener('input', () => { filter.q = S.value; paintItems(); });
     S.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        const list = visibleItems().filter((i) => App.itemStock(i) > 0);
+        const list = visibleItems().filter((i) => App.sellableStock(i) > 0);
         if (list.length) { add(list[0].id, 1, App.$('[data-add="' + list[0].id + '"]')); S.value = ''; filter.q = ''; paintItems(); }
       }
     });
@@ -448,11 +473,11 @@
       if (e.target.closest('#showLast') && lastBill) return showReceipt(lastBill);
     });
 
-    App.$('#cartFoot').addEventListener('click', (e) => {
+    App.$('#cartFoot').addEventListener('click', async (e) => {
       const dec = e.target.closest('[data-dec]'), inc = e.target.closest('[data-inc]');
       if (e.target.closest('#pickCust')) return pickCustomer();
       if (e.target.closest('#clearCart')) return clearCart();
-      if (e.target.closest('#charge')) return checkout();
+      if (e.target.closest('#charge')) return await checkout().catch(App.reportError);
       if (e.target.closest('#discBtn')) {
         return App.numpadModal(t('pos.discount'), cart.discount || '', (n) => { cart.discount = n; paintCart(); },
           { allowZero: true, sub: t('pos.subtotal') + ': ' + money(subTotal(), true), quick: [5, 10, 20, 50] });
@@ -460,7 +485,7 @@
       if (e.target.closest('#redeemBtn')) {
         const cust = App.customer(cart.customerId);
         const maxV = Math.floor(cust.points || 0) * (App.DB().settings.loyaltyValue || 1);
-        const use = Math.min(maxV, subTotal());
+        const use = Math.max(0, Math.min(maxV, subTotal() - cart.discount));
         cart.redeem = cart.redeem ? 0 : use;
         App.toast('ok', cart.redeem ? '★ ' + money(cart.redeem) + ' off' : 'Points removed');
         paintCart(); return;

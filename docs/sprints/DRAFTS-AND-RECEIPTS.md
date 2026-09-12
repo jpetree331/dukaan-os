@@ -1,0 +1,15 @@
+# Draft and sale contract
+
+One resumable cart belongs to each account/store/staff/device tuple. Editing a cart starts an awaited book save; the existing Saving state makes the UI inert until that save settles. Draft edits reserve no stock or money. Failed edits restore the last durable cart and display an error. Rendering alone never writes a draft. Locking clears the displayed cart; unlocking reloads only the current scope. Store/staff changes retain other drafts. Login enable/disable remaps only drafts belonging to the explicitly transferred source namespace.
+
+Draft IDs and revisions are separate from sale IDs. Checkout compares the submitted draft to its persisted revision contents, checks current stock, price, tax and units, then commits stock, money, bill and removal of the draft together. An identical retry of a finalized draft returns the existing bill; different contents or scope reject. An interrupted uncommitted checkout leaves the saved draft. A committed checkout leaves a bill and no active draft. Resume never automatically charges a cart. Legacy API callers without a draft ID retain existing behavior; integrations needing retry safety must use a persisted draft ID.
+
+Selected lines record a price/tax/unit version. A changed selection must be removed and added again so the cashier reviews it. New bills snapshot shop identity, contact details, currency, receipt theme, UPI destination, customer phone, loyalty policy and item units in addition to the existing totals, tax and batch-cost allocations. Later settings cannot change new receipt pixels or text. Legacy bills without snapshots retain their documented historical fallback to current shop identity; missing historical identity cannot be reconstructed. A void records correction metadata and leaves original financial quantities unchanged. Returnable line identities/quantities are defined here; partial returns are BUILD-07.
+
+## Compatibility and recovery
+
+The optional root `drafts` collection extends the validated v2 business envelope; absent drafts remain valid. Older validators reject books containing this field, avoiding silent discard. Existing storage-v3 checkpoint wrappers continue to carry the full validated business book. **Git rewind does not migrate data backwards.** Preserve an encrypted backup and use a compatible reader; do not strip fields from a live book to make old binaries accept it.
+
+Drafts are device scoped. A backup preserves their data but a different browser/device does not automatically take ownership of them, nor does restore grant the source staff access. Cross-device draft handoff is outside this sprint. Device identity is a local workflow identifier, not an authorization credential. Browser storage remains plaintext.
+
+Builder tests cover restart and rejected writes with synthetic data. Native-browser tests use both ordinary localStorage and explicitly enabled disposable IndexedDB; real migration activation remains gated. A browser reload is restart evidence, not a physical power-loss certification. Receipt pixel comparison proves identity stability in the tested renderer; printer hardware remains untested.

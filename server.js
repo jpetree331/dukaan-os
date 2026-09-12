@@ -1,29 +1,25 @@
-/* Tiny zero-dependency static server for local development.
-   Production deploys (Vercel / Netlify) serve the folder directly and
-   never run this file. */
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-
+/* Local development server: only the public app files are served. */
+const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
 const PORT = process.env.PORT || 4173;
-const ROOT = __dirname;
-const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.csv': 'text/csv'
-};
-
-http.createServer((req, res) => {
-  let p = decodeURIComponent(req.url.split('?')[0]);
-  if (p === '/') p = '/index.html';
-  const file = path.join(ROOT, path.normalize(p).replace(/^([/\\])+/, ''));
-  if (!file.startsWith(ROOT)) { res.writeHead(403).end('Forbidden'); return; }
-  fs.readFile(file, (err, buf) => {
-    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found: ' + p); return; }
-    res.writeHead(200, {
-      'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': 'no-cache'
-    });
-    res.end(buf);
+const HOST = process.env.HOST || '127.0.0.1';
+const PUBLIC = new Set(require('./public-assets.cjs'));
+const HEADERS = require('./security-headers.cjs');
+const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8' };
+const server = http.createServer((req, res) => {
+  for (const [key, value] of Object.entries(HEADERS)) res.setHeader(key, value);
+  if (!['GET', 'HEAD'].includes(req.method)) return res.writeHead(405, { Allow: 'GET, HEAD' }).end();
+  let pathname;
+  try { pathname = decodeURIComponent(req.url.split('?')[0]); }
+  catch (e) { return res.writeHead(400).end('Malformed URL'); }
+  const name = pathname === '/' ? 'index.html' : pathname.slice(1);
+  if (!PUBLIC.has(name)) return res.writeHead(404).end('Not found');
+  fs.readFile(path.join(__dirname, name), (err, body) => {
+    if (err) return res.writeHead(404).end('Not found');
+    res.writeHead(200, { 'Content-Type': TYPES[path.extname(name)], 'Cache-Control': 'no-cache',
+      'X-Content-Type-Options': 'nosniff' });
+    res.end(req.method === 'HEAD' ? undefined : body);
   });
-}).listen(PORT, () => console.log('Dukaan OS running at http://localhost:' + PORT));
+}).listen(PORT, HOST, () => console.log('Dukaan OS running at http://' + HOST + ':' + server.address().port));

@@ -1,0 +1,1157 @@
+{
+  "version": 1,
+  "created": "2026-09-11",
+  "baselineCommit": "74dfc18282d0faaff9db03ff2453e8cdb9c18935",
+  "baselineVerification": "VERIFY-00",
+  "authorization": "Implementation with separate detailed sprint commits and pushes authorized 2026-09-11; no production deployment implied.",
+  "defaultBuildDays": "1-2 focused engineering days; split before exceeding 3",
+  "sprints": [
+    {
+      "number": 1,
+      "id": "BUILD-01",
+      "verify": "VERIFY-01",
+      "phase": "Foundation",
+      "title": "Domain contracts and reference fixtures",
+      "why": "New features need one definition of stock, money, identity and reversals before the storage model changes.",
+      "scope": "Extract pure sale/tax/quantity calculations behind the existing API; define command IDs, actor/store IDs, timestamps, immutable snapshots and correction links; add independently calculated fixture totals.",
+      "acceptance": "A discounted mixed-tax sale, split quantities, loyalty redemption and full void match hand-calculated results; legacy records retain their original semantics.",
+      "exclusions": "Framework replacement, database migration and new tax-policy features.",
+      "areas": [
+        "js/core.js",
+        "js/pos.js",
+        "tests/transactions.test.cjs"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "schema"
+      ],
+      "dependencies": [],
+      "decisions": [
+        "D01",
+        "D02"
+      ],
+      "recovery": "Record calculation tables and contract version; compare output to the current implementation; revert the adapter only, without rewriting persisted records.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "9a78653294b03bede1ae2242607fb1e3159c3ddc",
+      "evidence": [
+        "reports/BUILD-01.md",
+        "reports/VERIFY-01.md"
+      ]
+    },
+    {
+      "number": 2,
+      "id": "BUILD-02",
+      "verify": "VERIFY-02",
+      "phase": "Foundation",
+      "title": "Awaitable commands and storage boundary",
+      "why": "IndexedDB and network acknowledgements are asynchronous; changing storage without changing callers would show false success.",
+      "scope": "Introduce one awaitable command/persistence interface using the existing localStorage adapter; route sale, collection, purchase, restock, settings and auth migrations through it; preserve visible behavior.",
+      "acceptance": "Delay and reject each mutation: success, receipt, stock display and navigation wait for durable completion; double-click and stale dialogs cannot duplicate work.",
+      "exclusions": "IndexedDB cutover and background replication.",
+      "areas": [
+        "js/core.js",
+        "js/auth.js",
+        "js/settings.js",
+        "js/ledger.js",
+        "js/pos.js"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "persistence",
+        "ui"
+      ],
+      "dependencies": [
+        "VERIFY-01"
+      ],
+      "decisions": [],
+      "recovery": "List every mutation caller and failure path; fall back to the tested adapter only if no newer-schema records were written.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "f89d5f602de069f3d3f2e0c531d72f7c6cfbee4a",
+      "evidence": [
+        "reports/BUILD-02.md",
+        "reports/VERIFY-02.md"
+      ]
+    },
+    {
+      "number": 3,
+      "id": "BUILD-03",
+      "verify": "VERIFY-03",
+      "phase": "Foundation",
+      "title": "Transactional IndexedDB repository",
+      "why": "A command journal and related money/stock effects need one local atomic commit.",
+      "scope": "Add a versioned IndexedDB repository, unique operation IDs and atomic command/journal/projection transactions; implement schema-parity reads and writes behind a disabled feature flag.",
+      "acceptance": "Real-browser transaction abort, quota, reopen and duplicate-command tests leave either all effects or none; projection rebuild equals committed records.",
+      "exclusions": "Real-shop migration, cloud upload and replacing authorization with storage names.",
+      "areas": [
+        "js/core.js",
+        "new persistence modules",
+        "tests/persistence.test.cjs"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "schema",
+        "persistence",
+        "identity"
+      ],
+      "dependencies": [
+        "VERIFY-02"
+      ],
+      "decisions": [
+        "D04"
+      ],
+      "recovery": "Use disposable databases; document the schema and commit boundary; keep production selection on the previous adapter until VERIFY-04.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "32c199b047dfa1abe9ab0d01a2ea87716cbf7186",
+      "evidence": [
+        "reports/BUILD-03.md",
+        "reports/VERIFY-03.md"
+      ]
+    },
+    {
+      "number": 4,
+      "id": "BUILD-04",
+      "verify": "VERIFY-04",
+      "phase": "Foundation",
+      "title": "Legacy migration and recovery cutover",
+      "why": "Existing books must survive the new repository and still produce recoverable backups.",
+      "scope": "Migrate v2 snapshots to the journalled schema with provenance, explicit opening checkpoints and migration markers; preserve historical facts rather than invent missing movements; update encrypted backup/restore for both schemas; prevent old clients writing after cutover.",
+      "acceptance": "Interrupt at every migration stage, resume twice, compare counts/stock/balances, restore onto a fresh profile, and reject an older client without altering either copy.",
+      "exclusions": "Deleting the source before verification or reconstructing lost pre-fix history.",
+      "areas": [
+        "js/safety.js",
+        "js/backup.js",
+        "js/auth.js",
+        "persistence",
+        "sw.js"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "schema",
+        "persistence",
+        "identity",
+        "recovery",
+        "release"
+      ],
+      "dependencies": [
+        "VERIFY-03"
+      ],
+      "decisions": [
+        "D04"
+      ],
+      "recovery": "Publish the forward-recovery and rollback decision table. After new-version transactions exist, reconcile them into recovery; never simply swap to a stale source snapshot.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "58ac83d4567bdfc50846828696dbcb03318ac256",
+      "evidence": [
+        "reports/BUILD-04.md",
+        "reports/VERIFY-04.md"
+      ]
+    },
+    {
+      "number": 5,
+      "id": "BUILD-05",
+      "verify": "VERIFY-05",
+      "phase": "Local workflows",
+      "title": "Resumable drafts and immutable sale records",
+      "why": "An interrupted cart should be recoverable while historical receipts must not follow later settings.",
+      "scope": "Persist drafts by shop/store/staff/device; version price/quantity selections; finalize through one command; snapshot receipt identity, tax, units, discounts, loyalty and batch cost; define returnable quantities.",
+      "acceptance": "Crash before and after checkout, resume a stale-price draft, switch role/store, change shop settings, then reprint: no duplicate bill and no changed historical amount.",
+      "exclusions": "Returns, payment verification and cross-device shared drafts.",
+      "areas": [
+        "js/pos.js",
+        "js/core.js",
+        "js/ui.js",
+        "repository"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "persistence",
+        "receipts",
+        "ui"
+      ],
+      "dependencies": [
+        "VERIFY-04"
+      ],
+      "decisions": [
+        "D02"
+      ],
+      "recovery": "Keep draft and finalized transaction identities distinct; recovery never finalizes a draft automatically.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "1e43d8fa2f850e97547c92a4dc05cff31243aae5",
+      "evidence": [
+        "reports/BUILD-05.md",
+        "reports/VERIFY-05.md"
+      ]
+    },
+    {
+      "number": 6,
+      "id": "BUILD-06",
+      "verify": "VERIFY-06",
+      "phase": "Local workflows",
+      "title": "Opening balances, customer credits and collections",
+      "why": "Scalar balances need explainable entries before adding refunds.",
+      "scope": "Add explicit dated opening entries, payment-method selection, linked partial collections, advances and owner correction entries; make the customer balance a derived projection.",
+      "acceptance": "Opening debt plus cash/UPI collections plus advance reconciles to statements and cash; duplicate collections and cross-store links fail without changes.",
+      "exclusions": "Payment gateway integration and silent editing of old balance totals.",
+      "areas": [
+        "js/ledger.js",
+        "js/core.js",
+        "repository",
+        "customer statements"
+      ],
+      "domains": [
+        "money",
+        "identity",
+        "persistence",
+        "reports"
+      ],
+      "dependencies": [
+        "VERIFY-05"
+      ],
+      "decisions": [
+        "D02"
+      ],
+      "recovery": "Carry migrated balances as disclosed opening checkpoints; retain evidence of exceptions; disable new entry UI rather than deleting ledger entries on rollback.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "fd24ef8a3eff289d69c2f0d02bc2ad20b8ce6586",
+      "evidence": [
+        "reports/BUILD-06.md",
+        "reports/VERIFY-06.md"
+      ]
+    },
+    {
+      "number": 7,
+      "id": "BUILD-07",
+      "verify": "VERIFY-07",
+      "phase": "Local workflows",
+      "title": "Customer returns and refunds",
+      "why": "Voids cannot express partial returns and separate repayment obligations.",
+      "scope": "Add sale-linked partial return commands, cumulative return limits, restock versus quarantine disposition, loyalty/tax reversal allocation, store credit and explicitly recorded cash/UPI refund settlement.",
+      "acceptance": "Partial return after redemption and partial payment, repeat return, return after price change and refund after shift close preserve stock, tax, liability and cash identities.",
+      "exclusions": "Automatic bank refunds and arbitrary negative sales.",
+      "areas": [
+        "js/ledger.js",
+        "js/pos.js",
+        "js/core.js",
+        "receipts"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "persistence",
+        "receipts",
+        "reports"
+      ],
+      "dependencies": [
+        "VERIFY-06"
+      ],
+      "decisions": [
+        "D02"
+      ],
+      "recovery": "Use compensating records linked to the original sale; historical legacy allocation uncertainty is visible, never guessed away.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "f047626f026af7a6ffac32a580659ed61bd9b426",
+      "evidence": [
+        "reports/BUILD-07.md",
+        "reports/VERIFY-07.md"
+      ]
+    },
+    {
+      "number": 8,
+      "id": "BUILD-08",
+      "verify": "VERIFY-08",
+      "phase": "Local workflows",
+      "title": "Supplier corrections and credit notes",
+      "why": "Purchase edits must not erase cash movements or already consumed stock.",
+      "scope": "Add purchase-linked payment history, supplier return/credit notes, correction and cancellation commands; handle paid, unpaid and partly sold purchases with explicit exception rules.",
+      "acceptance": "Receive, partially pay, sell part, return remaining goods, settle credit and correct a duplicate: supplier balance, batches, cost and cash reconcile.",
+      "exclusions": "Rewriting consumed batches or implementing a general accounting package.",
+      "areas": [
+        "js/ledger.js",
+        "js/core.js",
+        "repository",
+        "reports"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "persistence",
+        "reports"
+      ],
+      "dependencies": [
+        "VERIFY-07"
+      ],
+      "decisions": [
+        "D02"
+      ],
+      "recovery": "Preserve the original purchase and append corrections; block unsupported historical adjustments with a recoverable exception.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "b19f8269b4ae25114e14c37c18bd2722d304789a",
+      "evidence": [
+        "reports/BUILD-08.md",
+        "reports/VERIFY-08.md"
+      ]
+    },
+    {
+      "number": 9,
+      "id": "BUILD-09",
+      "verify": "VERIFY-09",
+      "phase": "Local workflows",
+      "title": "Stock adjustments and expiry write-offs",
+      "why": "Physical counts and quarantined stock need movements separate from sales.",
+      "scope": "Add reason-coded owner adjustments, counted-stock reconciliation and expired/damaged disposal; preserve batch cost and physical/sellable/quarantine distinctions.",
+      "acceptance": "Write off an expired batch, adjust undated stock, return a damaged item and recount; totals match the movement log and no sale consumes quarantined units.",
+      "exclusions": "Store transfers and automatic financial expense classification.",
+      "areas": [
+        "js/inventory.js",
+        "js/core.js",
+        "repository"
+      ],
+      "domains": [
+        "inventory",
+        "money",
+        "identity",
+        "persistence",
+        "reports"
+      ],
+      "dependencies": [
+        "VERIFY-08"
+      ],
+      "decisions": [
+        "D02"
+      ],
+      "recovery": "Record actor, reason, batch and prior/new count; reverse by linked adjustment instead of restoring an old database.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "166fc454df8fa3ef709417406fa95abb8b46d9ce",
+      "evidence": [
+        "reports/BUILD-09.md",
+        "reports/VERIFY-09.md"
+      ]
+    },
+    {
+      "number": 10,
+      "id": "BUILD-10",
+      "verify": "VERIFY-10",
+      "phase": "Local workflows",
+      "title": "Store assignments and stock transfers",
+      "why": "Stores need deliberate access boundaries and balanced movements.",
+      "scope": "Add staff-to-store assignments and store-specific receipt/target configuration; add owner transfer-out/in records with in-transit stock and idempotent acceptance.",
+      "acceptance": "Wrong-store actor is denied; partial acceptance, repeated receipt and interrupted transfer preserve total physical stock; receipts retain their sale-time store identity.",
+      "exclusions": "Remote tenant enforcement and automatic offline inter-device transfer settlement.",
+      "areas": [
+        "js/settings.js",
+        "js/inventory.js",
+        "js/core.js",
+        "receipts"
+      ],
+      "domains": [
+        "inventory",
+        "identity",
+        "persistence",
+        "receipts",
+        "reports"
+      ],
+      "dependencies": [
+        "VERIFY-09"
+      ],
+      "decisions": [
+        "D03"
+      ],
+      "recovery": "Permissions default closed; migrations preserve existing ownership with an explicit assignment preview; transferred stock cannot be counted twice.",
+      "optional": false,
+      "status": "passed",
+      "codeCommit": "9222d3f3e25549be46d64b764cca785d621c7fdb",
+      "evidence": [
+        "reports/BUILD-10.md",
+        "reports/VERIFY-10.md"
+      ]
+    },
+    {
+      "number": 11,
+      "id": "BUILD-11",
+      "verify": "VERIFY-11",
+      "phase": "Local workflows",
+      "title": "Cash shifts, expenses and closing",
+      "why": "Daily reconciliation needs explicit opening cash and non-sale movements.",
+      "scope": "Add opening float, cash collection/refund/purchase effects, reason-coded expenses and owner withdrawals; close a shift with counted cash and a recorded variance; corrections remain linked.",
+      "acceptance": "Open, sell cash/UPI, collect debt, pay supplier, refund, withdraw and close across midnight; expected cash matches an independent movement sum.",
+      "exclusions": "Bank reconciliation, payroll and silently reopening signed-off shifts.",
+      "areas": [
+        "js/insights.js",
+        "js/core.js",
+        "js/ledger.js",
+        "repository"
+      ],
+      "domains": [
+        "money",
+        "identity",
+        "persistence",
+        "reports"
+      ],
+      "dependencies": [
+        "VERIFY-10"
+      ],
+      "decisions": [
+        "D02"
+      ],
+      "recovery": "Define store timezone and late-entry policy; reopen/correct via an auditable operation rather than rewriting a closed shift.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 12,
+      "id": "BUILD-12",
+      "verify": "VERIFY-12",
+      "phase": "Local workflows",
+      "title": "Statements and reconciliation reports",
+      "why": "New workflows are incomplete until their effects can be explained and exported.",
+      "scope": "Produce full customer/supplier/stock/cash statements and return-aware tax/profit reports from journal projections; provide an independent reconciliation view and complete exports.",
+      "acceptance": "All phase fixtures reconcile across journal, UI, CSV and receipts; rebuild projections from checkpoints plus new movements; test date boundaries and legacy caveats.",
+      "exclusions": "Tax-compliance certification and an AI service.",
+      "areas": [
+        "js/insights.js",
+        "js/ledger.js",
+        "js/ui.js",
+        "reports"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "persistence",
+        "reports",
+        "receipts",
+        "locale"
+      ],
+      "dependencies": [
+        "VERIFY-11"
+      ],
+      "decisions": [
+        "D02"
+      ],
+      "recovery": "Do not mark an unexplained difference as rounding noise; quantify and trace every discrepancy. This sprint ends with a cumulative shop-day verification.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 13,
+      "id": "BUILD-13",
+      "verify": "VERIFY-13",
+      "phase": "Shop floor",
+      "title": "Hindi and accessible core navigation",
+      "why": "The primary counter should work without essential English labels or pointer-only controls.",
+      "scope": "Complete shell, login, lock, catalogue and checkout messages in English/Hindi; associate labels; provide modal focus handling, keyboard navigation, announcements and large-touch controls.",
+      "acceptance": "Complete sign-in, lookup, sale, error correction and lock using keyboard/screen-reader checks; Hindi text, large text and narrow screens remain usable.",
+      "exclusions": "New languages and translating the entire money/report workflow in this slice.",
+      "areas": [
+        "js/i18n.js",
+        "js/app.js",
+        "js/ui.js",
+        "js/pos.js",
+        "css/app.css"
+      ],
+      "domains": [
+        "ui",
+        "locale",
+        "identity",
+        "receipts"
+      ],
+      "dependencies": [
+        "VERIFY-12"
+      ],
+      "decisions": [
+        "D05"
+      ],
+      "recovery": "No framework rewrite; add a visible-string/locale inventory and check missing keys. Native-speaker acceptance is recorded separately from automated checks.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 14,
+      "id": "BUILD-14",
+      "verify": "VERIFY-14",
+      "phase": "Shop floor",
+      "title": "Hindi and accessibility for money and recovery",
+      "why": "Secondary workflows carry the highest-risk errors and must be equally understandable.",
+      "scope": "Localize new ledger, return, stock, cash, report and encrypted recovery flows; add accessible equivalents for swipe actions, error summaries and confirmation dialogs.",
+      "acceptance": "Complete a return, advance, supplier correction, shift close and backup restore in Hindi with keyboard-only alternatives; lock cancels every pending flow.",
+      "exclusions": "Regional language rollout and claiming machine translation is native review.",
+      "areas": [
+        "js/i18n.js",
+        "js/ledger.js",
+        "js/settings.js",
+        "js/insights.js",
+        "js/ui.js"
+      ],
+      "domains": [
+        "ui",
+        "locale",
+        "money",
+        "inventory",
+        "recovery",
+        "reports"
+      ],
+      "dependencies": [
+        "VERIFY-13"
+      ],
+      "decisions": [
+        "D05"
+      ],
+      "recovery": "Preserve financial meaning across translations; maintain tested key parity and untranslated-string exceptions with owners.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 15,
+      "id": "BUILD-15",
+      "verify": "VERIFY-15",
+      "phase": "Shop floor",
+      "title": "Quantity units and safer noisy-shop voice",
+      "why": "Recognizing a number is insufficient if grams, kilos and pack sizes are conflated.",
+      "scope": "Add explicit item units/pack metadata, deterministic conversion and alias editing; create a consent-aware evaluation corpus and parser metrics; expose ambiguity/unknown quantities for confirmation.",
+      "acceptance": "Examples with 250 g versus 0.25 kg, piece-only products, code-switching, homophones and background noise never silently bill a wrong item or unit; late callbacks after lock are inert.",
+      "exclusions": "A custom speech model or a promise of offline browser recognition.",
+      "areas": [
+        "js/voice.js",
+        "js/pos.js",
+        "js/inventory.js",
+        "locale fixtures"
+      ],
+      "domains": [
+        "ui",
+        "locale",
+        "inventory",
+        "money",
+        "identity"
+      ],
+      "dependencies": [
+        "VERIFY-14"
+      ],
+      "decisions": [
+        "D02",
+        "D05"
+      ],
+      "recovery": "Typed fixtures can ship first; actual recorded-audio and target-phone evidence is a separate required gate before an accuracy claim.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 16,
+      "id": "BUILD-16",
+      "verify": "VERIFY-16",
+      "phase": "Shop floor",
+      "title": "58 mm receipt layouts",
+      "why": "A readable screen receipt is not proof that a narrow printed receipt is usable.",
+      "scope": "Add measured 58 mm layouts and preview/export fixtures for paise, long names, Hindi glyphs, mixed tax, returns and QR; historical reprints use immutable snapshots.",
+      "acceptance": "Rendered width fits printable area; totals match statements; independent QR decode works at proposed sizes; wrapping and page breaks retain all lines.",
+      "exclusions": "Claiming a physical printer is supported or adding transport before choosing hardware.",
+      "areas": [
+        "js/ui.js",
+        "css/app.css",
+        "receipts",
+        "QR fixtures"
+      ],
+      "domains": [
+        "receipts",
+        "locale",
+        "money",
+        "inventory",
+        "ui"
+      ],
+      "dependencies": [
+        "VERIFY-15"
+      ],
+      "decisions": [
+        "D06"
+      ],
+      "recovery": "Keep existing print/export fallback; publish dimensions and rendered samples, with simulated output clearly labelled.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 17,
+      "id": "BUILD-17",
+      "verify": "VERIFY-17",
+      "phase": "Shop floor",
+      "title": "One tested printer transport",
+      "why": "A single proven hardware path is more useful than untested universal support.",
+      "scope": "Implement the selected browser/USB/Bluetooth/companion transport for one named printer/device combination; capability detection, permission denial, cancellation and safe reprint; document encoding/raster strategy.",
+      "acceptance": "Physical 58 mm print and scan on named hardware; disconnect mid-job; reconnect and explicitly reprint without generating a new sale or automatic duplicate print.",
+      "exclusions": "Generic Bluetooth compatibility and broad hardware claims.",
+      "areas": [
+        "printer adapter",
+        "js/ui.js",
+        "release permissions"
+      ],
+      "domains": [
+        "receipts",
+        "ui",
+        "locale",
+        "identity",
+        "release"
+      ],
+      "dependencies": [
+        "VERIFY-16"
+      ],
+      "decisions": [
+        "D06"
+      ],
+      "recovery": "If hardware is unavailable, push code/report as blocked and keep support disabled; a screenshot or mock cannot close VERIFY-17.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 18,
+      "id": "BUILD-18",
+      "verify": "VERIFY-18",
+      "phase": "Shop floor",
+      "title": "Local pilot and recovery release kit",
+      "why": "A trustworthy local release needs real operating evidence before cloud complexity.",
+      "scope": "Add privacy-minimal pilot scripts, error/performance capture without customer payloads, versioned release checklist and recovery drills; fix one bounded class of pilot-blocking defects per slice.",
+      "acceptance": "Named phone/browser completes a parallel-record shop day, cold offline start, installed-PWA upgrade, encrypted restore and recovery from interrupted writes; compare every money/stock movement.",
+      "exclusions": "Deploying to a shop or collecting participant data without the agreed pilot scope.",
+      "areas": [
+        "docs/pilot",
+        "release tooling",
+        "browser smoke fixtures"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "persistence",
+        "recovery",
+        "release",
+        "ui",
+        "receipts",
+        "locale"
+      ],
+      "dependencies": [
+        "VERIFY-17"
+      ],
+      "decisions": [
+        "D01",
+        "D05",
+        "D06",
+        "D07"
+      ],
+      "recovery": "Code completion and field acceptance are separate statuses; missing device/printer/participant evidence keeps the pilot release blocked.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 19,
+      "id": "BUILD-19",
+      "verify": "VERIFY-19",
+      "phase": "Cloud",
+      "title": "Local backend identity and store authorization",
+      "why": "Cloud data must have a trusted identity boundary before any synchronization writes.",
+      "scope": "Confirm provider ADR; build local/emulated backend migrations, account identity mapping, shops/stores/memberships and least-privilege allow/deny policies; store secrets only server-side.",
+      "acceptance": "Two unrelated shops and owner/cashier/removed users cannot read or mutate each other's records via direct API calls, views or functions; migration/reset works on disposable backend data.",
+      "exclusions": "Creating paid/live resources or uploading local customer records.",
+      "areas": [
+        "new backend migrations/API",
+        "auth adapter",
+        "policy tests"
+      ],
+      "domains": [
+        "identity",
+        "schema",
+        "persistence",
+        "release"
+      ],
+      "dependencies": [
+        "VERIFY-12"
+      ],
+      "decisions": [
+        "D03",
+        "D07",
+        "D08"
+      ],
+      "recovery": "Provisional recommendation is Postgres/Supabase, subject to local proof and operating constraints. The current local login is never treated as cloud identity.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 20,
+      "id": "BUILD-20",
+      "verify": "VERIFY-20",
+      "phase": "Cloud",
+      "title": "Atomic server command processing",
+      "why": "Replication must submit validated operations rather than overwrite full shop snapshots.",
+      "scope": "Implement server-side atomic command validation and commit for the accepted local command catalogue; idempotency key plus payload fingerprint, authoritative versions, immutable audit events and deterministic responses.",
+      "acceptance": "Duplicate retry returns the same result; reused key with changed payload is rejected; forged price/role/store/tax/quantity and transaction abort leave no partial effects; replay cannot duplicate stock or cash.",
+      "exclusions": "Client-owned authoritative totals and direct browser writes to protected projections.",
+      "areas": [
+        "backend command handlers",
+        "database constraints",
+        "shared domain contracts"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "schema",
+        "persistence",
+        "reports"
+      ],
+      "dependencies": [
+        "VERIFY-19"
+      ],
+      "decisions": [
+        "D02",
+        "D03"
+      ],
+      "recovery": "Maintain golden parity fixtures between local preview and authoritative results. Server audit retention is defined before production use.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 21,
+      "id": "BUILD-21",
+      "verify": "VERIFY-21",
+      "phase": "Cloud",
+      "title": "Durable outbox and authenticated upload",
+      "why": "A lost response must not mean a lost sale or a duplicate upload.",
+      "scope": "Write operation payload and local effects atomically to an outbox; upload with retry/backoff, explicit acknowledgements and pending/rejected states; migrate legacy label-only queue entries as non-uploadable evidence.",
+      "acceptance": "Crash before send, after server commit and before acknowledgement; reauthenticate and retry; each operation applies once; rejection is retained for review and never labelled synced.",
+      "exclusions": "Incoming feed, automatic conflict resolution and rebuilding old queue payloads from guesses.",
+      "areas": [
+        "repository",
+        "sync adapter",
+        "status UI",
+        "auth"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "persistence",
+        "recovery",
+        "ui"
+      ],
+      "dependencies": [
+        "VERIFY-20"
+      ],
+      "decisions": [
+        "D09"
+      ],
+      "recovery": "Feature stays on synthetic/test shops until inbound and concurrency gates pass. Rollback pauses transport while retaining every pending operation.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 22,
+      "id": "BUILD-22",
+      "verify": "VERIFY-22",
+      "phase": "Cloud",
+      "title": "Incoming changes and initial hydration",
+      "why": "Uploads alone do not create a usable second device.",
+      "scope": "Add cursor-based pulls, paginated consistent bootstrap, ordered/idempotent apply, tombstones and projection refresh without overwriting local pending work; revoke cached access on online membership changes.",
+      "acceptance": "Reconnect from stale cursor, replay/out-of-order pages, interrupted bootstrap and remote deletes; no lost pending commands or resurrection; two clients converge after accepted operations.",
+      "exclusions": "Silent last-write-wins merging of transactions.",
+      "areas": [
+        "sync adapter",
+        "repository",
+        "backend change feed",
+        "UI"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "schema",
+        "persistence",
+        "recovery",
+        "ui"
+      ],
+      "dependencies": [
+        "VERIFY-21"
+      ],
+      "decisions": [
+        "D09"
+      ],
+      "recovery": "Checkpoint cursors only with successful local apply; a second device is not marked ready until bootstrap and authorization checks complete.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 23,
+      "id": "BUILD-23",
+      "verify": "VERIFY-23",
+      "phase": "Cloud",
+      "title": "Bounded offline stock authority",
+      "why": "Two disconnected tills cannot both assume they own the last unit.",
+      "scope": "Implement the approved per-device offline stock allocation/authority model, online atomic reservations and device epochs; define privileged online-only operations and observable stock availability.",
+      "acceptance": "Two devices race for last stock, exhaust offline allocations, reconnect in both orders, retry after revocation and recover a lost device; no duplicated allocation or unaccounted movement.",
+      "exclusions": "Reclaiming unreachable-device stock without reconciliation or trusting a client clock as a security boundary.",
+      "areas": [
+        "backend stock authority",
+        "sync",
+        "checkout",
+        "inventory UI"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "persistence",
+        "recovery",
+        "ui"
+      ],
+      "dependencies": [
+        "VERIFY-22"
+      ],
+      "decisions": [
+        "D03",
+        "D09"
+      ],
+      "recovery": "Default proposal: bounded offline allocations, with no automatic reclaim while a device is unreachable. Until approved and verified, concurrent offline selling remains disabled.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 24,
+      "id": "BUILD-24",
+      "verify": "VERIFY-24",
+      "phase": "Cloud",
+      "title": "Conflict resolution and existing-shop onboarding",
+      "why": "Rejected operations and existing local books need explicit ownership and reconciliation.",
+      "scope": "Add owner exception review, corrective commands and resumable local-to-cloud onboarding with counts/checksums/checkpoints; map identities, deduplicate imports and preserve pending work; preview what will upload.",
+      "acceptance": "Restore an old backup then reconnect, import the same shop twice, resolve a revoked cashier's pending sale and resume a failed onboarding; no silent rollback or duplicate money.",
+      "exclusions": "Automatically selecting a financial winner or erasing rejected commands.",
+      "areas": [
+        "sync conflict UI",
+        "backend migration",
+        "backup adapter",
+        "reports"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "schema",
+        "persistence",
+        "recovery",
+        "reports",
+        "ui"
+      ],
+      "dependencies": [
+        "VERIFY-23"
+      ],
+      "decisions": [
+        "D08",
+        "D09"
+      ],
+      "recovery": "Cloud-linked restore must reconcile through commands, never replace cloud history. Abort onboarding by pausing it; retain source and reconciliation evidence.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 25,
+      "id": "BUILD-25",
+      "verify": "VERIFY-25",
+      "phase": "Cloud",
+      "title": "Cloud operations and two-device pilot",
+      "why": "A correct protocol still needs recoverable operations and observable failures.",
+      "scope": "Add redacted operational logs, request/operation correlation, health checks, backup/restore runbook, release/migration order and environment separation; conduct a controlled two-device pilot.",
+      "acceptance": "Backend outage, credential expiry, schema mismatch, restore drill and delayed acknowledgements produce understandable states; accepted records converge and exception records remain accountable.",
+      "exclusions": "Unbounded telemetry, customer payload logs and a production launch without the pilot gate.",
+      "areas": [
+        "backend operations",
+        "docs/pilot",
+        "release tooling",
+        "browser integration"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "schema",
+        "persistence",
+        "recovery",
+        "release",
+        "ui",
+        "reports"
+      ],
+      "dependencies": [
+        "VERIFY-24"
+      ],
+      "decisions": [
+        "D01",
+        "D07",
+        "D08",
+        "D09"
+      ],
+      "recovery": "Provider backup features, costs, region and retention must be verified on the chosen plan. Emulator success is not deployed-environment evidence.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 26,
+      "id": "BUILD-26",
+      "verify": "VERIFY-26",
+      "phase": "Regional expansion",
+      "title": "Regional language-pack foundation",
+      "why": "Additional languages need formatting, aliases and fallback contracts rather than copied string tables.",
+      "scope": "Generalize locale metadata, fonts, formatting and product aliases; translation completeness tooling and fallback; keep canonical IDs/numbers independent of language; scope initially to English/Hindi regression plus pack API.",
+      "acceptance": "Changing locale does not change money, IDs, units, sync payloads or receipts; missing keys fall back safely; recognition/TTS support is capability-tested.",
+      "exclusions": "Declaring Marathi/Tamil/Bengali complete before reviewed packs exist.",
+      "areas": [
+        "js/i18n.js",
+        "js/voice.js",
+        "receipts",
+        "language tooling"
+      ],
+      "domains": [
+        "locale",
+        "ui",
+        "money",
+        "inventory",
+        "receipts",
+        "schema"
+      ],
+      "dependencies": [
+        "VERIFY-14",
+        "VERIFY-15",
+        "VERIFY-16"
+      ],
+      "decisions": [
+        "D05"
+      ],
+      "recovery": "Keep packs versioned and independently disableable; translations never change persisted accounting semantics.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 27,
+      "id": "BUILD-27",
+      "verify": "VERIFY-27",
+      "phase": "Regional expansion",
+      "title": "Marathi pack and task validation",
+      "why": "The first regional pack should prove the reusable workflow with native feedback.",
+      "scope": "Add reviewed Marathi UI/errors/receipts/help and product alias fixtures; capability-aware speech/TTS selection; one bounded round of native-speaker corrections.",
+      "acceptance": "A Marathi-speaking reviewer completes sale, collection, return, lock, backup and printer tasks; no missing critical strings, wrong quantities or unsupported-speech claims.",
+      "exclusions": "Inferring language quality from string-count parity.",
+      "areas": [
+        "locale packs",
+        "alias fixtures",
+        "receipts",
+        "pilot evidence"
+      ],
+      "domains": [
+        "locale",
+        "ui",
+        "money",
+        "inventory",
+        "receipts",
+        "recovery"
+      ],
+      "dependencies": [
+        "VERIFY-26"
+      ],
+      "decisions": [
+        "D05"
+      ],
+      "recovery": "Use explicit translation provenance and reviewer consent; missing native review leaves the language experimental.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 28,
+      "id": "BUILD-28",
+      "verify": "VERIFY-28",
+      "phase": "Regional expansion",
+      "title": "Tamil pack and task validation",
+      "why": "Tamil layout and recognition need their own evidence.",
+      "scope": "Add reviewed Tamil UI/errors/receipts/help and aliases; verify glyph coverage, wrapping, quantity formatting and speech fallback.",
+      "acceptance": "Repeat the shared task set in Tamil, including narrow printer output, long product names and offline fallback; compare canonical results to English/Hindi.",
+      "exclusions": "Assuming Marathi validation transfers to another language.",
+      "areas": [
+        "locale packs",
+        "alias fixtures",
+        "receipts",
+        "pilot evidence"
+      ],
+      "domains": [
+        "locale",
+        "ui",
+        "money",
+        "inventory",
+        "receipts",
+        "recovery"
+      ],
+      "dependencies": [
+        "VERIFY-26"
+      ],
+      "decisions": [
+        "D05"
+      ],
+      "recovery": "Keep the same pack interface and independent enablement; unresolved glyph or meaning defects block this locale only unless shared code changed.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 29,
+      "id": "BUILD-29",
+      "verify": "VERIFY-29",
+      "phase": "Regional expansion",
+      "title": "Bengali pack and task validation",
+      "why": "Bengali support needs the same financial and recovery guarantees as every other locale.",
+      "scope": "Add reviewed Bengali UI/errors/receipts/help and aliases; verify script, numerals, pronunciation ambiguity and unsupported-device behavior.",
+      "acceptance": "Complete the shared Bengali task set and then rerun all enabled locales with sales, returns, sync, encrypted restore and printed receipts.",
+      "exclusions": "A blanket claim that all regional speech works offline.",
+      "areas": [
+        "locale packs",
+        "alias fixtures",
+        "receipts",
+        "pilot evidence"
+      ],
+      "domains": [
+        "locale",
+        "ui",
+        "money",
+        "inventory",
+        "receipts",
+        "recovery"
+      ],
+      "dependencies": [
+        "VERIFY-26"
+      ],
+      "decisions": [
+        "D05"
+      ],
+      "recovery": "Cumulative regional release gate: a shared pack-engine change reopens affected Marathi, Tamil, Hindi and English evidence.",
+      "optional": false,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 30,
+      "id": "BUILD-30",
+      "verify": "VERIFY-30",
+      "phase": "Optional privacy",
+      "title": "Encrypted local vault and key lifecycle prototype",
+      "why": "Encrypted exports do not protect a copied locked browser database.",
+      "scope": "If stronger at-rest privacy is selected, prototype a versioned encrypted repository, random data key, passphrase wrapping, lock/unlock memory lifetime and explicit recovery/rotation design using standard crypto.",
+      "acceptance": "Locked storage dump contains no business plaintext; wrong key, corrupted ciphertext and interrupted rotation fail safely; unlocked limitations and recovery loss are demonstrated.",
+      "exclusions": "Claiming protection against a compromised unlocked browser or using a four-digit PIN as the sole encryption secret.",
+      "areas": [
+        "repository encryption adapter",
+        "auth",
+        "backup",
+        "threat model"
+      ],
+      "domains": [
+        "identity",
+        "schema",
+        "persistence",
+        "recovery",
+        "release"
+      ],
+      "dependencies": [
+        "VERIFY-04",
+        "VERIFY-25"
+      ],
+      "decisions": [
+        "D10"
+      ],
+      "recovery": "Disabled prototype only until independent crypto/design review and VERIFY-31 migration evidence. Do not retrofit encryption by changing one global password parameter.",
+      "optional": true,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    },
+    {
+      "number": 31,
+      "id": "BUILD-31",
+      "verify": "VERIFY-31",
+      "phase": "Optional privacy",
+      "title": "Vault migration and end-to-end recovery",
+      "why": "Encryption is incomplete while plaintext migration or recovery copies remain.",
+      "scope": "Implement recoverable conversion of every owned primary/journal/draft/outbox/recovery copy; explicit plaintext-copy retirement after verification; integrate key rotation, backup and cloud-cache lifecycle.",
+      "acceptance": "Interrupt every conversion phase, restore and rotate keys, lose credentials, revoke a device and roll forward after new sales; no forgotten owned plaintext copies or lost commands.",
+      "exclusions": "Automatic destruction of unowned legacy copies or promising recovery without a retained key.",
+      "areas": [
+        "repository migration",
+        "auth",
+        "backup",
+        "cloud cache",
+        "release tooling"
+      ],
+      "domains": [
+        "money",
+        "inventory",
+        "identity",
+        "schema",
+        "persistence",
+        "recovery",
+        "release",
+        "ui"
+      ],
+      "dependencies": [
+        "VERIFY-30"
+      ],
+      "decisions": [
+        "D10"
+      ],
+      "recovery": "Optional release only after independent review, target-device performance and a documented key-loss/recovery drill; never downgrade new encrypted records into an old plaintext snapshot.",
+      "optional": true,
+      "status": "planned",
+      "codeCommit": null,
+      "evidence": []
+    }
+  ]
+}

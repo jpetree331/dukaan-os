@@ -62,7 +62,7 @@
     expiry() {
       return App.expiringBatches(14).slice(0, 4).map((e) => ({
         kind: 'expiry', item: e.item, days: e.days,
-        text: t('ai.expiry', { name: App.itemName(e.item), d: Math.max(0, e.days) }),
+        text: e.days < 0 ? App.itemName(e.item) + ' has expired stock. Set it aside; it cannot be sold.' : t('ai.expiry', { name: App.itemName(e.item), d: e.days }),
         weight: 70 - e.days * 2
       }));
     },
@@ -75,10 +75,9 @@
     /* end-of-day / morning summary in plain Hindi or English */
     summary(dayTs) {
       const s = App.startOfDay(dayTs || Date.now()).getTime();
-      const r = App.stats.range(s, s + App.DAY - 1);
+      const r = App.stats.range(s, s + App.DAY);
       const hi = App.lang() === 'hi';
-      const top = App.stats.topItems(3, 1).length ? App.stats.topItems(3, 1)
-        : (() => { const m = {}; r.bills.forEach((b) => b.lines.forEach((l) => { m[l.name] = (m[l.name] || 0) + l.qty; })); return Object.keys(m).sort((a, b) => m[b] - m[a]).slice(0, 3).map((n) => ({ name: n, qty: m[n] })); })();
+      const top = App.stats.topItems(3, null, s, s + App.DAY);
       const dues = App.stats.dues();
       const cash = App.stats.cashExpected(s);
       const isToday = App.isToday(s);
@@ -152,13 +151,12 @@
         });
       });
       /* strip question filler before trying to read a product name out of it */
-      const FILLER = ['how', 'much', 'many', 'did', 'does', 'do', 'i', 'me', 'my', 'is', 'was', 'sold', 'sell', 'sale',
+      const FILLER = ['stock', 'of', 'left', 'have', 'है', 'स्टॉक', 'how', 'much', 'many', 'did', 'does', 'do', 'i', 'me', 'my', 'is', 'was', 'sold', 'sell', 'sale',
         'this', 'last', 'month', 'week', 'today', 'yesterday', 'total', 'what', 'whats',
         'kitna', 'kitne', 'kitni', 'ka', 'ki', 'ke', 'bika', 'bike', 'aaj', 'kal', 'hai', 'hua', 'hui',
         'कितना', 'कितने', 'कितनी', 'का', 'की', 'के', 'बिका', 'बिके', 'आज', 'कल', 'है', 'हुआ', 'हुई',
         'इस', 'महीने', 'हफ्ते', 'सबसे', 'ज़्यादा', 'ज्यादा', 'क्या', 'रहा', 'रहे', 'हो'];
-      let residual = q;
-      FILLER.forEach((f) => { residual = residual.split(f).join(' '); });
+      const residual = q.split(/[\s?!.,]+/).filter((word) => !FILLER.includes(word)).join(' ');
       const itemHit = App.matchItem(residual.replace(/\s+/g, ' ').trim(), App.items());
       const item = itemHit && itemHit.score >= 34 ? itemHit.item : null;
 
@@ -194,6 +192,7 @@
       }
 
       /* ── item questions ── */
+      if (item && wantsStock) return { headline: App.sellableStock(item) + (hi ? ' नग' : ' units'), text: App.itemName(item) + ': ' + App.sellableStock(item) + ' available to sell (' + App.itemStock(item) + ' physically in stock).' };
       if (item && !wantsSales && !wantsBest && !wantsStock && !wantsDue && !wantsProfit) {
         let qty = 0, amt = 0;
         R.bills.forEach((b) => b.lines.forEach((l) => { if (l.itemId === item.id) { qty += l.qty; amt += l.gross; } }));
@@ -211,8 +210,7 @@
 
       /* ── aggregate questions ── */
       if (wantsBest) {
-        const days = from ? Math.max(1, Math.round((Date.now() - from) / App.DAY)) : 3650;
-        const top = App.stats.topItems(5, days);
+        const top = App.stats.topItems(5, null, from, to);
         if (!top.length) return { headline: '—', text: hi ? 'इस अवधि में कुछ नहीं बिका।' : 'Nothing sold in that period.' };
         return {
           headline: top[0].name,
@@ -268,34 +266,35 @@
   };
 
   /* ═════════ daily target celebration ═════════ */
-  App.checkTarget = function () {
+  App.checkTarget = async function () {
     const st = App.DB().settings;
-    if (!st.dailyTarget) return;
+    if (!App.storeTarget()) return;
     const today = App.stats.today().sales;
     const key = App.dayKey(Date.now());
-    if (today >= st.dailyTarget && st.celebratedOn !== key) {
-      st.celebratedOn = key;
-      App.save({ sync: false, render: false });
+    if (today >= App.storeTarget() && st.celebratedOn !== key+'/'+App.S()) {
+      st.celebratedOn = key+'/'+App.S();
+      (await App.save({ sync: false, render: false }));
       setTimeout(() => {
         App.confetti({ count: 170, y: innerHeight * 0.3 });
-        App.toast('ok', '🎯 ' + t('dash.targetHit'), money(today, true) + ' / ' + money(st.dailyTarget));
+        App.toast('ok', '🎯 ' + t('dash.targetHit'), money(today, true) + ' / ' + money(App.storeTarget()));
       }, 700);
     }
   };
 
   /* ═════════ morning summary ═════════ */
-  App.morningBrief = function (force) {
+  App.morningBrief = async function (force) {
+    if (!App.can('reports')) return;
     const st = App.DB().settings;
     const key = App.dayKey(Date.now());
     if (!force && st.seenSummaryOn === key) return;
     const y = Date.now() - App.DAY;
     const lines = AI.summary(force ? Date.now() : y);
     st.seenSummaryOn = key;
-    App.save({ sync: false, render: false });
+    (await App.save({ sync: false, render: false }));
 
     const body = App.el('<div>' +
       '<div class="ai-card"><div class="ai-h">✨ ' + (force ? t('rep.eod') : t('dash.yesterday')) + '</div>' +
-      lines.map((l) => '<p style="font-size:14.5px;line-height:1.65;margin-bottom:9px">' + l.replace(/\*(.+?)\*/g, '<b>$1</b>') + '</p>').join('') +
+      lines.map((l) => '<p style="font-size:14.5px;line-height:1.65;margin-bottom:9px">' + esc(l).replace(/\*(.+?)\*/g, '<b>$1</b>') + '</p>').join('') +
       '</div></div>');
     App.modal({
       title: '🌅 ' + (App.lang() === 'hi' ? 'नमस्ते!' : 'Good morning!'), body,
@@ -308,6 +307,7 @@
 
   /* ═════════ dashboard ═════════ */
   App.views.dashboard = function (main) {
+    App.requirePermission('reports');
     const st = App.DB().settings;
     const today = App.stats.today(), week = App.stats.days(7), month = App.stats.month();
     const yest = App.stats.range(App.startOfDay(Date.now() - App.DAY).getTime(), App.startOfDay(Date.now()).getTime() - 1);
@@ -318,7 +318,7 @@
     const insights = AI.all().slice(0, 5);
     const outLow = App.items().filter((i) => App.stockState(i) !== 'ok');
     const exp = App.expiringBatches(14);
-    const pct = st.dailyTarget ? Math.min(100, (today.sales / st.dailyTarget) * 100) : 0;
+    const pct = App.storeTarget() ? Math.min(100, (today.sales / App.storeTarget()) * 100) : 0;
     const dPct = yest.sales > 0 ? Math.round(((today.sales - yest.sales) / yest.sales) * 100) : null;
     const hour = new Date().getHours();
     const greet = App.lang() === 'hi' ? 'नमस्ते' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -350,10 +350,10 @@
       '<div class="card">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
       '<h3 style="font-size:15px">🎯 ' + t('dash.target') + '</h3><div class="spacer"></div>' +
-      '<b class="num">' + money(today.sales) + ' / ' + money(st.dailyTarget) + '</b></div>' +
+      '<b class="num">' + money(today.sales) + ' / ' + money(App.storeTarget()) + '</b></div>' +
       '<div class="pbar" style="height:12px"><i class="' + (pct >= 100 ? 'g' : '') + '" style="width:' + pct + '%"></i></div>' +
       '<p style="font-size:12.5px;margin-top:8px;font-weight:650;color:' + (pct >= 100 ? 'var(--ok)' : 'var(--ink-3)') + '">' +
-      (pct >= 100 ? t('dash.targetHit') : t('dash.toGo', { amt: money(st.dailyTarget - today.sales) })) + '</p>' +
+      (pct >= 100 ? t('dash.targetHit') : t('dash.toGo', { amt: money(App.storeTarget() - today.sales) })) + '</p>' +
       '<div class="sec-title">📈 ' + t('dash.trend') + '</div>' +
       App.chart.line(series.map((s) => ({ label: s.label, short: s.dow[0], value: s.value })), { height: 200 }) +
       '</div>' +
@@ -368,7 +368,7 @@
       '<div class="sec-title">🏆 ' + t('dash.topItems') + '</div>' +
       (top.length ? top.map((x, i) => '<div class="list-row" style="padding:8px 0">' +
         '<span class="rank ' + (i < 3 ? 'g' + (i + 1) : '') + '">' + (i + 1) + '</span>' +
-        '<span style="flex:1;min-width:0"><b style="font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (x.emoji || '') + ' ' + esc(x.name) + '</b></span>' +
+        '<span style="flex:1;min-width:0"><b style="font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(x.emoji || '') + ' ' + esc(x.name) + '</b></span>' +
         '<b class="num" style="font-size:13px">' + x.qty + '</b></div>').join('')
         : '<p class="muted" style="font-size:13px">No sales yet</p>') +
       '</div></div>' +
@@ -388,7 +388,7 @@
 
         '<div class="card"><div class="sec-title" style="margin-top:0">⚠️ ' + t('inv.low') + ' / ' + t('inv.out') + '</div>' +
         (outLow.length ? outLow.slice(0, 6).map((i) => '<div class="list-row" style="padding:8px 0">' +
-          '<span style="font-size:17px">' + (i.emoji || '📦') + '</span>' +
+          '<span style="font-size:17px">' + esc(i.emoji || '📦') + '</span>' +
           '<span style="flex:1;min-width:0"><b style="font-size:13.5px">' + esc(App.itemName(i)) + '</b></span>' +
           '<span class="chip ' + (App.stockState(i) === 'out' ? 'bad' : 'warn') + '">' + App.itemStock(i) + '</span>' +
           '<button class="btn xs" data-ai-restock="' + i.id + '">+</button></div>').join('')
@@ -414,11 +414,11 @@
 
     if (w.innerWidth <= 1000) App.$('#dashRow').style.gridTemplateColumns = '1fr';
 
-    main.addEventListener('click', (e) => {
+    main.addEventListener('click', async (e) => {
       const r = e.target.closest('[data-ai-restock]'), p = e.target.closest('[data-ai-pay]');
       const vb = e.target.closest('[data-view-bill]'), ab = e.target.closest('[data-ai-bill]'), vo = e.target.closest('[data-void]');
       if (e.target.closest('#goBill')) return App.go('billing');
-      if (e.target.closest('#briefBtn')) return App.morningBrief(true);
+      if (e.target.closest('#briefBtn')) return (await App.morningBrief(true));
       if (r) return App.restockModal(r.dataset.aiRestock);
       if (p) return App.settleCustomer(p.dataset.aiPay);
       if (vb || ab) {
@@ -430,13 +430,14 @@
       if (vo) {
         const b = App.DB().bills.find((x) => x.id === vo.dataset.void);
         App.confirm('Cancel bill #' + b.no + '?', 'Stock goes back and any udhaar is reversed.', { danger: true, ok: 'Cancel bill' })
-          .then((ok) => { if (ok) { App.actions.voidBill(b.id, 'manual'); App.toast('ok', 'Bill #' + b.no + ' cancelled'); } });
+          .then(async (ok) => { if (ok) { (await App.actions.voidBill(b.id, 'manual')); App.toast('ok', 'Bill #' + b.no + ' cancelled'); } });
       }
     });
   };
 
   /* ═════════ reports ═════════ */
   App.views.reports = function (main) {
+    App.requirePermission('reports');
     const st = App.DB().settings;
     const series = App.stats.series(repRange);
     const R = App.stats.days(repRange);
@@ -444,16 +445,7 @@
     R.bills.forEach((b) => { const k = b.credit ? 'credit' : b.mode; modes[k] = App.round2((modes[k] || 0) + b.total); });
     const MC = { cash: '#16A34A', upi: '#6366F1', card: '#F5A524', credit: '#DC2626' };
     const cash = App.stats.cashExpected();
-    const gstRows = {};
-    if (st.gstEnabled) {
-      R.bills.forEach((b) => b.lines.forEach((l) => {
-        const rate = l.gst || 0;
-        gstRows[rate] = gstRows[rate] || { taxable: 0, tax: 0 };
-        const share = b.sub > 0 ? l.gross / b.sub : 0;
-        gstRows[rate].taxable = App.round2(gstRows[rate].taxable + l.gross - b.discount * share);
-        gstRows[rate].tax = App.round2(gstRows[rate].tax + b.tax * share);
-      }));
-    }
+    const gstRows = App.gstBreakdown(R.bills,R.returns);
     const acts = App.activity().slice(0, 25);
 
     main.innerHTML =
@@ -474,7 +466,7 @@
         .map((s) => '<button class="chip tap" data-ask="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div></div>' +
 
       '<div class="grid g-4" style="margin-bottom:16px">' +
-      '<div class="stat accent"><span class="em">💰</span><div class="k">' + t('rep.sales') + ' · ' + repRange + 'd</div><div class="v">' + money(R.sales) + '</div><div class="d">' + R.count + ' bills</div></div>' +
+      '<div class="stat accent"><span class="em">💰</span><div class="k">Net ' + t('rep.sales') + ' · ' + repRange + 'd</div><div class="v">' + money(R.sales) + '</div><div class="d">' + R.count + ' bills · returns '+money(R.returned,true)+'</div></div>' +
       '<div class="stat"><span class="em">📈</span><div class="k">' + t('rep.profit') + '</div><div class="v">' + money(R.profit) + '</div>' +
       '<div class="d up">' + (R.sales ? Math.round(R.profit / R.sales * 100) : 0) + '% margin</div></div>' +
       '<div class="stat"><span class="em">🧾</span><div class="k">Avg bill</div><div class="v">' + money(R.avg) + '</div><div class="d muted">' + R.items + ' units</div></div>' +
@@ -485,7 +477,7 @@
       App.chart.bars(series.map((s) => ({ label: s.label, short: repRange > 30 ? '' : s.label.split(' ')[0], value: s.value })), { height: 240 }) + '</div>' +
 
       '<div class="grid g-2" style="margin-bottom:16px">' +
-      '<div class="card"><div class="sec-title" style="margin-top:0">💳 ' + t('rep.byMode') + '</div>' +
+      '<div class="card"><div class="sec-title" style="margin-top:0">💳 Original bills by mode (before returns)</div>' +
       '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">' +
       App.chart.donut(Object.keys(modes).map((k) => ({ label: k, value: modes[k], color: MC[k] || '#999' })), { caption: repRange + ' days' }) +
       '<div style="flex:1;min-width:150px">' +
@@ -496,8 +488,10 @@
 
       '<div class="card"><div class="sec-title" style="margin-top:0">💵 ' + t('rep.cash') + '</div>' +
       '<div class="kv"><span>Bills paid in cash</span><b class="num">' + money(cash.billCash, true) + '</b></div>' +
-      '<div class="kv"><span>Udhaar collected in cash</span><b class="num">' + money(cash.payCash, true) + '</b></div>' +
-      '<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ' + money(cash.out, true) + '</b></div>' +
+      '<div class="kv"><span>Customer cash received (collections and advances)</span><b class="num">' + money(cash.payCash, true) + '</b></div>' +
+      '<div class="kv"><span>Cash paid to suppliers</span><b class="num" style="color:var(--bad)">− ' + money(cash.out-cash.refundCash, true) + '</b></div>' +
+      '<div class="kv"><span>Cash refunds paid</span><b class="num">− '+money(cash.refundCash,true)+'</b></div>' +
+      '<div class="kv"><span>Supplier cash refunds received</span><b class="num">'+money(cash.supplierRefundCash,true)+'</b></div>' +
       '<div class="kv" style="font-size:16px"><b>' + t('rep.expected') + '</b><b class="num">' + money(cash.net, true) + '</b></div>' +
       '<div class="row" style="margin-top:12px"><input class="inp num" id="countedCash" type="number" inputmode="decimal" placeholder="' + t('rep.counted') + '">' +
       '<button class="btn pri" id="reconcile" style="flex:0 0 auto">' + t('com.confirm') + '</button></div>' +
@@ -538,7 +532,7 @@
       }, 260);
     };
 
-    main.addEventListener('click', (e) => {
+    main.addEventListener('click', async (e) => {
       const rr = e.target.closest('[data-rr]'), qa = e.target.closest('[data-ask]');
       if (rr) { repRange = +rr.dataset.rr; return App.render(); }
       if (qa) { App.$('#askQ').value = qa.dataset.ask; return runAsk(qa.dataset.ask); }
@@ -561,13 +555,14 @@
         const o = App.$('#reconOut');
         if (isNaN(counted)) { o.innerHTML = '<div class="alert warn"><span class="ai">✋</span><span>Enter the counted amount</span></div>'; return; }
         const d = App.round2(counted - cash.net);
-        o.innerHTML = Math.abs(d) < 1
+        const resultHTML = Math.abs(d) < 1
           ? '<div class="alert ok"><span class="ai">✅</span><span>' + t('rep.match') + '</span></div>'
           : '<div class="alert ' + (d < 0 ? 'bad' : 'warn') + '"><span class="ai">' + (d < 0 ? '⚠️' : '💡') + '</span><span>' +
           (d < 0 ? t('rep.short', { amt: money(-d, true) }) : t('rep.over', { amt: money(d, true) })) + '</span></div>';
-        if (Math.abs(d) < 1) App.confetti({ count: 45 });
         App.log('cash', 'Cash counted ' + money(counted, true) + ' vs expected ' + money(cash.net, true));
-        App.save({ render: false });
+        (await App.save({ render: false }));
+        o.innerHTML = resultHTML;
+        if (Math.abs(d) < 1) App.confetti({ count: 45 });
         return;
       }
       if (e.target.closest('#repCsv')) {

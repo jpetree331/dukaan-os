@@ -1,0 +1,15 @@
+# Supplier purchase corrections
+
+New receipts have a command ID, immutable original payment facts, item-name snapshots and individually attributed purchase lines/batches. Retrying the same operation ID and contents returns the prior result; changed contents reject. Later payments can reference a purchase; unlinked historical payments remain at supplier-account level. “Linked paid” is the original paid-on-receipt amount plus payments explicitly linked to that purchase, before any refund. It is not a reconstructed invoice allocation.
+
+The supplier statement starts with a disclosed checkpoint of the existing balance, then appends purchases, payments, returns, refunds and reasoned noncash corrections. Positive balance is money owed to the supplier; negative balance is supplier credit. A correction does not change cash or physical stock. CSV includes the complete movement history; the screen shows the latest 40 entries.
+
+Returns remove only currently held stock whose purchase/line attribution matches. Customer-returned batches keep this attribution, including quarantined goods; supplier returns consume quarantined stock first. Sold or moved goods cannot be rewritten. Cancelling a duplicate receipt requires every original unit to remain attributable and no previous supplier return. The purchase is marked cancelled, while its original amount and payments remain recorded. A later refund is a separate cash/UPI receipt; this application records money already received and does not initiate a transfer or order goods.
+
+Purchase totals retain the existing rounded whole-purchase sum. Line values are rounded to paise with any positive residue on the last line and negative residue removed backwards without making a line negative. Partial returns use differences between rounded cumulative allocations, so a complete return reverses exactly the original total even for fractional quantities. This allocation affects supplier credit; sales continue to use original batch unit costs.
+
+A return first reduces current supplier debt. Its remainder becomes refundable credit. Settlement is limited both by that return's unpaid liability and current negative supplier balance, since subsequent purchases can consume account credit. Credit is fungible at supplier-account level; this is not a general accounting or invoice-matching engine.
+
+Legacy purchases without verified line/batch attribution reject automatic returns with an explicit reconciliation path. A documented noncash supplier correction can repair a balance, but does not invent historical stock movements. BUILD-09 supplies separate stock-adjustment commands. Existing purchase/payment history and original sales are preserved.
+
+Optional root supplierLedgerVersion, supplierReturns and supplierRefunds fence older strict readers. New records are included in encrypted snapshots, migration and repository journal replay. Git rewind does not reverse a data migration; preserve an encrypted checkpoint and use a compatible reader. IndexedDB migration remains opt-in for synthetic development, pending independent recovery review before real-data cutover.
