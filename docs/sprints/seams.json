@@ -4077,11 +4077,14 @@
         "STOCK",
         "AUTH"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-02-18",
@@ -4105,11 +4108,14 @@
         "STORE",
         "UI"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-03-18",
@@ -4131,11 +4137,14 @@
         "STORE",
         "AUTH"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-04-18",
@@ -4161,11 +4170,14 @@
         "RECOVER",
         "RELEASE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-05-18",
@@ -4191,11 +4203,14 @@
         "RECEIPT",
         "UI"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-06-18",
@@ -4215,11 +4230,14 @@
         "AUTH",
         "STORE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-07-18",
@@ -4241,11 +4259,14 @@
         "STORE",
         "RECEIPT"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-08-18",
@@ -4265,11 +4286,14 @@
         "STOCK",
         "STORE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-09-18",
@@ -4291,11 +4315,14 @@
         "AUTH",
         "STORE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-10-18",
@@ -4317,11 +4344,14 @@
         "STORE",
         "RECEIPT"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-11-18",
@@ -4341,11 +4371,14 @@
         "AUTH",
         "STORE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-12-18",
@@ -4369,11 +4402,14 @@
         "RECEIPT",
         "LOCALE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-13-18",
@@ -4395,11 +4431,14 @@
         "AUTH",
         "RECEIPT"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-14-18",
@@ -4423,11 +4462,14 @@
         "STOCK",
         "RECOVER"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-15-18",
@@ -4451,11 +4493,14 @@
         "MONEY",
         "AUTH"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-16-18",
@@ -4479,18 +4524,21 @@
         "STOCK",
         "UI"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-17-18",
       "earlier": "BUILD-17",
       "later": "BUILD-18",
       "defaultGate": "VERIFY-18",
-      "gate": "VERIFY-18",
+      "gate": "VERIFY-17",
       "conditional": false,
       "sharedDomains": [
         "receipts",
@@ -4507,11 +4555,14 @@
         "AUTH",
         "RELEASE"
       ],
-      "status": "planned",
+      "status": "blocked",
       "testedCodeCommit": null,
       "reviewer": null,
-      "rationale": null,
-      "evidence": []
+      "rationale": "Tooling is prepared; named device, physical printer, field operator/recovery and independent review evidence are missing.",
+      "evidence": [
+        "reports/BUILD-18.md",
+        "reports/VERIFY-18.md"
+      ]
     },
     {
       "id": "SEAM-01-19",
