@@ -83,7 +83,7 @@
     const id = (x) => typeof x === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(x) && !['__proto__', 'constructor', 'prototype'].includes(x);
     const date = (x) => !x || (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && new Date(x).toISOString().slice(0, 10) === x);
     const collections = ['stores', 'staff', 'items', 'customers', 'suppliers', 'bills', 'payments', 'purchases', 'supplierPayments', 'activity', 'shifts'];
-    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'customerLedgerVersion', 'returns', 'refunds', 'supplierLedgerVersion','supplierReturns','supplierRefunds','stockAdjustments','storeAccessVersion','storeProfilesVersion','stockTransfers','transferReceipts','stockBook','cashVersion','cashBaseline','cashMovements','cashManual','cashSessions','cashCloseCorrections', ...collections]);
+    const rootKeys = new Set(['v', 'createdAt', 'settings', 'session', 'counter', 'drafts', 'quantityVersion', 'customerLedgerVersion', 'returns', 'refunds', 'supplierLedgerVersion','supplierReturns','supplierRefunds','stockAdjustments','storeAccessVersion','storeProfilesVersion','stockTransfers','transferReceipts','stockBook','cashVersion','cashBaseline','cashMovements','cashManual','cashSessions','cashCloseCorrections', ...collections]);
     for (const key of Object.keys(d)) if (!rootKeys.has(key)) fail('unknown field: ' + key);
     for (const key of collections) {
       if (!Array.isArray(d[key])) fail(key + ' must be an array');
@@ -362,6 +362,7 @@
       }
     };
     walk(d);
+    if(App.units)App.units.validateBook(d);
     return d;
   };
 })(window);

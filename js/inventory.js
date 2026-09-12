@@ -21,6 +21,7 @@
     const body = App.el('<div>' +
       '<div class="field"><label>' + t('inv.emoji') + '</label><div class="chip-row" id="emoPick">' +
       EMOJI.map((e) => '<button class="chip tap ' + (d.emoji === e ? 'sel' : '') + '" data-e="' + e + '" style="font-size:16px">' + e + '</button>').join('') + '</div></div>' +
+      '<div class="row"><div class="field"><label>'+App.uiText('Selling unit')+'</label><select class="inp" id="i_unit" '+(it?'disabled':'')+'><option value="">'+App.uiText('Legacy unit (unchanged)')+'</option>'+App.units.names().map(u=>'<option value="'+u+'" '+(d.quantitySpec?.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select></div><div class="field"><label>'+App.uiText('Contents per pack')+'</label><input class="inp" id="i_packSize" type="number" step="any" '+(it?'disabled':'')+' value="'+esc(d.quantitySpec?.packSize || '')+'"></div><div class="field"><label>'+App.uiText('Pack contents unit')+'</label><select class="inp" id="i_packUnit" '+(it?'disabled':'')+'>'+App.units.names().filter(u=>u!=='pack').map(u=>'<option value="'+u+'" '+(d.quantitySpec?.packUnit===u?'selected':'')+'>'+u+'</option>').join('')+'</select></div></div>'+
       '<div class="field"><label>' + t('com.name') + ' *</label><input class="inp" id="i_name" value="' + esc(d.name) + '" placeholder="Lays Magic Masala" autofocus></div>' +
       '<div class="row"><div class="field"><label>हिंदी नाम <span class="muted">(' + t('com.optional') + ')</span></label><input class="inp" id="i_hi" value="' + esc(d.nameHi) + '" placeholder="लेज़ मैजिक मसाला"></div>' +
       '<div class="field"><label>🎙️ <span data-core-text="Voice aliases">Voice aliases</span></label><input class="inp" id="i_alias" value="' + esc(d.alias) + '" placeholder="lej, chips, aloo"></div></div>' +
@@ -57,6 +58,7 @@
             const stock = it ? null : parseFloat(App.$('#i_stock', body).value) || 0;
             if (stock !== null) App.domain.quantityUnits(stock);
             const rec = it || { id: App.uid('it'), storeId: App.S(), batches: [], at: Date.now() };
+            if(!it&&App.$('#i_unit',body).value){const unit=App.$('#i_unit',body).value;rec.unit=unit;rec.quantitySpec={version:1,unit,...(unit==='pack'?{packSize:Number(App.$('#i_packSize',body).value),packUnit:App.$('#i_packUnit',body).value}:{})};App.DB().quantityVersion=1;}
             rec.name = name;
             rec.nameHi = App.$('#i_hi', body).value.trim();
             rec.alias = App.$('#i_alias', body).value.trim();

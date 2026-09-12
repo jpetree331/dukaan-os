@@ -173,6 +173,7 @@
     };
     try {
       guard();
+      if(App.units)App.units.guard(previous,DB,options.restoring);
       if(App.captureCashMovements)App.captureCashMovements();
       if(App.captureStockHistory)App.captureStockHistory(previous?JSON.parse(previous):null,options);
       const raw = JSON.stringify(App.validateData(DB));
@@ -273,6 +274,7 @@
   }
   App.sellableStock = (it) => it.batches && it.batches.length ? App.domain.quantity(it.batches.filter((b) => !b.quarantined&&(!b.expiry || b.expiry >= dayKey(Date.now()))).reduce((n, b) => n + b.qty, 0)) : itemStock(it);
   function takeStock(it, qty) {
+    if(App.units)App.units.assertQuantity(it,qty);
     App.number(qty, 'Quantity', 0.0001); App.domain.quantityUnits(qty);
     if (qty > App.sellableStock(it)) throw new Error('Insufficient stock for ' + it.name);
     const allocations = [];
@@ -357,7 +359,7 @@
     return {accountId:App.accountId,storeId:S(),staffId:DB.session.staffId,deviceId:device};
   };
   const sameScope = (a,b) => a&&b&&['accountId','storeId','staffId','deviceId'].every(k=>a[k]===b[k]);
-  App.selectionVersion = it => JSON.stringify([it.price,it.unit || 'unit',DB.settings.gstEnabled,it.gst ?? DB.settings.defaultGst]);
+  App.selectionVersion = it => JSON.stringify([it.price,it.unit || 'unit',DB.settings.gstEnabled,it.gst ?? DB.settings.defaultGst,...(it.quantitySpec?[it.quantitySpec]:[])]);
   App.returnableLines = bill => bill.lines.map((line,index)=>({lineId:line.lineId || String(index),qty:bill.void?0:line.qty}));
   App.drafts = {
     scope:draftScope,
@@ -438,6 +440,7 @@
       cart.lines.forEach((l) => {
         const it = App.item(l.itemId);
         if (!it) throw new Error('An item was removed or belongs to another store. Update the cart.');
+        App.units.assertQuantity(it,l.qty);
         App.number(l.qty, 'Quantity', 0.0001); App.domain.quantityUnits(l.qty); App.number(l.price, 'Price');
         if (l.price !== it.price) throw new Error(it.name + ' has a new price. Remove it and add it again.');
         if(l.selectionVersion&&l.selectionVersion!==App.selectionVersion(it))throw new Error(it.name+' has changed price, tax or units. Remove it and add it again.');
@@ -452,7 +455,7 @@
       const { sub, tax, total } = T, disc = round2(T.disc + T.redeem);
       const lines = cart.lines.map((l, index) => {
         const it = App.item(l.itemId);
-        return { lineId:uid('line'),itemId: it.id, name: it.name, emoji: it.emoji || '', unit:it.unit || 'unit', qty: l.qty, price: l.price, cost: it.cost,
+        return { lineId:uid('line'),itemId: it.id, name: it.name, emoji: it.emoji || '', unit:it.unit || 'unit', ...(it.quantitySpec?{quantitySpec:JSON.parse(JSON.stringify(it.quantitySpec))}:{}), qty: l.qty, price: l.price, cost: it.cost,
           gross: round2(l.price * l.qty), ...T.taxes[index] };
       });
 

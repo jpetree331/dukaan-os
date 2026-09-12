@@ -50,7 +50,7 @@
     }
     const ex = cart.lines.find((l) => l.itemId === itemId);
     if (ex) ex.qty = App.domain.quantity(ex.qty + qty);
-    else cart.lines.push({ itemId, name: App.itemName(it), emoji: it.emoji || '🛍️', qty, price: it.price,selectionVersion:App.selectionVersion(it) });
+    else cart.lines.push({ itemId, name: App.itemName(it), emoji: it.emoji || '🛍️', qty, price: it.price,unitLabel:it.quantitySpec?App.units.label(it):'',selectionVersion:App.selectionVersion(it) });
     if (fromEl) App.flyTo(fromEl, '#cartCount', it.emoji || '🛒');
     App.buzz();
     paintCart(); App.bump('#cartCount');return draftSave;
@@ -120,7 +120,7 @@
     box.innerHTML = cart.lines.length ? cart.lines.map((l) =>
       '<div class="cart-line" data-line="' + l.itemId + '">' +
       '<span style="font-size:18px">' + esc(l.emoji || '🛍️') + '</span>' +
-      '<span class="cl-n"><b>' + esc(l.name) + '</b><span>' + money(l.price) + ' × ' + l.qty + '</span></span>' +
+      '<span class="cl-n"><b>' + esc(l.name) + '</b><span>' + money(l.price) + ' × ' + l.qty +' '+esc(l.unitLabel||'')+ '</span></span>' +
       '<span class="qty"><button data-dec="' + l.itemId + '">−</button><b>' + l.qty + '</b><button data-inc="' + l.itemId + '">+</button></span>' +
       '<span class="cl-amt">' + money(l.price * l.qty) + '</span></div>').join('')
       : '<div class="empty" style="padding:26px 16px"><div class="e">🛒</div><h4>' + t('pos.empty') + '</h4><p>' + t('pos.emptySub') + '</p></div>';
@@ -320,7 +320,7 @@
         orb.hidden = true;
         if (!final) return;
         const res = App.voice.bestOf([final].concat(alts || []), App.items());
-        const use = res.lines.length ? res : App.parseSpeech(final, App.items());
+        const use = res.ambiguous?res:res.lines.length ? res : App.parseSpeech(final, App.items());
         confirmVoice(final, use);
       }
     });
@@ -342,7 +342,7 @@
     const paint = () => {
       App.$('#vlist', body).innerHTML = res.lines.map((l, i) =>
         '<div class="list-row"><span style="font-size:20px">' + esc(l.item.emoji || '🛍️') + '</span>' +
-        '<span style="flex:1"><b>' + esc(App.itemName(l.item)) + '</b><br><small class="muted">' + money(l.item.price) + ' × ' + l.qty + '</small></span>' +
+        '<span style="flex:1"><b>' + esc(App.itemName(l.item)) + '</b><br><small class="muted">' + money(l.item.price) + ' × ' + l.qty +' '+esc(App.units.label(l.item))+'<br>'+esc(l.said)+'</small></span>' +
         '<span class="qty"><button data-vd="' + i + '">−</button><b>' + l.qty + '</b><button data-vi="' + i + '">+</button></span>' +
         '<b class="num" style="width:62px;text-align:right">' + money(l.item.price * l.qty) + '</b></div>').join('');
     };
@@ -357,7 +357,7 @@
       buttons: [{ label: t('com.cancel'), cls: 'ghost' },
       {
         label: t('com.add'), cls: 'pri',
-        fn: async () => { for(const l of res.lines){await add(l.item.id,l.qty);if(draftError)throw draftError;}App.toast('ok', t('voice.added', { n: res.lines.length })); }
+        fn: async () => {for(const l of res.lines){const it=App.item(l.item.id);if(!it||l.selectionVersion!==App.selectionVersion(it)||l.qty>App.sellableStock(it))throw Error('Voice selection changed. Review the item, unit and stock again.');App.units.assertQuantity(it,l.qty);}for(const l of res.lines){await add(l.item.id,l.qty);if(draftError)throw draftError;}App.toast('ok', t('voice.added', { n: res.lines.length })); }
       }]
     });
   }

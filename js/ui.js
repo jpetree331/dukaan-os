@@ -301,7 +301,7 @@
     const receiptMoney=(n,dec)=>String(st.currency || "₹")+Number(n).toLocaleString("en-IN",{minimumFractionDigits:dec?2:0,maximumFractionDigits:2});
     const dpr = 2, W = 400;
     const lineH = 26, headH = 178, footH = 210 + (st.upiId ? 190 : 0);
-    const H = headH + bill.lines.length * lineH + footH;
+    const H = headH + bill.lines.reduce((n,l)=>n+lineH+(l.quantitySpec?16:0),0) + footH;
     const cv = document.createElement('canvas');
     cv.width = W * dpr; cv.height = H * dpr;
     const c = cv.getContext('2d'); c.scale(dpr, dpr);
@@ -345,6 +345,7 @@
       c.textAlign = 'right'; c.fillText(String(l.price), 312, y);
       c.fillStyle = '#1a1a1a'; c.font = F(13, 700);
       c.fillText(receiptMoney(l.gross), W - 18, y);
+      if(l.quantitySpec){c.textAlign='left';c.font=F(10,400);c.fillText(App.units.label(l),18,y+15);y+=16;}
       y += lineH;
     });
 
@@ -389,7 +390,7 @@
     let s = '*' + (st.shopName || 'My Shop') + '*\n';
     s += '🧾 Bill #' + bill.no + ' · ' + App.fmtDT(bill.at) + '\n';
     s += '👤 ' + bill.customerName + '\n\n';
-    bill.lines.forEach((l) => { s += '• ' + l.name + '  ×' + l.qty + '  —  ' + money(l.gross) + '\n'; });
+    bill.lines.forEach((l) => { s += '• ' + l.name + '  ×' + l.qty + (l.quantitySpec?' '+App.units.label(l):'') + '  —  ' + money(l.gross) + '\n'; });
     s += '\n';
     if (bill.discount > 0) s += 'Discount: −' + money(bill.discount) + '\n';
     if (bill.tax > 0) s += 'GST: ' + money(bill.tax) + '\n';
