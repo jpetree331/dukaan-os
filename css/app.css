@@ -147,7 +147,7 @@ p{margin:0}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:pre;border:0}
 .topbar .net-pill{min-width:0;max-width:220px}.topbar .net-pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-:focus-visible{outline:3px solid var(--saffron);outline-offset:3px}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
 .modal :focus-visible{scroll-margin-block:20px}
 .qty button,.auth-tab,.icon-btn{min-width:44px;min-height:44px}
 .auth-card{max-height:calc(100dvh - 32px);overflow:auto}
