@@ -568,10 +568,11 @@
       ],
       "recovery": "Typed fixtures can ship first; actual recorded-audio and target-phone evidence is a separate required gate before an accuracy claim.",
       "optional": false,
-      "status": "built-unverified",
-      "codeCommit": "7402b39d3e74e322816922e8eb9a9690d2b06655",
+      "status": "passed",
+      "codeCommit": "8d9036afc4742ee2e650a82039cc935ef33794da",
       "evidence": [
-        "reports/BUILD-15.md"
+        "reports/BUILD-15.md",
+        "reports/VERIFY-15.md"
       ]
     },
     {
