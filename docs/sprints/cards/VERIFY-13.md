@@ -13,6 +13,8 @@ Complete sign-in, lookup, sale, error correction and lock using keyboard/screen-
 
 ## Verification work
 
+Use the real sign-up form in the browser, including confirmation/duplicate-name errors and preservation of an existing shop; then sign out and sign in through the UI. Verify that local-only account wording and lack of online password recovery are explicit. API fixture sign-up does not satisfy this case. See [authentication integration scope](../AUTH-INTEGRATION.md).
+
 1. Review the final diff, schema changes, migrations, untracked/generated/configuration files and feature flags against the card.
 2. Run relevant existing regressions and targeted negative/failure cases. Current baseline commands are `npm test`, `npm run build` and `npm run plan:check`; add/document real-browser or backend commands where this build requires them.
 3. Test the changed feature through normal UI/API entry points and at the authorization/transaction boundary. Include restart, cancellation, duplicate submission, malformed input and applicable migration cases.

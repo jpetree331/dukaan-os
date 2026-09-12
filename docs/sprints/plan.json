@@ -463,7 +463,7 @@
       "title": "Hindi and accessible core navigation",
       "why": "The primary counter should work without essential English labels or pointer-only controls.",
       "scope": "Complete shell, login, lock, catalogue and checkout messages in English/Hindi; associate labels; provide modal focus handling, keyboard navigation, announcements and large-touch controls.",
-      "acceptance": "Complete sign-in, lookup, sale, error correction and lock using keyboard/screen-reader checks; Hindi text, large text and narrow screens remain usable.",
+      "acceptance": "Complete sign-in, lookup, sale, error correction and lock using keyboard/screen-reader checks; Hindi text, large text and narrow screens remain usable. Exercise actual local sign-up/confirmation/duplicate-name forms, retained existing shop and sign-out/sign-in; label device-only accounts clearly.",
       "exclusions": "New languages and translating the entire money/report workflow in this slice.",
       "areas": [
         "js/i18n.js",
@@ -680,8 +680,8 @@
       "phase": "Cloud",
       "title": "Local backend identity and store authorization",
       "why": "Cloud data must have a trusted identity boundary before any synchronization writes.",
-      "scope": "Confirm provider ADR; build local/emulated backend migrations, account identity mapping, shops/stores/memberships and least-privilege allow/deny policies; store secrets only server-side.",
-      "acceptance": "Two unrelated shops and owner/cashier/removed users cannot read or mutate each other's records via direct API calls, views or functions; migration/reset works on disposable backend data.",
+      "scope": "Confirm provider ADR; build local/emulated backend migrations, account identity mapping, shops/stores/memberships and least-privilege allow/deny policies; store secrets only server-side. Integrate provider-backed email/password sign-up, verification, sign-in/out, session renewal and password reset with application forms and a local mail sink; explicit offline-shop linking preserves existing records.",
+      "acceptance": "Two unrelated shops and owner/cashier/removed users cannot read or mutate each other's records via direct API calls, views or functions; migration/reset works on disposable backend data. Real browser/provider registration, verification, session and reset journeys; reject duplicate accounts and invalid/expired/reused links without changing the offline book.",
       "exclusions": "Creating paid/live resources or uploading local customer records.",
       "areas": [
         "new backend migrations/API",
