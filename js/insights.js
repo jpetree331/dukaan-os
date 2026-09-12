@@ -453,7 +453,7 @@
       '<div class="spacer"></div>' +
       '<div class="btn-row">' +
       [7, 14, 30, 90].map((n) => '<button class="chip tap ' + (repRange === n ? 'sel' : '') + '" data-rr="' + n + '">' + n + 'd</button>').join('') +
-      '<button class="btn sm" id="repCsv">📤 ' + t('rep.exportCsv') + '</button><button class="btn sm" id="cashShifts">Cash shifts</button></div></div>' +
+      '<button class="btn sm" id="repCsv">📤 ' + t('rep.exportCsv') + '</button><button class="btn sm" id="cashShifts">Cash shifts</button><button class="btn sm" id="statements">Statements</button></div></div>' +
 
       '<div class="ai-card" style="margin-bottom:18px">' +
       '<div class="ai-h">💬 ' + t('rep.ask') + '</div>' +
@@ -535,7 +535,7 @@
 
     main.addEventListener('click', async (e) => {
       const rr = e.target.closest('[data-rr]'), qa = e.target.closest('[data-ask]');
-      if(e.target.closest('#cashShifts'))return App.cashDashboard();
+      if(e.target.closest('#cashShifts'))return App.cashDashboard();if(e.target.closest('#statements'))return App.reconciliationDashboard();
       if (rr) { repRange = +rr.dataset.rr; return App.render(); }
       if (qa) { App.$('#askQ').value = qa.dataset.ask; return runAsk(qa.dataset.ask); }
       if (e.target.closest('#askGo')) return runAsk(App.$('#askQ').value);

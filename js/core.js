@@ -161,7 +161,7 @@
   }
   let pendingWrite = false;
   App.isSaving = () => pendingWrite || !!(App.migrations && App.migrations.busy());
-  async function persist(requireAccess = false) {
+  async function persist(requireAccess = false, options = {}) {
     if (pendingWrite) throw new Error('A save is already in progress. Wait for it to finish.');
     const key = dataKey(), previous = committed.has(key) ? committed.get(key) : null;
     let context = App.context();
@@ -174,6 +174,7 @@
     try {
       guard();
       if(App.captureCashMovements)App.captureCashMovements();
+      if(App.captureStockHistory)App.captureStockHistory(previous?JSON.parse(previous):null,options);
       const raw = JSON.stringify(App.validateData(DB));
       // Expose only the committed book while the repository is awaiting I/O.
       DB = previous ? JSON.parse(previous) : blank();
@@ -194,7 +195,7 @@
   }
   async function save(opts) {
     App.requireAccess();
-    await persist(true); // Success UI is permitted only after durable completion.
+    await persist(true,opts); // Success UI is permitted only after durable completion.
     if (opts && opts.sync !== false) queueSync(opts.op);
     if (!opts || opts.render !== false) App.emit('change');
   }
@@ -220,7 +221,7 @@
     if (previous) await App.storage.write(dataKey() + '.before-restore', previous);
     App.assertContext(context); App.auth.requireFresh();
     restore(DB, valid);
-    (await save({ sync: false }));
+    (await save({ sync: false, restoring: true }));
     App.invalidateContext();
     if (App.posClear) App.posClear();
   };
