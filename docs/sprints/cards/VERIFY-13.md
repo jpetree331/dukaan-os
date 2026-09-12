@@ -1,6 +1,6 @@
 # VERIFY-13 — Verify hindi and accessible core navigation
 
-Status: **planned**. Build under review: [BUILD-13](BUILD-13.md).
+Status: **passed**. Build under review: [BUILD-13](BUILD-13.md).
 This is a separate verification sprint, not a renamed builder checklist.
 
 ## Entry and exact scope

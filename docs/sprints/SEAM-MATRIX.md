@@ -72,18 +72,18 @@ The default gate is shown below. If tracks are reordered, update the actual gate
 | SEAM-09-12 | [BUILD-09](cards/BUILD-09.md) | [BUILD-12](cards/BUILD-12.md) | [VERIFY-12](cards/VERIFY-12.md) | BASE, STOCK, MONEY, STORE, REPORT | passed |
 | SEAM-10-12 | [BUILD-10](cards/BUILD-10.md) | [BUILD-12](cards/BUILD-12.md) | [VERIFY-12](cards/VERIFY-12.md) | BASE, STOCK, STORE, RECEIPT, REPORT | passed |
 | SEAM-11-12 | [BUILD-11](cards/BUILD-11.md) | [BUILD-12](cards/BUILD-12.md) | [VERIFY-12](cards/VERIFY-12.md) | BASE, MONEY, STORE, REPORT | passed |
-| SEAM-01-13 | [BUILD-01](cards/BUILD-01.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | planned |
-| SEAM-02-13 | [BUILD-02](cards/BUILD-02.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH, UI | planned |
-| SEAM-03-13 | [BUILD-03](cards/BUILD-03.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | planned |
-| SEAM-04-13 | [BUILD-04](cards/BUILD-04.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | planned |
-| SEAM-05-13 | [BUILD-05](cards/BUILD-05.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH, RECEIPT, UI | planned |
-| SEAM-06-13 | [BUILD-06](cards/BUILD-06.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | planned |
-| SEAM-07-13 | [BUILD-07](cards/BUILD-07.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, RECEIPT | planned |
-| SEAM-08-13 | [BUILD-08](cards/BUILD-08.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE | planned |
-| SEAM-09-13 | [BUILD-09](cards/BUILD-09.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | planned |
-| SEAM-10-13 | [BUILD-10](cards/BUILD-10.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH, RECEIPT | planned |
-| SEAM-11-13 | [BUILD-11](cards/BUILD-11.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | planned |
-| SEAM-12-13 | [BUILD-12](cards/BUILD-12.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, RECEIPT, LOCALE | planned |
+| SEAM-01-13 | [BUILD-01](cards/BUILD-01.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | passed |
+| SEAM-02-13 | [BUILD-02](cards/BUILD-02.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH, UI | passed |
+| SEAM-03-13 | [BUILD-03](cards/BUILD-03.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | passed |
+| SEAM-04-13 | [BUILD-04](cards/BUILD-04.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | passed |
+| SEAM-05-13 | [BUILD-05](cards/BUILD-05.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH, RECEIPT, UI | passed |
+| SEAM-06-13 | [BUILD-06](cards/BUILD-06.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | passed |
+| SEAM-07-13 | [BUILD-07](cards/BUILD-07.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, RECEIPT | passed |
+| SEAM-08-13 | [BUILD-08](cards/BUILD-08.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE | passed |
+| SEAM-09-13 | [BUILD-09](cards/BUILD-09.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | passed |
+| SEAM-10-13 | [BUILD-10](cards/BUILD-10.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH, RECEIPT | passed |
+| SEAM-11-13 | [BUILD-11](cards/BUILD-11.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, AUTH | passed |
+| SEAM-12-13 | [BUILD-12](cards/BUILD-12.md) | [BUILD-13](cards/BUILD-13.md) | [VERIFY-13](cards/VERIFY-13.md) | BASE, RECEIPT, LOCALE | passed |
 | SEAM-01-14 | [BUILD-01](cards/BUILD-01.md) | [BUILD-14](cards/BUILD-14.md) | [VERIFY-14](cards/VERIFY-14.md) | BASE, MONEY, STOCK | planned |
 | SEAM-02-14 | [BUILD-02](cards/BUILD-02.md) | [BUILD-14](cards/BUILD-14.md) | [VERIFY-14](cards/VERIFY-14.md) | BASE, MONEY, STOCK, UI | planned |
 | SEAM-03-14 | [BUILD-03](cards/BUILD-03.md) | [BUILD-14](cards/BUILD-14.md) | [VERIFY-14](cards/VERIFY-14.md) | BASE, MONEY, STOCK | planned |
