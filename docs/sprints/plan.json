@@ -529,9 +529,11 @@
       ],
       "recovery": "Preserve financial meaning across translations; maintain tested key parity and untranslated-string exceptions with owners.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "42e4bd8a564459e2e244c4830e5da37ddbacff92",
+      "evidence": [
+        "reports/BUILD-14.md"
+      ]
     },
     {
       "number": 15,
