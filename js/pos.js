@@ -238,7 +238,10 @@
       title: t('pos.done') + '  #' + bill.no,
       body: wrap,
       buttons: [
-        App.can('void_bill')&&!bill.void?{label:'Return / refunds',cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
+        /* Returns need the per-line batch/tax allocations that only bills made
+           after the ledger upgrade carry; older bills can't be returned, so
+           don't offer a button that can only fail. */
+        App.can('void_bill')&&!bill.void&&App.returnable(bill)?{label:'Return / refunds',cls:'ghost',fn:()=>App.returnDialog(bill.id)}:null,
         { label: '💾 PNG', cls: 'ghost', keepOpen: true, fn: () => App.downloadCanvas(cv, 'bill-' + bill.no + '.png') },
         { label: '🖨️ ' + t('com.print'), cls: 'ghost', keepOpen: true, fn: () => printBill(bill) },
         {

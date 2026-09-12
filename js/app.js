@@ -220,19 +220,31 @@
     location.reload();
   }
   App.logout = doLogout;
+  /* Auto-lock. Only a *protected* counter (login gate or shop PIN) ever
+     locks; an unprotected one has nothing to lock, so idle time and tab
+     switches must leave open dialogs and the mic/camera alone. Hiding the
+     tab gets a short grace period rather than an instant lock — sharing a
+     bill on WhatsApp hides the tab for a few seconds, and locking the till
+     on every share would make the headline feature unusable. */
+  const IDLE_LOCK_MS = 5 * 60 * 1000, HIDDEN_LOCK_MS = 2 * 60 * 1000;
+  const isProtected = () => App.auth.gateOn() || !!App.DB().settings.pinOn;
   let idleTimer;
   async function suspend() {
-    if (!booted || App.isLocked()) return;
+    if (!booted || App.isLocked() || !isProtected()) return;
     App.invalidateContext();
-    if (App.auth.gateOn() || App.DB().settings.pinOn) (await App.lock(() => App.render()));
+    (await App.lock(() => App.render()));
   }
   async function activity() {
     clearTimeout(idleTimer);
     if (booted && App.auth.gateOn() && !App.auth.currentAccount()) { (await suspend()); return; }
-    idleTimer = setTimeout(suspend, 5 * 60 * 1000);
+    if (isProtected()) idleTimer = setTimeout(suspend, IDLE_LOCK_MS);
   }
   ['pointerdown', 'keydown', 'touchstart'].forEach(e => document.addEventListener(e, activity, { passive: true }));
-  document.addEventListener('visibilitychange', async () => { if (document.hidden) (await suspend()); else (await activity()); });
+  document.addEventListener('visibilitychange', async () => {
+    clearTimeout(idleTimer);
+    if (document.hidden) { if (isProtected()) idleTimer = setTimeout(suspend, HIDDEN_LOCK_MS); }
+    else (await activity());
+  });
   activity().catch(App.reportError);
 
   /* keyboard shortcuts for a desktop counter */
