@@ -489,9 +489,11 @@
       ],
       "recovery": "No framework rewrite; add a visible-string/locale inventory and check missing keys. Native-speaker acceptance is recorded separately from automated checks.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "codeCommit": "9a6a8664617f514711bcc1287731ed28d35eeac3",
+      "evidence": [
+        "reports/BUILD-13.md"
+      ]
     },
     {
       "number": 14,
