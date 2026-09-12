@@ -412,9 +412,11 @@
       ],
       "recovery": "Define store timezone and late-entry policy; reopen/correct via an auditable operation rather than rewriting a closed shift.",
       "optional": false,
-      "status": "planned",
-      "codeCommit": null,
-      "evidence": []
+      "status": "built-unverified",
+      "evidence": [
+        "reports/BUILD-11.md"
+      ],
+      "codeCommit": "314dc01e78c15d4b07b83ea33c5a8d86de49fd11"
     },
     {
       "number": 12,
