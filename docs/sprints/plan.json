@@ -529,10 +529,11 @@
       ],
       "recovery": "Preserve financial meaning across translations; maintain tested key parity and untranslated-string exceptions with owners.",
       "optional": false,
-      "status": "built-unverified",
-      "codeCommit": "42e4bd8a564459e2e244c4830e5da37ddbacff92",
+      "status": "passed",
+      "codeCommit": "819b7724a915a90c0bd82bb9558f8d23d461142c",
       "evidence": [
-        "reports/BUILD-14.md"
+        "reports/BUILD-14.md",
+        "reports/VERIFY-14.md"
       ]
     },
     {
